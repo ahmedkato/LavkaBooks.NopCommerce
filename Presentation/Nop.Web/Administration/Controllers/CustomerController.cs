@@ -7,42 +7,44 @@ using Nop.Admin.Models.Common;
 using Nop.Admin.Models.Customers;
 using Nop.Admin.Models.ShoppingCart;
 using Nop.Core;
+using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Directory;
+using Nop.Core.Domain.Forums;
+using Nop.Core.Domain.Messages;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
 using Nop.Core.Domain.Shipping;
 using Nop.Core.Domain.Tax;
+using Nop.Services.Authentication.External;
 using Nop.Services.Catalog;
 using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Directory;
 using Nop.Services.ExportImport;
+using Nop.Services.Forums;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
+using Nop.Services.Messages;
 using Nop.Services.Orders;
+using Nop.Services.Security;
 using Nop.Services.Tax;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Nop.Web.Framework.Mvc;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
-using Nop.Core.Domain.Common;
-using Nop.Services.Messages;
-using Nop.Core.Domain.Messages;
-using Nop.Core.Domain.Forums;
-using Nop.Services.Forums;
-using Nop.Services.Authentication.External;
 
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class CustomerController : BaseNopController
+    public partial class CustomerController : BaseNopController
     {
         #region Fields
 
         private readonly ICustomerService _customerService;
+        private readonly IGenericAttributeService _genericAttributeService;
+        private readonly ICustomerRegistrationService _customerRegistrationService;
         private readonly ICustomerReportService _customerReportService;
         private readonly IDateTimeHelper _dateTimeHelper;
         private readonly ILocalizationService _localizationService;
@@ -74,6 +76,8 @@ namespace Nop.Admin.Controllers
         #region Constructors
 
         public CustomerController(ICustomerService customerService,
+            IGenericAttributeService genericAttributeService,
+            ICustomerRegistrationService customerRegistrationService,
             ICustomerReportService customerReportService, IDateTimeHelper dateTimeHelper,
             ILocalizationService localizationService, DateTimeSettings dateTimeSettings,
             TaxSettings taxSettings, RewardPointsSettings rewardPointsSettings,
@@ -90,6 +94,8 @@ namespace Nop.Admin.Controllers
             IForumService forumService, IOpenAuthenticationService openAuthenticationService)
         {
             this._customerService = customerService;
+            this._genericAttributeService = genericAttributeService;
+            this._customerRegistrationService = customerRegistrationService;
             this._customerReportService = customerReportService;
             this._dateTimeHelper = dateTimeHelper;
             this._localizationService = localizationService;
@@ -122,7 +128,7 @@ namespace Nop.Admin.Controllers
         #region Utilities
 
         [NonAction]
-        private string GetCustomerRolesNames(IList<CustomerRole> customerRoles, string separator = ",")
+        protected string GetCustomerRolesNames(IList<CustomerRole> customerRoles, string separator = ",")
         {
             var sb = new StringBuilder();
             for (int i = 0; i < customerRoles.Count; i++)
@@ -138,7 +144,7 @@ namespace Nop.Admin.Controllers
         }
 
         [NonAction]
-        private IList<RegisteredCustomerReportLineModel> GetReportRegisteredCustomersModel()
+        protected IList<RegisteredCustomerReportLineModel> GetReportRegisteredCustomersModel()
         {
             var report = new List<RegisteredCustomerReportLineModel>();
             report.Add(new RegisteredCustomerReportLineModel()
@@ -167,7 +173,7 @@ namespace Nop.Admin.Controllers
         }
 
         [NonAction]
-        private IList<CustomerModel.AssociatedExternalAuthModel> GetAssociatedExternalAuthRecords(Customer customer)
+        protected IList<CustomerModel.AssociatedExternalAuthModel> GetAssociatedExternalAuthRecords(Customer customer)
         {
             if (customer == null)
                 throw new ArgumentNullException("customer");
@@ -192,20 +198,48 @@ namespace Nop.Admin.Controllers
         }
 
         [NonAction]
-        private CustomerModel PrepareCustomerModelForList(Customer customer)
+        protected CustomerModel PrepareCustomerModelForList(Customer customer)
         {
             return new CustomerModel()
             {
                 Id = customer.Id,
-                Email = !String.IsNullOrEmpty(customer.Email) ? customer.Email : (customer.IsGuest() ? "Guest" : "Unknown"),
+                Email = !String.IsNullOrEmpty(customer.Email) ? customer.Email : (customer.IsGuest() ? _localizationService.GetResource("Admin.Customers.Guest") : "Unknown"),
                 Username = customer.Username,
                 FullName = customer.GetFullName(),
+                Company = customer.GetAttribute<string>(SystemCustomerAttributeNames.Company),
+                Phone = customer.GetAttribute<string>(SystemCustomerAttributeNames.Phone),
+                ZipPostalCode = customer.GetAttribute<string>(SystemCustomerAttributeNames.ZipPostalCode),
                 CustomerRoleNames = GetCustomerRolesNames(customer.CustomerRoles.ToList()),
                 Active = customer.Active,
                 CreatedOn = _dateTimeHelper.ConvertToUserTime(customer.CreatedOnUtc, DateTimeKind.Utc),
                 LastActivityDate = _dateTimeHelper.ConvertToUserTime(customer.LastActivityDateUtc, DateTimeKind.Utc),
             };
         }
+
+        [NonAction]
+        protected string ValidateCustomerRoles(IList<CustomerRole> customerRoles)
+        {
+            if (customerRoles == null)
+                throw new ArgumentNullException("customerRoles");
+
+            //ensure a customer is not added to both 'Guests' and 'Registered' customer roles
+            //ensure that a customer is in at least one required role ('Guests' and 'Registered')
+            bool isInGuestsRole = customerRoles
+                .Where(cr => cr.SystemName == SystemCustomerRoleNames.Guests)
+                .FirstOrDefault() != null;
+            bool isInRegisteredRole =
+                customerRoles
+                .Where(cr => cr.SystemName == SystemCustomerRoleNames.Registered)
+                .FirstOrDefault() != null;
+            if (isInGuestsRole && isInRegisteredRole)
+                return "The customer cannot be in both 'Guests' and 'Registered' customer roles";
+            if (!isInGuestsRole && !isInRegisteredRole)
+                return "Add the customer to 'Guests' or 'Registered' customer role";
+
+            //no errors
+            return "";
+        }
+
         #endregion
 
         #region Customers
@@ -221,58 +255,51 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             //load registered customers by default
-            var defaultRoleIds = new int[] { _customerService.GetCustomerRoleBySystemName(SystemCustomerRoleNames.Registered).Id };
-
-            //convert to string because passing int[] to grid is no possible
-            string searchCustomerRoleIdsStr = "";
-                foreach (var i in defaultRoleIds)
-                    searchCustomerRoleIdsStr += i + ",";
-            ViewData["searchCustomerRoleIds"] = searchCustomerRoleIdsStr;
-
+            var defaultRoleIds = new[] {_customerService.GetCustomerRoleBySystemName(SystemCustomerRoleNames.Registered).Id};
             var listModel = new CustomerListModel()
             {
                 UsernamesEnabled = _customerSettings.UsernamesEnabled,
-                AvailableCustomerRoles = _customerService.GetAllCustomerRoles(true).ToList(),
-                SearchCustomerRoleIds = defaultRoleIds
+                DateOfBirthEnabled = _customerSettings.DateOfBirthEnabled,
+                CompanyEnabled = _customerSettings.CompanyEnabled,
+                PhoneEnabled = _customerSettings.PhoneEnabled,
+                ZipPostalCodeEnabled = _customerSettings.ZipPostalCodeEnabled,
+                AvailableCustomerRoles = _customerService.GetAllCustomerRoles(true).Select(cr => cr.ToModel()).ToList(),
+                SearchCustomerRoleIds = defaultRoleIds,
             };
-
-            var customers = _customerService.GetAllCustomers(null, null, defaultRoleIds, null, null, null, null, false, null, 0, _adminAreaSettings.GridPageSize);
+            var customers = _customerService.GetAllCustomers(null, null, defaultRoleIds, null,
+                null, null, null, 0, 0, null, null, null,
+                false, null, 0, _adminAreaSettings.GridPageSize);
             //customer list
             listModel.Customers = new GridModel<CustomerModel>
             {
-                Data = customers.Select(x => PrepareCustomerModelForList(x)),
+                Data = customers.Select(PrepareCustomerModelForList),
                 Total = customers.TotalCount
             };
             return View(listModel);
         }
 
         [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult CustomerList(GridCommand command)
+        public ActionResult CustomerList(GridCommand command, CustomerListModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCustomers))
                 return AccessDeniedView();
 
-            //filtering
-            //convert to string because passing int[] to grid is no possible
-            string searchCustomerRoleIdsStr = command.FilterDescriptors.GetValueFromAppliedFilters("searchCustomerRoleIds");
-            var searchCustomerRoleIds = new List<int>();
-            foreach (var str1 in searchCustomerRoleIdsStr.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
-                searchCustomerRoleIds.Add(Convert.ToInt32(str1));
-            //List<int> converter should be registered
-            //var searchCustomerRoleIds = CommonHelper.GetNopCustomTypeConverter(typeof(List<int>)).ConvertFrom(searchCustomerRoleIdsStr) as List<int>;
-
-            string searchCustomerEmail = command.FilterDescriptors.GetValueFromAppliedFilters("searchCustomerEmail");
-            string searchCustomerUsername = command.FilterDescriptors.GetValueFromAppliedFilters("searchCustomerUsername");
-            string searchCustomerFirstName = command.FilterDescriptors.GetValueFromAppliedFilters("searchCustomerFirstName");
-            string searchCustomerLastName = command.FilterDescriptors.GetValueFromAppliedFilters("searchCustomerLastName");
+            var searchDayOfBirth = 0;
+            int searchMonthOfBirth = 0;
+            if (!String.IsNullOrWhiteSpace(model.SearchDayOfBirth))
+                searchDayOfBirth = Convert.ToInt32(model.SearchDayOfBirth);
+            if (!String.IsNullOrWhiteSpace(model.SearchMonthOfBirth))
+                searchMonthOfBirth = Convert.ToInt32(model.SearchMonthOfBirth);
 
             var customers = _customerService.GetAllCustomers(null, null,
-                searchCustomerRoleIds.ToArray(), searchCustomerEmail, searchCustomerUsername,
-                searchCustomerFirstName, searchCustomerLastName,
+                model.SearchCustomerRoleIds, model.SearchEmail, model.SearchUsername,
+                model.SearchFirstName, model.SearchLastName,
+                searchDayOfBirth, searchMonthOfBirth,
+                model.SearchCompany, model.SearchPhone, model.SearchZipPostalCode,
                 false, null, command.Page - 1, command.PageSize);
             var gridModel = new GridModel<CustomerModel>
             {
-                Data = customers.Select(x => PrepareCustomerModelForList(x)),
+                Data = customers.Select(PrepareCustomerModelForList),
                 Total = customers.TotalCount
             };
             return new JsonResult
@@ -280,48 +307,7 @@ namespace Nop.Admin.Controllers
                 Data = gridModel
             };
         }
-
-        [HttpPost, ActionName("List")]
-        [FormValueRequired("search-customers")]
-        public ActionResult Search(CustomerListModel model)
-        {
-            if (!_permissionService.Authorize(StandardPermissionProvider.ManageCustomers))
-                return AccessDeniedView();
-
-            model.UsernamesEnabled = _customerSettings.UsernamesEnabled;
-
-            //convert to string because passing int[] to grid is no possible
-            string searchCustomerRoleIdsStr = "";
-            if (model.SearchCustomerRoleIds != null)
-                foreach (var i in model.SearchCustomerRoleIds)
-                    searchCustomerRoleIdsStr+= i + ",";
-            ViewData["searchCustomerRoleIds"] = searchCustomerRoleIdsStr;
-            //if (model.SearchCustomerRoleIds != null)
-                //List<int> converter should be registered
-            //ViewData["searchCustomerRoleIds"] = CommonHelper.GetNopCustomTypeConverter(typeof(List<int>)).ConvertTo(model.SearchCustomerRoleIds, typeof(string)) as string;
-
-            ViewData["searchCustomerEmail"] = model.SearchEmail;
-            ViewData["searchCustomerUsername"] = model.SearchUsername;
-            ViewData["searchCustomerFirstName"] = model.SearchFirstName;
-            ViewData["searchCustomerLastName"] = model.SearchLastName;
-
-            //customer roles
-            var customerRoles = _customerService.GetAllCustomerRoles(true);
-            model.AvailableCustomerRoles = customerRoles.ToList();
-
-            //laod customers
-            var customers = _customerService.GetAllCustomers(null, null,
-               model.SearchCustomerRoleIds, model.SearchEmail, model.SearchUsername,
-               model.SearchFirstName, model.SearchLastName, false, null, 0, _adminAreaSettings.GridPageSize);
-            //customer list
-            model.Customers = new GridModel<CustomerModel>
-            {
-                Data = customers.Select(x => PrepareCustomerModelForList(x)),
-                Total = customers.TotalCount
-            };
-            return View(model);
-        }
-
+        
         public ActionResult Create()
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCustomers))
@@ -335,9 +321,12 @@ namespace Nop.Admin.Controllers
                 model.AvailableTimeZones.Add(new SelectListItem() { Text = tzi.DisplayName, Value = tzi.Id, Selected = (tzi.Id == _dateTimeHelper.DefaultStoreTimeZone.Id) });
             model.DisplayVatNumber = false;
             //customer roles
-            var customerRoles = _customerService.GetAllCustomerRoles(true);
-            model.AvailableCustomerRoles = customerRoles.ToList();
+            model.AvailableCustomerRoles = _customerService
+                .GetAllCustomerRoles(true)
+                .Select(cr => cr.ToModel())
+                .ToList();
             model.SelectedCustomerRoleIds = new int[0];
+            model.AllowManagingCustomerRoles = _permissionService.Authorize(StandardPermissionProvider.ManageCustomerRoles);
             //form fields
             model.GenderEnabled = _customerSettings.GenderEnabled;
             model.DateOfBirthEnabled = _customerSettings.DateOfBirthEnabled;
@@ -380,7 +369,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         [FormValueRequired("save", "save-continue")]
         public ActionResult Create(CustomerModel model, bool continueEditing)
         {
@@ -399,10 +388,18 @@ namespace Nop.Admin.Controllers
                 if (cust2 != null)
                     ModelState.AddModelError("", "Username is already registered");
             }
-            if (String.IsNullOrWhiteSpace(model.Password))
-            {
-                ModelState.AddModelError("", "Please specify password");
-            }
+
+            //validate customer roles
+            var allCustomerRoles = _customerService.GetAllCustomerRoles(true);
+            var newCustomerRoles = new List<CustomerRole>();
+            foreach (var customerRole in allCustomerRoles)
+                if (model.SelectedCustomerRoleIds != null && model.SelectedCustomerRoleIds.Contains(customerRole.Id))
+                    newCustomerRoles.Add(customerRole);
+            var customerRolesError = ValidateCustomerRoles(newCustomerRoles);
+            if (!String.IsNullOrEmpty(customerRolesError))
+                ModelState.AddModelError("", customerRolesError);
+            bool allowManagingCustomerRoles = _permissionService.Authorize(StandardPermissionProvider.ManageCustomerRoles);
+            
             if (ModelState.IsValid)
             {
                 var customer = new Customer()
@@ -421,49 +418,50 @@ namespace Nop.Admin.Controllers
                 
                 //form fields
                 if (_customerSettings.GenderEnabled)
-                    _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.Gender, model.Gender);
-                _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.FirstName, model.FirstName);
-                _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.LastName, model.LastName);
+                    _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.Gender, model.Gender);
+                _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.FirstName, model.FirstName);
+                _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.LastName, model.LastName);
                 if (_customerSettings.DateOfBirthEnabled)
-                    _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.DateOfBirth, model.DateOfBirth);
+                    _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.DateOfBirth, model.DateOfBirth);
                 if (_customerSettings.CompanyEnabled)
-                    _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.Company, model.Company);
+                    _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.Company, model.Company);
                 if (_customerSettings.StreetAddressEnabled)
-                    _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.StreetAddress, model.StreetAddress);
+                    _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.StreetAddress, model.StreetAddress);
                 if (_customerSettings.StreetAddress2Enabled)
-                    _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.StreetAddress2, model.StreetAddress2);
+                    _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.StreetAddress2, model.StreetAddress2);
                 if (_customerSettings.ZipPostalCodeEnabled)
-                    _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.ZipPostalCode, model.ZipPostalCode);
+                    _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.ZipPostalCode, model.ZipPostalCode);
                 if (_customerSettings.CityEnabled)
-                    _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.City, model.City);
+                    _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.City, model.City);
                 if (_customerSettings.CountryEnabled)
-                    _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.CountryId, model.CountryId);
+                    _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.CountryId, model.CountryId);
                 if (_customerSettings.CountryEnabled && _customerSettings.StateProvinceEnabled)
-                    _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.StateProvinceId, model.StateProvinceId);
+                    _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.StateProvinceId, model.StateProvinceId);
                 if (_customerSettings.PhoneEnabled)
-                    _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.Phone, model.Phone);
+                    _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.Phone, model.Phone);
                 if (_customerSettings.FaxEnabled)
-                    _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.Fax, model.Fax);
+                    _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.Fax, model.Fax);
 
 
                 //password
-                var changePassRequest = new ChangePasswordRequest(model.Email,
-                    false, PasswordFormat.Hashed, model.Password);
-                var changePassResult = _customerService.ChangePassword(changePassRequest);
-                if (!changePassResult.Success)
+                if (!String.IsNullOrWhiteSpace(model.Password))
                 {
-                    foreach (var changePassError in changePassResult.Errors)
-                        ErrorNotification(changePassError);
+                    var changePassRequest = new ChangePasswordRequest(model.Email, false, _customerSettings.DefaultPasswordFormat, model.Password);
+                    var changePassResult = _customerRegistrationService.ChangePassword(changePassRequest);
+                    if (!changePassResult.Success)
+                    {
+                        foreach (var changePassError in changePassResult.Errors)
+                            ErrorNotification(changePassError);
+                    }
                 }
 
                 //customer roles
-                var allCustomerRoles = _customerService.GetAllCustomerRoles(true);
-                foreach (var customerRole in allCustomerRoles)
+                if (allowManagingCustomerRoles)
                 {
-                    if (model.SelectedCustomerRoleIds != null && model.SelectedCustomerRoleIds.Contains(customerRole.Id))
+                    foreach (var customerRole in newCustomerRoles)
                         customer.CustomerRoles.Add(customerRole);
+                    _customerService.UpdateCustomer(customer);
                 }
-                _customerService.UpdateCustomer(customer);
 
                 //activity log
                 _customerActivityService.InsertActivity("AddNewCustomer", _localizationService.GetResource("ActivityLog.AddNewCustomer"), customer.Id);
@@ -480,8 +478,11 @@ namespace Nop.Admin.Controllers
                 model.AvailableTimeZones.Add(new SelectListItem() { Text = tzi.DisplayName, Value = tzi.Id, Selected = (tzi.Id == model.TimeZoneId) });
             model.DisplayVatNumber = false;
             //customer roles
-            var customerRoles = _customerService.GetAllCustomerRoles(true);
-            model.AvailableCustomerRoles = customerRoles.ToList();
+            model.AvailableCustomerRoles = _customerService
+                .GetAllCustomerRoles(true)
+                .Select(cr => cr.ToModel())
+                .ToList();
+            model.AllowManagingCustomerRoles = allowManagingCustomerRoles;
             //form fields
             model.GenderEnabled = _customerSettings.GenderEnabled;
             model.DateOfBirthEnabled = _customerSettings.DateOfBirthEnabled;
@@ -528,7 +529,8 @@ namespace Nop.Admin.Controllers
 
             var customer = _customerService.GetCustomerById(id);
             if (customer == null || customer.Deleted)
-                throw new ArgumentException("No customer found with the specified id", "id");
+                //No customer found with the specified id
+                return RedirectToAction("List");
 
             var model = new CustomerModel();
             model.Id = customer.Id;
@@ -609,9 +611,12 @@ namespace Nop.Admin.Controllers
             }
 
             //customer roles
-            var customerRoles = _customerService.GetAllCustomerRoles(true);
-            model.AvailableCustomerRoles = customerRoles.ToList();
+            model.AvailableCustomerRoles = _customerService
+                .GetAllCustomerRoles(true)
+                .Select(cr => cr.ToModel())
+                .ToList();
             model.SelectedCustomerRoleIds = customer.CustomerRoles.Select(cr => cr.Id).ToArray();
+            model.AllowManagingCustomerRoles = _permissionService.Authorize(StandardPermissionProvider.ManageCustomerRoles);
             //reward points gistory
             model.DisplayRewardPointsHistory = _rewardPointsSettings.Enabled;
             model.AddRewardPointsValue = 0;
@@ -622,7 +627,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         [FormValueRequired("save", "save-continue")]
         public ActionResult Edit(CustomerModel model, bool continueEditing)
         {
@@ -631,8 +636,20 @@ namespace Nop.Admin.Controllers
 
             var customer = _customerService.GetCustomerById(model.Id);
             if (customer == null || customer.Deleted)
-                throw new ArgumentException("No customer found with the specified id");
+                //No customer found with the specified id
+                return RedirectToAction("List");
 
+            //validate customer roles
+            var allCustomerRoles = _customerService.GetAllCustomerRoles(true);
+            var newCustomerRoles = new List<CustomerRole>();
+            foreach (var customerRole in allCustomerRoles)
+                if (model.SelectedCustomerRoleIds != null && model.SelectedCustomerRoleIds.Contains(customerRole.Id))
+                    newCustomerRoles.Add(customerRole);
+            var customerRolesError = ValidateCustomerRoles(newCustomerRoles);
+            if (!String.IsNullOrEmpty(customerRolesError))
+                ModelState.AddModelError("", customerRolesError);
+            bool allowManagingCustomerRoles = _permissionService.Authorize(StandardPermissionProvider.ManageCustomerRoles);
+            
             if (ModelState.IsValid)
             {
                 try
@@ -646,7 +663,7 @@ namespace Nop.Admin.Controllers
                     //email
                     if (!String.IsNullOrWhiteSpace(model.Email))
                     {
-                        _customerService.SetEmail(customer, model.Email);
+                        _customerRegistrationService.SetEmail(customer, model.Email);
                     }
                     else
                     {
@@ -658,7 +675,7 @@ namespace Nop.Admin.Controllers
                     {
                         if (!String.IsNullOrWhiteSpace(model.Username))
                         {
-                            _customerService.SetUsername(customer, model.Username);
+                            _customerRegistrationService.SetUsername(customer, model.Username);
                         }
                         else
                         {
@@ -683,49 +700,51 @@ namespace Nop.Admin.Controllers
 
                     //form fields
                     if (_customerSettings.GenderEnabled)
-                        _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.Gender, model.Gender);
-                    _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.FirstName, model.FirstName);
-                    _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.LastName, model.LastName);
+                        _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.Gender, model.Gender);
+                    _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.FirstName, model.FirstName);
+                    _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.LastName, model.LastName);
                     if (_customerSettings.DateOfBirthEnabled)
-                        _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.DateOfBirth, model.DateOfBirth);
+                        _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.DateOfBirth, model.DateOfBirth);
                     if (_customerSettings.CompanyEnabled)
-                        _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.Company, model.Company);
+                        _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.Company, model.Company);
                     if (_customerSettings.StreetAddressEnabled)
-                        _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.StreetAddress, model.StreetAddress);
+                        _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.StreetAddress, model.StreetAddress);
                     if (_customerSettings.StreetAddress2Enabled)
-                        _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.StreetAddress2, model.StreetAddress2);
+                        _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.StreetAddress2, model.StreetAddress2);
                     if (_customerSettings.ZipPostalCodeEnabled)
-                        _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.ZipPostalCode, model.ZipPostalCode);
+                        _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.ZipPostalCode, model.ZipPostalCode);
                     if (_customerSettings.CityEnabled)
-                        _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.City, model.City);
+                        _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.City, model.City);
                     if (_customerSettings.CountryEnabled)
-                        _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.CountryId, model.CountryId);
+                        _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.CountryId, model.CountryId);
                     if (_customerSettings.CountryEnabled && _customerSettings.StateProvinceEnabled)
-                        _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.StateProvinceId, model.StateProvinceId);
+                        _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.StateProvinceId, model.StateProvinceId);
                     if (_customerSettings.PhoneEnabled)
-                        _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.Phone, model.Phone);
+                        _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.Phone, model.Phone);
                     if (_customerSettings.FaxEnabled)
-                        _customerService.SaveCustomerAttribute(customer, SystemCustomerAttributeNames.Fax, model.Fax);
+                        _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.Fax, model.Fax);
 
 
                     //customer roles
-                    var allCustomerRoles = _customerService.GetAllCustomerRoles(true);
-                    foreach (var customerRole in allCustomerRoles)
+                    if (allowManagingCustomerRoles)
                     {
-                        if (model.SelectedCustomerRoleIds != null && model.SelectedCustomerRoleIds.Contains(customerRole.Id))
+                        foreach (var customerRole in allCustomerRoles)
                         {
-                            //new role
-                            if (customer.CustomerRoles.Where(cr => cr.Id == customerRole.Id).Count() == 0)
-                                customer.CustomerRoles.Add(customerRole);
+                            if (model.SelectedCustomerRoleIds != null && model.SelectedCustomerRoleIds.Contains(customerRole.Id))
+                            {
+                                //new role
+                                if (customer.CustomerRoles.Where(cr => cr.Id == customerRole.Id).Count() == 0)
+                                    customer.CustomerRoles.Add(customerRole);
+                            }
+                            else
+                            {
+                                //removed role
+                                if (customer.CustomerRoles.Where(cr => cr.Id == customerRole.Id).Count() > 0)
+                                    customer.CustomerRoles.Remove(customerRole);
+                            }
                         }
-                        else
-                        {
-                            //removed role
-                            if (customer.CustomerRoles.Where(cr => cr.Id == customerRole.Id).Count() > 0)
-                                customer.CustomerRoles.Remove(customerRole);
-                        }
+                        _customerService.UpdateCustomer(customer);
                     }
-                    _customerService.UpdateCustomer(customer);
 
                     //activity log
                     _customerActivityService.InsertActivity("EditCustomer", _localizationService.GetResource("ActivityLog.EditCustomer"), customer.Id);
@@ -793,8 +812,11 @@ namespace Nop.Admin.Controllers
                 }
             }
             //customer roles
-            var customerRoles = _customerService.GetAllCustomerRoles(true);
-            model.AvailableCustomerRoles = customerRoles.ToList();
+            model.AvailableCustomerRoles = _customerService
+                .GetAllCustomerRoles(true)
+                .Select(cr => cr.ToModel())
+                .ToList();
+            model.AllowManagingCustomerRoles = allowManagingCustomerRoles;
             //reward points gistory
             model.DisplayRewardPointsHistory = _rewardPointsSettings.Enabled;
             model.AddRewardPointsValue = 0;
@@ -813,13 +835,14 @@ namespace Nop.Admin.Controllers
 
             var customer = _customerService.GetCustomerById(model.Id);
             if (customer == null)
-                throw new ArgumentException("No customer found with the specified id");
+                //No customer found with the specified id
+                return RedirectToAction("List");
 
             if (ModelState.IsValid)
             {
                 var changePassRequest = new ChangePasswordRequest(model.Email,
-                    false, PasswordFormat.Hashed, model.Password);
-                var changePassResult = _customerService.ChangePassword(changePassRequest);
+                    false, _customerSettings.DefaultPasswordFormat, model.Password);
+                var changePassResult = _customerRegistrationService.ChangePassword(changePassRequest);
                 if (changePassResult.Success)
                     SuccessNotification(_localizationService.GetResource("Admin.Customers.Customers.PasswordChanged"));
                 else
@@ -839,7 +862,8 @@ namespace Nop.Admin.Controllers
 
             var customer = _customerService.GetCustomerById(model.Id);
             if (customer == null)
-                throw new ArgumentException("No customer found with the specified id", "id");
+                //No customer found with the specified id
+                return RedirectToAction("List");
 
             customer.VatNumberStatus = VatNumberStatus.Valid;
             _customerService.UpdateCustomer(customer);
@@ -856,7 +880,8 @@ namespace Nop.Admin.Controllers
 
             var customer = _customerService.GetCustomerById(model.Id);
             if (customer == null)
-                throw new ArgumentException("No customer found with the specified id", "id");
+                //No customer found with the specified id
+                return RedirectToAction("List");
 
             customer.VatNumberStatus = VatNumberStatus.Invalid;
             _customerService.UpdateCustomer(customer);
@@ -864,15 +889,16 @@ namespace Nop.Admin.Controllers
             return RedirectToAction("Edit", customer.Id);
         }
 
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCustomers))
                 return AccessDeniedView();
 
             var customer = _customerService.GetCustomerById(id);
-            if (customer == null) 
-                throw new ArgumentException("No customer found with the specified id", "id");
+            if (customer == null)
+                //No customer found with the specified id
+                return RedirectToAction("List");
 
             try
             {
@@ -895,13 +921,15 @@ namespace Nop.Admin.Controllers
         [FormValueRequired("impersonate")]
         public ActionResult Impersonate(int id)
         {
-            if (!_permissionService.Authorize(StandardPermissionProvider.ManageCustomers))
+            if (!_permissionService.Authorize(StandardPermissionProvider.AllowCustomerImpersonation))
                 return AccessDeniedView();
 
             var customer = _customerService.GetCustomerById(id);
             if (customer == null)
-                throw new ArgumentException("No customer found with the specified id", "id");
-            _customerService.SaveCustomerAttribute<int?>(_workContext.CurrentCustomer,
+                //No customer found with the specified id
+                return RedirectToAction("List");
+
+            _genericAttributeService.SaveAttribute<int?>(_workContext.CurrentCustomer,
                 SystemCustomerAttributeNames.ImpersonatedCustomerId, customer.Id);
 
             return RedirectToAction("Index", "Home", new { area = "" });
@@ -914,7 +942,8 @@ namespace Nop.Admin.Controllers
 
             var customer = _customerService.GetCustomerById(model.Id);
             if (customer == null)
-                throw new ArgumentException("No customer found with the specified id");
+                //No customer found with the specified id
+                return RedirectToAction("List");
 
             try
             {
@@ -962,7 +991,8 @@ namespace Nop.Admin.Controllers
 
             var customer = _customerService.GetCustomerById(model.Id);
             if (customer == null)
-                throw new ArgumentException("No customer found with the specified id");
+                //No customer found with the specified id
+                return RedirectToAction("List");
 
             try
             {
@@ -1011,7 +1041,7 @@ namespace Nop.Admin.Controllers
 
             var customer = _customerService.GetCustomerById(customerId);
             if (customer == null)
-                throw new ArgumentException("No customer found with the specified id", "id");
+                throw new ArgumentException("No customer found with the specified id");
 
             var model = new List<CustomerModel.RewardPointsHistoryModel>();
             foreach (var rph in customer.RewardPointsHistory.OrderByDescending(rph => rph.CreatedOnUtc).ThenByDescending(rph => rph.Id))
@@ -1043,7 +1073,7 @@ namespace Nop.Admin.Controllers
 
             var customer = _customerService.GetCustomerById(customerId);
             if (customer == null)
-                throw new ArgumentException("No customer found with the specified id");
+                return Json(new { Result = false }, JsonRequestBehavior.AllowGet);
 
             customer.AddRewardPointsHistoryEntry(addRewardPointsValue, addRewardPointsMessage);
             _customerService.UpdateCustomer(customer);
@@ -1075,6 +1105,14 @@ namespace Nop.Admin.Controllers
                         model.CountryName = x.Country.Name;
                     if (x.StateProvince != null)
                         model.StateProvinceName = x.StateProvince.Name;
+                    model.AddressHtml = string.Format("<div>{0}<br />{1}<br />{2}<br />{3}, {4}, {5}<br />{6}<br /></div>", 
+                        Server.HtmlEncode(model.Company),
+                        Server.HtmlEncode(model.Address1),
+                        Server.HtmlEncode(model.Address2),
+                        Server.HtmlEncode(model.City),
+                        Server.HtmlEncode(model.StateProvinceName),
+                        Server.HtmlEncode(model.ZipPostalCode),
+                        Server.HtmlEncode(model.CountryName));
                     return model;
                 }),
                 Total = addresses.Count
@@ -1111,7 +1149,8 @@ namespace Nop.Admin.Controllers
 
             var customer = _customerService.GetCustomerById(customerId);
             if (customer == null)
-                throw new ArgumentException("No customer found with the specified id", "customerId");
+                //No customer found with the specified id
+                return RedirectToAction("List");
 
             var model = new CustomerAddressModel();
             model.Address = new AddressModel();
@@ -1133,7 +1172,8 @@ namespace Nop.Admin.Controllers
 
             var customer = _customerService.GetCustomerById(model.CustomerId);
             if (customer == null)
-                throw new ArgumentException("No customer found with the specified id");
+                //No customer found with the specified id
+                return RedirectToAction("List");
 
             if (ModelState.IsValid)
             {
@@ -1144,7 +1184,7 @@ namespace Nop.Admin.Controllers
                     address.CountryId = null;
                 if (address.StateProvinceId == 0)
                     address.StateProvinceId = null;
-                customer.AddAddress(address);
+                customer.Addresses.Add(address);
                 _customerService.UpdateCustomer(customer);
 
                 SuccessNotification(_localizationService.GetResource("Admin.Customers.Customers.Addresses.Added"));
@@ -1176,11 +1216,13 @@ namespace Nop.Admin.Controllers
 
             var customer = _customerService.GetCustomerById(customerId);
             if (customer == null)
-                throw new ArgumentException("No customer found with the specified id");
+                //No customer found with the specified id
+                return RedirectToAction("List");
 
             var address = _addressService.GetAddressById(addressId);
             if (address == null)
-                throw new ArgumentException("No address found with the specified id", "addressId");
+                //No address found with the specified id
+                return RedirectToAction("Edit", new { id = customer.Id });
 
             var model = new CustomerAddressModel();
             model.CustomerId = customerId;
@@ -1210,11 +1252,13 @@ namespace Nop.Admin.Controllers
 
             var customer = _customerService.GetCustomerById(model.CustomerId);
             if (customer == null)
-                throw new ArgumentException("No customer found with the specified id");
+                //No customer found with the specified id
+                return RedirectToAction("List");
 
             var address = _addressService.GetAddressById(model.Address.Id);
             if (address == null)
-                throw new ArgumentException("No address found with the specified id");
+                //No address found with the specified id
+                return RedirectToAction("Edit", new { id = customer.Id });
 
             if (ModelState.IsValid)
             {
@@ -1279,8 +1323,7 @@ namespace Nop.Admin.Controllers
                 Data = model
             };
         }
-
-
+        
         #endregion
 
         #region Reports
@@ -1340,7 +1383,11 @@ namespace Nop.Admin.Controllers
                     };
                     var customer = _customerService.GetCustomerById(x.CustomerId);
                     if (customer != null)
-                        m.CustomerName = customer.IsGuest() ? "Guest" : customer.GetFullName();
+                    {
+                        m.CustomerName = customer.IsGuest()
+                                             ? _localizationService.GetResource("Admin.Customers.Guest")
+                                             : customer.Email;
+                    }
                     return m;
                 }),
                 Total = items.Count
@@ -1378,7 +1425,11 @@ namespace Nop.Admin.Controllers
                     };
                     var customer = _customerService.GetCustomerById(x.CustomerId);
                     if (customer != null)
-                        m.CustomerName = customer.IsGuest() ? "Guest" : customer.GetFullName();
+                    {
+                        m.CustomerName = customer.IsGuest()
+                                             ? _localizationService.GetResource("Admin.Customers.Guest")
+                                             : customer.Email;
+                    }
                     return m;
                 }),
                 Total = items.Count
@@ -1449,21 +1500,50 @@ namespace Nop.Admin.Controllers
 
         #endregion
 
+        #region Activity log
+
+        [HttpPost, GridAction(EnableCustomBinding = true)]
+        public JsonResult ListActivityLog(GridCommand command, int customerId)
+        {
+            var activityLog = _customerActivityService.GetAllActivities(null, null, customerId, 0, command.Page - 1, command.PageSize);
+            var gridModel = new GridModel<CustomerModel.ActivityLogModel>
+            {
+                Data = activityLog.Select(x =>
+                {
+                    var m = new CustomerModel.ActivityLogModel()
+                    {
+                        Id = x.Id,
+                        ActivityLogTypeName = x.ActivityLogType.Name,
+                        Comment = x.Comment,
+                        CreatedOn = _dateTimeHelper.ConvertToUserTime(x.CreatedOnUtc, DateTimeKind.Utc)
+                    };
+                    return m;
+
+                }),
+                Total = activityLog.TotalCount
+            };
+            return new JsonResult { Data = gridModel }; ;
+        }
+
+        #endregion
+
         #region Export / Import
 
-        public ActionResult ExportExcel()
+        public ActionResult ExportExcelAll()
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCustomers))
                 return AccessDeniedView();
 
             try
             {
-                var customers = _customerService.GetAllCustomers(null, null, null, null, null,null, null, false, null, 0, int.MaxValue);
+                var customers = _customerService.GetAllCustomers(null, null, null, null,
+                    null, null, null, 0, 0, null, null, null, 
+                    false, null, 0, int.MaxValue);
 
-                string fileName = string.Format("customers_{0}_{1}.xls", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"), CommonHelper.GenerateRandomDigitCode(4));
-                string filePath = string.Format("{0}content\\files\\ExportImport\\{1}", Request.PhysicalApplicationPath, fileName);
+                string fileName = string.Format("customers_{0}_{1}.xlsx", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"), CommonHelper.GenerateRandomDigitCode(4));
+                string filePath = System.IO.Path.Combine(Request.PhysicalApplicationPath, "content\\files\\ExportImport", fileName);
 
-                _exportManager.ExportCustomersToXls(filePath, customers);
+                _exportManager.ExportCustomersToXlsx(filePath, customers);
 
                 var bytes = System.IO.File.ReadAllBytes(filePath);
                 return File(bytes, "text/xls", fileName);
@@ -1475,14 +1555,40 @@ namespace Nop.Admin.Controllers
             }
         }
 
-        public ActionResult ExportXml()
+        public ActionResult ExportExcelSelected(string selectedIds)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageCustomers))
+                return AccessDeniedView();
+
+            var customers = new List<Customer>();
+            if (selectedIds != null)
+            {
+                var ids = selectedIds
+                    .Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => Convert.ToInt32(x))
+                    .ToArray();
+                customers.AddRange(_customerService.GetCustomersByIds(ids));
+            }
+
+            string fileName = string.Format("customers_{0}_{1}.xlsx", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"), CommonHelper.GenerateRandomDigitCode(4));
+            string filePath = System.IO.Path.Combine(Request.PhysicalApplicationPath, "content\\files\\ExportImport", fileName);
+
+            _exportManager.ExportCustomersToXlsx(filePath, customers);
+
+            var bytes = System.IO.File.ReadAllBytes(filePath);
+            return File(bytes, "text/xls", fileName);
+        }
+
+        public ActionResult ExportXmlAll()
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCustomers))
                 return AccessDeniedView();
 
             try
             {
-                var customers = _customerService.GetAllCustomers(null, null, null, null, null, null, null, false, null, 0, int.MaxValue);
+                var customers = _customerService.GetAllCustomers(null, null, null, null,
+                    null, null, null, 0, 0, null, null, null, 
+                    false, null, 0, int.MaxValue);
                 
                 var fileName = string.Format("customers_{0}.xml", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"));
                 var xml = _exportManager.ExportCustomersToXml(customers);
@@ -1493,6 +1599,26 @@ namespace Nop.Admin.Controllers
                 ErrorNotification(exc);
                 return RedirectToAction("List");
             }
+        }
+
+        public ActionResult ExportXmlSelected(string selectedIds)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageCustomers))
+                return AccessDeniedView();
+
+            var customers = new List<Customer>();
+            if (selectedIds != null)
+            {
+                var ids = selectedIds
+                    .Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => Convert.ToInt32(x))
+                    .ToArray();
+                customers.AddRange(_customerService.GetCustomersByIds(ids));
+            }
+
+            var fileName = string.Format("customers_{0}.xml", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"));
+            var xml = _exportManager.ExportCustomersToXml(customers);
+            return new XmlDownloadResult(xml, fileName);
         }
 
         #endregion

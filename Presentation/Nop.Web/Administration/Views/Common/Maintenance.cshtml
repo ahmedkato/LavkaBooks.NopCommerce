@@ -1,4 +1,8 @@
 ﻿@model MaintenanceModel
+@{
+    //page title
+    ViewBag.Title = @T("Admin.System.Maintenance").Text;
+}
 <div class="section-header">
     <div class="title">
         <img src="@Url.Content("~/Administration/Content/images/ico-system.png")" alt="" />
@@ -12,7 +16,7 @@
     <table width="100%">
         <tr>
             <td colspan="2">
-                <b>@T("Admin.System.Maintenance.DeleteGuests")</b>
+                <strong>@T("Admin.System.Maintenance.DeleteGuests")</strong>
             </td>
         </tr>
         <tr>
@@ -41,14 +45,14 @@
         </tr>
         <tr>
             <td colspan="2">
-                <button type="submit" name="delete-guests" value="delete-guests" class="t-button">@T("Admin.Common.Delete")</button>
+                <input type="submit" name="delete-guests" class="t-button" value="@T("Admin.Common.Delete")" />
             </td>
         </tr>
         @if (Model.DeleteGuests.NumberOfDeletedCustomers.HasValue)
         {
             <tr>
                 <td colspan="2">
-                    <b>@string.Format(@T("Admin.System.Maintenance.DeleteGuests.TotalDeleted").Text, Model.DeleteGuests.NumberOfDeletedCustomers.Value)</b>
+                    <strong>@string.Format(@T("Admin.System.Maintenance.DeleteGuests.TotalDeleted").Text, Model.DeleteGuests.NumberOfDeletedCustomers.Value)</strong>
                 </td>
             </tr>
         }
@@ -61,7 +65,40 @@
     <table width="100%">
         <tr>
             <td colspan="2">
-                <b>@T("Admin.System.Maintenance.DeleteExportedFiles")</b>
+                <strong>@T("Admin.System.Maintenance.DeleteAbandonedCarts")</strong>
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.DeleteAbandonedCarts.OlderThan):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.DeleteAbandonedCarts.OlderThan)
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <input type="submit" name="delete-abondoned-carts" class="t-button" value="@T("Admin.Common.Delete")" />
+            </td>
+        </tr>
+        @if (Model.DeleteAbandonedCarts.NumberOfDeletedItems.HasValue)
+        {
+            <tr>
+                <td colspan="2">
+                    <strong>@string.Format(@T("Admin.System.Maintenance.DeleteAbandonedCarts.TotalDeleted").Text, Model.DeleteAbandonedCarts.NumberOfDeletedItems.Value)</strong>
+                </td>
+            </tr>
+        }
+    </table>
+    <p>
+        <br />
+        <hr />
+        <br />
+    </p>
+    <table width="100%">
+        <tr>
+            <td colspan="2">
+                <strong>@T("Admin.System.Maintenance.DeleteExportedFiles")</strong>
             </td>
         </tr>
         <tr>
@@ -82,15 +119,14 @@
         </tr>
         <tr>
             <td colspan="2">
-                <button type="submit" name="delete-exported-files" value="delete-exported-files"
-                    class="t-button">@T("Admin.Common.Delete")</button>
+                <input type="submit" name="delete-exported-files" class="t-button" value="@T("Admin.Common.Delete")" />
             </td>
         </tr>
         @if (Model.DeleteExportedFiles.NumberOfDeletedFiles.HasValue)
         {
             <tr>
                 <td colspan="2">
-                    <b>@string.Format(@T("Admin.System.Maintenance.DeleteExportedFiles.TotalDeleted").Text, Model.DeleteExportedFiles.NumberOfDeletedFiles.Value)</b>
+                    <strong>@string.Format(@T("Admin.System.Maintenance.DeleteExportedFiles.TotalDeleted").Text, Model.DeleteExportedFiles.NumberOfDeletedFiles.Value)</strong>
                 </td>
             </tr>
         }

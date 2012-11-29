@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Web.Mvc;
 using Nop.Plugin.Shipping.FixedRateShipping.Models;
 using Nop.Services.Configuration;
@@ -20,6 +22,17 @@ namespace Nop.Plugin.Shipping.FixedRateShipping.Controllers
         {
             this._shippingService = shippingServicee;
             this._settingService = settingService;
+        }
+        
+        protected override void Initialize(System.Web.Routing.RequestContext requestContext)
+        {
+            //little hack here
+            //always set culture to 'en-US' (Telerik Grid has a bug related to editing decimal values in other cultures). Like currently it's done for admin area in Global.asax.cs
+            var culture = new CultureInfo("en-US");
+            Thread.CurrentThread.CurrentCulture = culture;
+            Thread.CurrentThread.CurrentUICulture = culture;
+
+            base.Initialize(requestContext);
         }
 
         public ActionResult Configure()
@@ -73,11 +86,6 @@ namespace Nop.Plugin.Shipping.FixedRateShipping.Controllers
         [GridAction(EnableCustomBinding = true)]
         public ActionResult ShippingRateUpdate(FixedShippingRateModel model, GridCommand command)
         {
-            if (!ModelState.IsValid)
-            {
-                return new JsonResult { Data = "error" };
-            }
-
             int shippingMethodId = model.ShippingMethodId;
             decimal rate = model.Rate;
 

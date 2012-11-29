@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Text;
 using System.Web.Mvc;
 using Nop.Core;
@@ -9,11 +8,9 @@ using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
 using Nop.Plugin.Payments.PayPalStandard.Models;
 using Nop.Services.Configuration;
-using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Orders;
 using Nop.Services.Payments;
-using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 
 namespace Nop.Plugin.Payments.PayPalStandard.Controllers
@@ -57,6 +54,7 @@ namespace Nop.Plugin.Payments.PayPalStandard.Controllers
             model.PdtValidateOrderTotal = _paypalStandardPaymentSettings.PdtValidateOrderTotal;
             model.AdditionalFee = _paypalStandardPaymentSettings.AdditionalFee;
             model.PassProductNamesAndTotals = _paypalStandardPaymentSettings.PassProductNamesAndTotals;
+            model.EnableIpn = _paypalStandardPaymentSettings.EnableIpn;
             model.IpnUrl = _paypalStandardPaymentSettings.IpnUrl;
             
             return View("Nop.Plugin.Payments.PayPalStandard.Views.PaymentPayPalStandard.Configure", model);
@@ -77,6 +75,7 @@ namespace Nop.Plugin.Payments.PayPalStandard.Controllers
             _paypalStandardPaymentSettings.PdtValidateOrderTotal = model.PdtValidateOrderTotal;
             _paypalStandardPaymentSettings.AdditionalFee = model.AdditionalFee;
             _paypalStandardPaymentSettings.PassProductNamesAndTotals = model.PassProductNamesAndTotals;
+            _paypalStandardPaymentSettings.EnableIpn = model.EnableIpn;
             _paypalStandardPaymentSettings.IpnUrl = model.IpnUrl;
             _settingService.SaveSetting(_paypalStandardPaymentSettings);
             
@@ -86,8 +85,7 @@ namespace Nop.Plugin.Payments.PayPalStandard.Controllers
         [ChildActionOnly]
         public ActionResult PaymentInfo()
         {
-            var model = new PaymentInfoModel();
-            return View("Nop.Plugin.Payments.PayPalStandard.Views.PaymentPayPalStandard.PaymentInfo", model);
+            return View("Nop.Plugin.Payments.PayPalStandard.Views.PaymentPayPalStandard.PaymentInfo");
         }
 
         [NonAction]
@@ -196,6 +194,9 @@ namespace Nop.Plugin.Payments.PayPalStandard.Controllers
                     //mark order as paid
                     if (_orderProcessingService.CanMarkOrderAsPaid(order))
                     {
+                        order.AuthorizationTransactionId = txn_id;
+                        _orderService.UpdateOrder(order);
+
                         _orderProcessingService.MarkOrderAsPaid(order);
                     }
                 }
@@ -332,8 +333,6 @@ namespace Nop.Plugin.Payments.PayPalStandard.Controllers
                                                 {
                                                     //next payments
                                                     _orderProcessingService.ProcessNextRecurringPayment(rp);
-                                                    //UNDONE change new order status according to newPaymentStatus
-                                                    //UNDONE refund/void is not supported
                                                 }
                                             }
                                             break;
@@ -395,6 +394,10 @@ namespace Nop.Plugin.Payments.PayPalStandard.Controllers
                                         {
                                             if (_orderProcessingService.CanMarkOrderAsPaid(order))
                                             {
+
+                                                order.AuthorizationTransactionId = txn_id;
+                                                _orderService.UpdateOrder(order);
+
                                                 _orderProcessingService.MarkOrderAsPaid(order);
                                             }
                                         }

@@ -4,7 +4,7 @@ using System.Linq;
 using Nop.Core.Data;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Orders;
-using Nop.Core.Events;
+using Nop.Services.Events;
 
 namespace Nop.Services.Orders
 {
@@ -26,7 +26,7 @@ namespace Nop.Services.Orders
         /// Ctor
         /// </summary>
         /// <param name="giftCardRepository">Gift card context</param>
-        /// <param name="eventPublisher"></param>
+        /// <param name="eventPublisher">Event published</param>
         public GiftCardService(IRepository<GiftCard> giftCardRepository, IEventPublisher eventPublisher)
         {
             _giftCardRepository = giftCardRepository;
@@ -126,6 +126,23 @@ namespace Nop.Services.Orders
             _eventPublisher.EntityUpdated(giftCard);
         }
 
+        /// <summary>
+        /// Gets gift cards by 'PurchasedWithOrderProductVariantId'
+        /// </summary>
+        /// <param name="purchasedWithOrderProductVariantId">Purchased with order product variant identifier</param>
+        /// <returns>Gift card entries</returns>
+        public virtual IList<GiftCard> GetGiftCardsByPurchasedWithOrderProductVariantId(int purchasedWithOrderProductVariantId)
+        {
+            if (purchasedWithOrderProductVariantId == 0)
+                return new List<GiftCard>();
+
+            var query = _giftCardRepository.Table;
+            query = query.Where(gc => gc.PurchasedWithOrderProductVariantId.HasValue && gc.PurchasedWithOrderProductVariantId.Value == purchasedWithOrderProductVariantId);
+            query = query.OrderBy(gc => gc.Id);
+
+            var giftCards = query.ToList();
+            return giftCards;
+        }
 
         /// <summary>
         /// Get active gift cards that are applied by a customer

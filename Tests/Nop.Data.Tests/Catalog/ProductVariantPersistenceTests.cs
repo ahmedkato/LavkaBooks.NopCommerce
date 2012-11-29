@@ -19,6 +19,7 @@ namespace Nop.Data.Tests.Catalog
                                          Description = "description",
                                          AdminComment = "adminComment",
                                          ManufacturerPartNumber = "manufacturerPartNumber",
+                                         Gtin = "gtin 1",
                                          IsGiftCard = true,
                                          GiftCardTypeId = 1,
                                          IsDownload = true,
@@ -48,17 +49,25 @@ namespace Nop.Data.Tests.Catalog
                                          LowStockActivityId = 15,
                                          NotifyAdminForQuantityBelow = 16,
                                          BackorderModeId = 17,
+                                         AllowBackInStockSubscriptions = true,
                                          OrderMinimumQuantity = 18,
                                          OrderMaximumQuantity = 19,
+                                         AllowedQuantities = "1, 5,6,10",
                                          DisableBuyButton = true,
                                          DisableWishlistButton = true,
+                                         AvailableForPreOrder = true,
                                          CallForPrice = true,
                                          Price = 21.1M,
                                          OldPrice = 22.1M,
                                          ProductCost = 23.1M,
+                                         SpecialPrice = 32.1M,
+                                         SpecialPriceStartDateTimeUtc = new DateTime(2010, 01, 05),
+                                         SpecialPriceEndDateTimeUtc = new DateTime(2010, 01, 06),
                                          CustomerEntersPrice = true,
                                          MinimumCustomerEnteredPrice = 24.1M,
                                          MaximumCustomerEnteredPrice = 25.1M,
+                                         HasTierPrices = true,
+                                         HasDiscountsApplied = true,
                                          Weight = 26.1M,
                                          Length = 27.1M,
                                          Width = 28.1M,
@@ -91,6 +100,7 @@ namespace Nop.Data.Tests.Catalog
             fromDb.Description.ShouldEqual("description");
             fromDb.AdminComment.ShouldEqual("adminComment");
             fromDb.ManufacturerPartNumber.ShouldEqual("manufacturerPartNumber");
+            fromDb.Gtin.ShouldEqual("gtin 1");
             fromDb.IsGiftCard.ShouldEqual(true);
             fromDb.GiftCardTypeId.ShouldEqual(1);
             fromDb.IsDownload.ShouldEqual(true);
@@ -120,17 +130,25 @@ namespace Nop.Data.Tests.Catalog
             fromDb.LowStockActivityId.ShouldEqual(15);
             fromDb.NotifyAdminForQuantityBelow.ShouldEqual(16);
             fromDb.BackorderModeId.ShouldEqual(17);
+            fromDb.AllowBackInStockSubscriptions.ShouldEqual(true);
             fromDb.OrderMinimumQuantity.ShouldEqual(18);
             fromDb.OrderMaximumQuantity.ShouldEqual(19);
+            fromDb.AllowedQuantities.ShouldEqual("1, 5,6,10");
             fromDb.DisableBuyButton.ShouldEqual(true);
             fromDb.DisableWishlistButton.ShouldEqual(true);
+            fromDb.AvailableForPreOrder.ShouldEqual(true);
             fromDb.CallForPrice.ShouldEqual(true);
             fromDb.Price.ShouldEqual(21.1M);
             fromDb.OldPrice.ShouldEqual(22.1M);
             fromDb.ProductCost.ShouldEqual(23.1M);
+            fromDb.SpecialPrice.ShouldEqual(32.1M);
+            fromDb.SpecialPriceStartDateTimeUtc.ShouldEqual(new DateTime(2010, 01, 05));
+            fromDb.SpecialPriceEndDateTimeUtc.ShouldEqual(new DateTime(2010, 01, 06));
             fromDb.CustomerEntersPrice.ShouldEqual(true);
             fromDb.MinimumCustomerEnteredPrice.ShouldEqual(24.1M);
             fromDb.MaximumCustomerEnteredPrice.ShouldEqual(25.1M);
+            fromDb.HasTierPrices.ShouldEqual(true);
+            fromDb.HasDiscountsApplied.ShouldEqual(true);
             fromDb.Weight.ShouldEqual(26.1M);
             fromDb.Length.ShouldEqual(27.1M);
             fromDb.Width.ShouldEqual(28.1M);

@@ -1,7 +1,9 @@
 ﻿@model CatalogSettingsModel
-
-
 @using Telerik.Web.Mvc.UI;
+@{
+    //page title
+    ViewBag.Title = @T("Admin.Configuration.Settings.Catalog").Text;
+}
 @using (Html.BeginForm())
 {
     <div class="section-header">
@@ -10,7 +12,7 @@
             @T("Admin.Configuration.Settings.Catalog")
         </div>
         <div class="options">
-            <button type="submit" name="save" value="save" class="t-button">@T("Admin.Common.Save")</button>
+            <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
         </div>
     </div>
     <script type="text/javascript">
@@ -22,6 +24,8 @@
             $("#@Html.FieldIdFor(model => model.RecentlyAddedProductsEnabled)").click(toggleRecentlyAddedProducts);
             $("#@Html.FieldIdFor(model => model.ShowBestsellersOnHomepage)").click(toggleBestsellersOnHomepage);
             $("#@Html.FieldIdFor(model => model.ProductsAlsoPurchasedEnabled)").click(toggleProductsAlsoPurchasedNumber);
+            $("#@Html.FieldIdFor(model => model.ProductsByTagAllowCustomersToSelectPageSize)").click(togglePageSize);
+            $("#@Html.FieldIdFor(model => model.ProductSearchAutoCompleteEnabled)").click(toggleProductSearchAutoComplete);
 
             toggleShowCategoryProductNumberIncludingSubcategories();
             toggleEmailAFriend();
@@ -29,10 +33,12 @@
             toggleRecentlyAddedProducts();
             toggleBestsellersOnHomepage();
             toggleProductsAlsoPurchasedNumber();
+            togglePageSize();
+            toggleProductSearchAutoComplete();
         });
 
         function toggleShowCategoryProductNumberIncludingSubcategories() {
-            if (getE('@Html.FieldIdFor(model => model.ShowCategoryProductNumber)').checked) {
+            if ($('#@Html.FieldIdFor(model => model.ShowCategoryProductNumber)').is(':checked')) {
                 $('#pnlShowCategoryProductNumberIncludingSubcategories').show();
             }
             else {
@@ -41,7 +47,7 @@
         }
 
         function toggleEmailAFriend() {
-            if (getE('@Html.FieldIdFor(model => model.EmailAFriendEnabled)').checked) {
+            if ($('#@Html.FieldIdFor(model => model.EmailAFriendEnabled)').is(':checked')) {
                 $('#pnlAllowAnonymousUsersToEmailAFriend').show();
             }
             else {
@@ -50,7 +56,7 @@
         }
 
         function toggleRecentlyViewedProducts() {
-            if (getE('@Html.FieldIdFor(model => model.RecentlyViewedProductsEnabled)').checked) {
+            if ($('#@Html.FieldIdFor(model => model.RecentlyViewedProductsEnabled)').is(':checked')) {
                 $('#pnlRecentlyViewedProductsNumber').show();
             }
             else {
@@ -59,7 +65,7 @@
         }
 
         function toggleRecentlyAddedProducts() {
-            if (getE('@Html.FieldIdFor(model => model.RecentlyAddedProductsEnabled)').checked) {
+            if ($('#@Html.FieldIdFor(model => model.RecentlyAddedProductsEnabled)').is(':checked')) {
                 $('#pnlRecentlyAddedProductsNumber').show();
             }
             else {
@@ -68,7 +74,7 @@
         }
 
         function toggleBestsellersOnHomepage() {
-            if (getE('@Html.FieldIdFor(model => model.ShowBestsellersOnHomepage)').checked) {
+            if ($('#@Html.FieldIdFor(model => model.ShowBestsellersOnHomepage)').is(':checked')) {
                 $('#pnlNumberOfBestsellersOnHomepage').show();
             }
             else {
@@ -77,11 +83,32 @@
         }
 
         function toggleProductsAlsoPurchasedNumber() {
-            if (getE('@Html.FieldIdFor(model => model.ProductsAlsoPurchasedEnabled)').checked) {
+            if ($('#@Html.FieldIdFor(model => model.ProductsAlsoPurchasedEnabled)').is(':checked')) {
                 $('#pnlProductsAlsoPurchasedNumber').show();
             }
             else {
                 $('#pnlProductsAlsoPurchasedNumber').hide();
+            }
+        }
+
+        function togglePageSize() {
+            if ($('#@Html.FieldIdFor(model => model.ProductsByTagAllowCustomersToSelectPageSize)').is(':checked')) {
+                $('#pnlPageSize').hide();
+                $('#pnlPageSizeOptions').show();
+            } else {
+                $('#pnlPageSize').show();
+                $('#pnlPageSizeOptions').hide();
+            }
+        }
+
+        function toggleProductSearchAutoComplete() {
+            if ($('#@Html.FieldIdFor(model => model.ProductSearchAutoCompleteEnabled)').is(':checked')) {
+                $('#pnlProductSearchAutoCompleteNumberOfProducts').show();
+                $('#pnlShowProductImagesInSearchAutoComplete').show();                
+            }
+            else {
+                $('#pnlProductSearchAutoCompleteNumberOfProducts').hide();
+                $('#pnlShowProductImagesInSearchAutoComplete').hide();
             }
         }
         
@@ -89,15 +116,6 @@
 
 @Html.ValidationSummary(false)
     <table class="adminContent">
-        <tr>
-            <td class="adminTitle">
-                @Html.NopLabelFor(model => model.HidePricesForNonRegistered):
-            </td>
-            <td class="adminData">
-                @Html.EditorFor(model => model.HidePricesForNonRegistered)
-                @Html.ValidationMessageFor(model => model.HidePricesForNonRegistered)
-            </td>
-        </tr>
         <tr>
             <td class="adminTitle">
                 @Html.NopLabelFor(model => model.ShowProductSku):
@@ -118,6 +136,15 @@
         </tr>
         <tr>
             <td class="adminTitle">
+                @Html.NopLabelFor(model => model.ShowGtin):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.ShowGtin)
+                @Html.ValidationMessageFor(model => model.ShowGtin)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
                 @Html.NopLabelFor(model => model.AllowProductSorting):
             </td>
             <td class="adminData">
@@ -132,6 +159,15 @@
             <td class="adminData">
                 @Html.EditorFor(model => model.AllowProductViewModeChanging)
                 @Html.ValidationMessageFor(model => model.AllowProductViewModeChanging)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.ShowProductsFromSubcategories):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.ShowProductsFromSubcategories)
+                @Html.ValidationMessageFor(model => model.ShowProductsFromSubcategories)
             </td>
         </tr>
         <tr>
@@ -289,6 +325,33 @@
         </tr>
         <tr>
             <td class="adminTitle">
+                @Html.NopLabelFor(model => model.ProductSearchAutoCompleteEnabled):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.ProductSearchAutoCompleteEnabled)
+                @Html.ValidationMessageFor(model => model.ProductSearchAutoCompleteEnabled)
+            </td>
+        </tr>
+        <tr id="pnlProductSearchAutoCompleteNumberOfProducts">
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.ProductSearchAutoCompleteNumberOfProducts):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.ProductSearchAutoCompleteNumberOfProducts)
+                @Html.ValidationMessageFor(model => model.ProductSearchAutoCompleteNumberOfProducts)
+            </td>
+        </tr>
+        <tr id="pnlShowProductImagesInSearchAutoComplete">
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.ShowProductImagesInSearchAutoComplete):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.ShowProductImagesInSearchAutoComplete)
+                @Html.ValidationMessageFor(model => model.ShowProductImagesInSearchAutoComplete)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
                 @Html.NopLabelFor(model => model.ProductsAlsoPurchasedEnabled):
             </td>
             <td class="adminData">
@@ -325,6 +388,15 @@
         </tr>
         <tr>
             <td class="adminTitle">
+                @Html.NopLabelFor(model => model.ProductsByTagAllowCustomersToSelectPageSize):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.ProductsByTagAllowCustomersToSelectPageSize)
+                @Html.ValidationMessageFor(model => model.ProductsByTagAllowCustomersToSelectPageSize)
+            </td>
+        </tr>
+        <tr id="pnlPageSize">
+            <td class="adminTitle">
                 @Html.NopLabelFor(model => model.ProductsByTagPageSize):
             </td>
             <td class="adminData">
@@ -332,13 +404,40 @@
                 @Html.ValidationMessageFor(model => model.ProductsByTagPageSize)
             </td>
         </tr>
-        <tr>
+        <tr id="pnlPageSizeOptions">
             <td class="adminTitle">
-                @Html.NopLabelFor(model => model.IgnoreTierPrices):
+                @Html.NopLabelFor(model => model.ProductsByTagPageSizeOptions):
             </td>
             <td class="adminData">
-                @Html.EditorFor(model => model.IgnoreTierPrices)
-                @Html.ValidationMessageFor(model => model.IgnoreTierPrices)
+                @Html.EditorFor(model => model.ProductsByTagPageSizeOptions)
+                @Html.ValidationMessageFor(model => model.ProductsByTagPageSizeOptions)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.ManufacturersBlockItemsToDisplay):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.ManufacturersBlockItemsToDisplay)
+                @Html.ValidationMessageFor(model => model.ManufacturersBlockItemsToDisplay)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.IncludeShortDescriptionInCompareProducts):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.IncludeShortDescriptionInCompareProducts)
+                @Html.ValidationMessageFor(model => model.IncludeShortDescriptionInCompareProducts)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.IncludeFullDescriptionInCompareProducts):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.IncludeFullDescriptionInCompareProducts)
+                @Html.ValidationMessageFor(model => model.IncludeFullDescriptionInCompareProducts)
             </td>
         </tr>
         <tr>

@@ -9,14 +9,14 @@ using Nop.Core.Domain.Messages;
 using Nop.Services.Configuration;
 using Nop.Services.Localization;
 using Nop.Services.Messages;
+using Nop.Services.Security;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
 
 namespace Nop.Admin.Controllers
 {
 	[AdminAuthorize]
-	public class EmailAccountController : BaseNopController
+	public partial class EmailAccountController : BaseNopController
 	{
         private readonly IEmailAccountService _emailAccountService;
         private readonly ILocalizationService _localizationService;
@@ -106,8 +106,8 @@ namespace Nop.Admin.Controllers
             model.Port = 25;
 			return View(model);
 		}
-        
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
 		public ActionResult Create(EmailAccountModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageEmailAccounts))
@@ -132,12 +132,14 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
 			var emailAccount = _emailAccountService.GetEmailAccountById(id);
-			if (emailAccount == null) 
-                throw new ArgumentException("No email account found with the specified id", "id");
+            if (emailAccount == null)
+                //No email account found with the specified id
+                return RedirectToAction("List");
+
 			return View(emailAccount.ToModel());
 		}
-        
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         [FormValueRequired("save", "save-continue")]
         public ActionResult Edit(EmailAccountModel model, bool continueEditing)
         {
@@ -146,7 +148,8 @@ namespace Nop.Admin.Controllers
 
             var emailAccount = _emailAccountService.GetEmailAccountById(model.Id);
             if (emailAccount == null)
-                throw new ArgumentException("No email account found with the specified id");
+                //No email account found with the specified id
+                return RedirectToAction("List");
 
             if (ModelState.IsValid)
             {
@@ -170,7 +173,8 @@ namespace Nop.Admin.Controllers
 
             var emailAccount = _emailAccountService.GetEmailAccountById(model.Id);
             if (emailAccount == null)
-                throw new ArgumentException("No email account found with the specified id");
+                //No email account found with the specified id
+                return RedirectToAction("List");
 
             try
             {
@@ -194,15 +198,16 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageEmailAccounts))
                 return AccessDeniedView();
 
             var emailAccount = _emailAccountService.GetEmailAccountById(id);
             if (emailAccount == null)
-                throw new ArgumentException("No email account found with the specified id", "id");
+                //No email account found with the specified id
+                return RedirectToAction("List");
 
             SuccessNotification(_localizationService.GetResource("Admin.Configuration.EmailAccounts.Deleted"));
             _emailAccountService.DeleteEmailAccount(emailAccount);

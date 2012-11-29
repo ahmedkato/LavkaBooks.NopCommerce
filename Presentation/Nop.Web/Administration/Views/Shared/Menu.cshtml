@@ -6,7 +6,7 @@
     if (!Telerik.Web.Mvc.SiteMapManager.SiteMaps.ContainsKey("admin"))
     {
         Telerik.Web.Mvc.SiteMapManager.SiteMaps.Register<Telerik.Web.Mvc.XmlSiteMap>("admin", sitemap =>
-            sitemap.LoadFrom("~/Administration/sitemap.xml"));
+            sitemap.LoadFrom("~/Administration/sitemap.config"));
     }
     var adminMenuPlugins = EngineContext.Current.Resolve<Nop.Core.Plugins.IPluginFinder>().GetPlugins<IAdminMenuPlugin>();
 
@@ -48,13 +48,17 @@
     {
         if (adminMenuPlugins.Count() > 0)
         {
-            x.Add().Text(T("Plugins.Title").ToHtmlString()).Items(y =>
+            if (!hideAdminMenuItemsBasedOnPermissions || 
+                permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
             {
-                foreach (var adminMenuPlugin in adminMenuPlugins)
+                x.Add().Text(T("Admin.Plugins").ToHtmlString()).Items(y =>
                 {
-                    adminMenuPlugin.BuildMenuItem(y.Add());
-                }
-            });
+                    foreach (var adminMenuPlugin in adminMenuPlugins)
+                    {
+                        adminMenuPlugin.BuildMenuItem(y.Add());
+                    }
+                });
+            }
         }
     })
     .OpenOnClick(false)

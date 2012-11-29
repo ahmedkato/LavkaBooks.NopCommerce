@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Nop.Admin.Models.Blogs;
 using Nop.Admin.Models.Catalog;
+using Nop.Admin.Models.Cms;
 using Nop.Admin.Models.Common;
 using Nop.Admin.Models.Customers;
 using Nop.Admin.Models.Directory;
@@ -15,7 +16,6 @@ using Nop.Admin.Models.Orders;
 using Nop.Admin.Models.Payments;
 using Nop.Admin.Models.Plugins;
 using Nop.Admin.Models.Polls;
-using Nop.Admin.Models.PromotionFeeds;
 using Nop.Admin.Models.Settings;
 using Nop.Admin.Models.Shipping;
 using Nop.Admin.Models.Tax;
@@ -39,10 +39,9 @@ using Nop.Core.Domain.Tax;
 using Nop.Core.Domain.Topics;
 using Nop.Core.Plugins;
 using Nop.Services.Authentication.External;
-using Nop.Services.Common;
+using Nop.Services.Cms;
 using Nop.Services.Messages;
 using Nop.Services.Payments;
-using Nop.Services.PromotionFeed;
 using Nop.Services.Shipping;
 using Nop.Services.Tax;
 
@@ -231,26 +230,7 @@ namespace Nop.Admin
         {
             return Mapper.Map(model, destination);
         }
-
-        #region Resources
-
-        public static LanguageResourceModel ToModel(this LocaleStringResource entity)
-        {
-            return Mapper.Map<LocaleStringResource, LanguageResourceModel>(entity);
-        }
-
-        public static LocaleStringResource ToEntity(this LanguageResourceModel model)
-        {
-            return Mapper.Map<LanguageResourceModel, LocaleStringResource>(model);
-        }
-
-        public static LocaleStringResource ToEntity(this LanguageResourceModel model, LocaleStringResource destination)
-        {
-            return Mapper.Map(model, destination);
-        }
-
-        #endregion
-
+        
         #endregion
 
         #region Email account
@@ -506,21 +486,12 @@ namespace Nop.Admin
         }
 
         #endregion
+        
+        #region Widgets
 
-        #region SMS providers
-
-        public static SmsProviderModel ToModel(this ISmsProvider entity)
+        public static WidgetModel ToModel(this IWidgetPlugin entity)
         {
-            return Mapper.Map<ISmsProvider, SmsProviderModel>(entity);
-        }
-
-        #endregion
-
-        #region Promotion feeds
-
-        public static PromotionFeedModel ToModel(this IPromotionFeed entity)
-        {
-            return Mapper.Map<IPromotionFeed, PromotionFeedModel>(entity);
+            return Mapper.Map<IWidgetPlugin, WidgetModel>(entity);
         }
 
         #endregion
@@ -543,7 +514,6 @@ namespace Nop.Admin
         }
 
         #endregion
-
 
         #region NewsLetter subscriptions
 

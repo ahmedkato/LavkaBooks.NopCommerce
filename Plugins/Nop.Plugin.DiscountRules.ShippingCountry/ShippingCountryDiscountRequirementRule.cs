@@ -2,6 +2,7 @@ using System;
 using Nop.Core;
 using Nop.Core.Plugins;
 using Nop.Services.Discounts;
+using Nop.Services.Localization;
 
 namespace Nop.Plugin.DiscountRules.ShippingCountry
 {
@@ -46,6 +47,24 @@ namespace Nop.Plugin.DiscountRules.ShippingCountry
             if (discountRequirementId.HasValue)
                 result += string.Format("&discountRequirementId={0}", discountRequirementId.Value);
             return result;
+        }
+
+        public override void Install()
+        {
+            //locales
+            this.AddOrUpdatePluginLocaleResource("Plugins.DiscountRules.ShippingCountry.Fields.SelectCountry", "Select country");
+            this.AddOrUpdatePluginLocaleResource("Plugins.DiscountRules.ShippingCountry.Fields.Country", "Shipping country");
+            this.AddOrUpdatePluginLocaleResource("Plugins.DiscountRules.ShippingCountry.Fields.Country.Hint", "Select required shipping country.");
+            base.Install();
+        }
+
+        public override void Uninstall()
+        {
+            //locales
+            this.DeletePluginLocaleResource("Plugins.DiscountRules.ShippingCountry.Fields.SelectCountry");
+            this.DeletePluginLocaleResource("Plugins.DiscountRules.ShippingCountry.Fields.Country");
+            this.DeletePluginLocaleResource("Plugins.DiscountRules.ShippingCountry.Fields.Country.Hint");
+            base.Uninstall();
         }
     }
 }

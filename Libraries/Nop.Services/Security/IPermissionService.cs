@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Security;
 
 namespace Nop.Services.Security
@@ -61,6 +62,21 @@ namespace Nop.Services.Security
         /// <summary>
         /// Authorize permission
         /// </summary>
+        /// <param name="permission">Permission record</param>
+        /// <returns>true - authorized; otherwise, false</returns>
+        bool Authorize(PermissionRecord permission);
+
+        /// <summary>
+        /// Authorize permission
+        /// </summary>
+        /// <param name="permission">Permission record</param>
+        /// <param name="customer">Customer</param>
+        /// <returns>true - authorized; otherwise, false</returns>
+        bool Authorize(PermissionRecord permission, Customer customer);
+
+        /// <summary>
+        /// Authorize permission
+        /// </summary>
         /// <param name="permissionRecordSystemName">Permission record system name</param>
         /// <returns>true - authorized; otherwise, false</returns>
         bool Authorize(string permissionRecordSystemName);
@@ -68,8 +84,9 @@ namespace Nop.Services.Security
         /// <summary>
         /// Authorize permission
         /// </summary>
-        /// <param name="permission">Permission record</param>
+        /// <param name="permissionRecordSystemName">Permission record system name</param>
+        /// <param name="customer">Customer</param>
         /// <returns>true - authorized; otherwise, false</returns>
-        bool Authorize(PermissionRecord permission);
+        bool Authorize(string permissionRecordSystemName, Customer customer);
     }
 }

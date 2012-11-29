@@ -1,5 +1,4 @@
-﻿
-using Nop.Core.Configuration;
+﻿using Nop.Core.Configuration;
 using Nop.Plugin.Shipping.UPS.Domain;
 
 namespace Nop.Plugin.Shipping.UPS
@@ -27,5 +26,7 @@ namespace Nop.Plugin.Shipping.UPS
         public string DefaultShippedFromZipPostalCode { get; set; }
 
         public string CarrierServicesOffered { get; set; }
+
+        public bool InsurePackage { get; set; }
     }
 }

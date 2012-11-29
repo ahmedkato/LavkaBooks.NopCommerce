@@ -9,7 +9,7 @@ namespace Nop.Data.Mapping.Orders
         {
             this.ToTable("Order");
             this.HasKey(o => o.Id);
-            this.Property(o => o.CurrencyRate).HasPrecision(18, 4);
+            this.Property(o => o.CurrencyRate).HasPrecision(18, 8);
             this.Property(o => o.OrderSubtotalInclTax).HasPrecision(18, 4);
             this.Property(o => o.OrderSubtotalExclTax).HasPrecision(18, 4);
             this.Property(o => o.OrderSubTotalDiscountInclTax).HasPrecision(18, 4);
@@ -22,17 +22,12 @@ namespace Nop.Data.Mapping.Orders
             this.Property(o => o.OrderDiscount).HasPrecision(18, 4);
             this.Property(o => o.OrderTotal).HasPrecision(18, 4);
             this.Property(o => o.RefundedAmount).HasPrecision(18, 4);
-            this.Property(o => o.OrderWeight).HasPrecision(18, 4);
 
             this.Property(o => o.TaxRates).IsMaxLength();
-            this.Property(o => o.AuthorizationTransactionId).IsMaxLength();
             this.Property(o => o.AuthorizationTransactionCode).IsMaxLength();
             this.Property(o => o.AuthorizationTransactionResult).IsMaxLength();
-            this.Property(o => o.CaptureTransactionId).IsMaxLength();
             this.Property(o => o.CaptureTransactionResult).IsMaxLength();
-            this.Property(o => o.SubscriptionTransactionId).IsMaxLength();
             this.Property(o => o.PurchaseOrderNumber).IsMaxLength();
-            this.Property(o => o.TrackingNumber).IsMaxLength();
 
             this.Ignore(o => o.OrderStatus);
             this.Ignore(o => o.PaymentStatus);

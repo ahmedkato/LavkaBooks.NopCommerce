@@ -1,46 +1,86 @@
-﻿using System.IO;
+﻿using System;
+using System.Collections.Generic;
 using System.Web.Mvc;
+using Nop.Core;
+using Nop.Core.Infrastructure;
+using Nop.Services.Logging;
 using Nop.Web.Framework;
+using Nop.Web.Framework.Security;
+using Nop.Web.Framework.UI;
 
 namespace Nop.Web.Controllers
 {
-    [Compress]
     [StoreLastVisitedPage]
     [CheckAffiliate]
     [StoreClosedAttribute]
-    public class BaseNopController : Controller
+    [PublicStoreAllowNavigation]
+    [NopHttpsRequirement(SslRequirement.NoMatter)]
+    public abstract partial class BaseNopController : Controller
     {
-        protected string RenderPartialViewToString()
+        /// <summary>
+        /// Log exception
+        /// </summary>
+        /// <param name="exc">Exception</param>
+        private void LogException(Exception exc)
         {
-            return RenderPartialViewToString(null, null);
+            var workContext = EngineContext.Current.Resolve<IWorkContext>();
+            var logger = EngineContext.Current.Resolve<ILogger>();
+
+            var customer = workContext.CurrentCustomer;
+            logger.Error(exc.Message, exc, customer);
         }
-
-        protected string RenderPartialViewToString(string viewName)
+        /// <summary>
+        /// Display success notification
+        /// </summary>
+        /// <param name="message">Message</param>
+        /// <param name="persistForTheNextRequest">A value indicating whether a message should be persisted for the next request</param>
+        protected virtual void SuccessNotification(string message, bool persistForTheNextRequest = true)
         {
-            return RenderPartialViewToString(viewName, null);
+            AddNotification(NotifyType.Success, message, persistForTheNextRequest);
         }
-
-        protected string RenderPartialViewToString(object model)
+        /// <summary>
+        /// Display error notification
+        /// </summary>
+        /// <param name="message">Message</param>
+        /// <param name="persistForTheNextRequest">A value indicating whether a message should be persisted for the next request</param>
+        protected virtual void ErrorNotification(string message, bool persistForTheNextRequest = true)
         {
-            return RenderPartialViewToString(null, model);
+            AddNotification(NotifyType.Error, message, persistForTheNextRequest);
         }
-
-        protected string RenderPartialViewToString(string viewName, object model)
+        /// <summary>
+        /// Display error notification
+        /// </summary>
+        /// <param name="exception">Exception</param>
+        /// <param name="persistForTheNextRequest">A value indicating whether a message should be persisted for the next request</param>
+        /// <param name="logException">A value indicating whether exception should be logged</param>
+        protected virtual void ErrorNotification(Exception exception, bool persistForTheNextRequest = true, bool logException = true)
         {
-            //Original source code: http://craftycodeblog.com/2010/05/15/asp-net-mvc-render-partial-view-to-string/
-            if (string.IsNullOrEmpty(viewName))
-                viewName = ControllerContext.RouteData.GetRequiredString("action");
-
-            ViewData.Model = model;
-
-            using (var sw = new StringWriter())
+            if (logException)
+                LogException(exception);
+            AddNotification(NotifyType.Error, exception.Message, persistForTheNextRequest);
+        }
+        /// <summary>
+        /// Display notification
+        /// </summary>
+        /// <param name="type">Notification type</param>
+        /// <param name="message">Message</param>
+        /// <param name="persistForTheNextRequest">A value indicating whether a message should be persisted for the next request</param>
+        protected virtual void AddNotification(NotifyType type, string message, bool persistForTheNextRequest)
+        {
+            string dataKey = string.Format("nop.notifications.{0}", type);
+            if (persistForTheNextRequest)
             {
-                ViewEngineResult viewResult = ViewEngines.Engines.FindPartialView(ControllerContext, viewName);
-                var viewContext = new ViewContext(ControllerContext, viewResult.View, ViewData, TempData, sw);
-                viewResult.View.Render(viewContext, sw);
-
-                return sw.GetStringBuilder().ToString();
+                if (TempData[dataKey] == null)
+                    TempData[dataKey] = new List<string>();
+                ((List<string>)TempData[dataKey]).Add(message);
+            }
+            else
+            {
+                if (ViewData[dataKey] == null)
+                    ViewData[dataKey] = new List<string>();
+                ((List<string>)ViewData[dataKey]).Add(message);
             }
         }
+
     }
 }

@@ -1,20 +1,28 @@
-﻿@model Nop.Web.Models.Common.StoreThemeSelectorModel
-@using (Ajax.BeginForm("StoreThemeSelected", "Common", new AjaxOptions { OnComplete = "onStoreThemeChangedRequestCompleted();" }, new { id = "form-storethemeselector" }))
+﻿@model StoreThemeSelectorModel
+@using Nop.Web.Models.Common;
+@if (Model.AvailableStoreThemes.Count > 1)
 {
-    var themes = Model.AvailableStoreThemes.Select(x => new SelectListItem
+    using (Ajax.BeginForm("StoreThemeSelected", "Common", null, new AjaxOptions { OnComplete = "onStoreThemeChangedRequestCompleted();" }, new { id = "form-store-theme-selector" }))
     {
-        Text = x.Title,
-        Value = x.Name,
-        Selected = x.Name.Equals(Model.CurrentStoreTheme.Name, StringComparison.InvariantCultureIgnoreCase)
-    });
+        var themes = Model.AvailableStoreThemes.Select(x => new SelectListItem
+        {
+            Text = x.Title,
+            Value = x.Name,
+            Selected = x.Name.Equals(Model.CurrentStoreTheme.Name, StringComparison.InvariantCultureIgnoreCase)
+        });
     
-    @T("StoreTheme")<text>:</text> @Html.DropDownList("themeName", themes, new { onChange = "onStoreThemeChanged();", @class = "storethemelist" })
+        @T("StoreTheme")<text>:</text> @Html.DropDownList("themeName", themes, new { @class = "store-theme-list" })
+    }
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $("#themeName").change(onStoreThemeChanged);
+        });
+
+        function onStoreThemeChanged() {
+            $("#form-store-theme-selector").submit();
+        }
+        function onStoreThemeChangedRequestCompleted() {
+            location.reload();
+        }
+    </script>
 }
-<script type="text/javascript">
-    function onStoreThemeChanged() {
-        $("#form-storethemeselector").submit();
-    }
-    function onStoreThemeChangedRequestCompleted() {
-        location.reload();
-    }
-</script>

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
@@ -88,7 +89,7 @@ namespace Nop.Web.Framework
 
             //there's an issue in Telerik (ScriptRegistrar.Current implemenation)
             //it's a little hack to ensure ScriptRegistrar.Current is loaded
-            var test = helper.Telerik();
+            helper.Telerik();
 
             #region Write click events for button, if supplied
 
@@ -113,7 +114,7 @@ namespace Nop.Web.Framework
             };
 
             var window = helper.Telerik().Window().Name(modalId)
-                .Title(EngineContext.Current.LocalizationService().GetResource("Admin.Common.AreYouSure"))
+                .Title(EngineContext.Current.Resolve<ILocalizationService>().GetResource("Admin.Common.AreYouSure"))
                 .Modal(true)
                 .Effects(x => x.Toggle())
                 .Resizable(x => x.Enabled(false))
@@ -135,10 +136,10 @@ namespace Nop.Web.Framework
                 var resourceDisplayName = value as NopResourceDisplayName;
                 if (resourceDisplayName != null && displayHint)
                 {
+                    var langId = EngineContext.Current.Resolve<IWorkContext>().WorkingLanguage.Id;
                     hintResource =
-                        EngineContext.Current.Resolve<ILocalizationService>().GetResource(
-                            resourceDisplayName.ResourceKey + ".Hint",
-                            EngineContext.Current.Resolve<IWorkContext>().WorkingLanguage.Id, false, "");
+                        EngineContext.Current.Resolve<ILocalizationService>()
+                        .GetResource(resourceDisplayName.ResourceKey + ".Hint", langId);
 
                     result.Append(helper.Hint(hintResource).ToHtmlString());
                 }
@@ -151,7 +152,6 @@ namespace Nop.Web.Framework
         {
             return LabelFor(html, expression, new RouteValueDictionary(htmlAttributes));
         }
-
         public static MvcHtmlString LabelFor<TModel, TValue>(this HtmlHelper<TModel> html, Expression<Func<TModel, TValue>> expression, IDictionary<string, object> htmlAttributes)
         {
             ModelMetadata metadata = ModelMetadata.FromLambdaExpression(expression, html.ViewData);
@@ -168,7 +168,22 @@ namespace Nop.Web.Framework
             tag.SetInnerText(labelText);
             return MvcHtmlString.Create(tag.ToString(TagRenderMode.Normal));
         }
-        
+
+        public static MvcHtmlString RequiredHint(this HtmlHelper helper, string additionalText = null)
+        {
+            // Create tag builder
+            var builder = new TagBuilder("span");
+            builder.AddCssClass("required");
+            var innerText = "*";
+            //add additinal text if specified
+            if (!String.IsNullOrEmpty(additionalText))
+                innerText += " " + additionalText;
+            builder.SetInnerText(innerText);
+            // Render tag
+            return MvcHtmlString.Create(builder.ToString());
+        }
+
+
         public static string FieldNameFor<T, TResult>(this HtmlHelper<T> html, Expression<Func<T, TResult>> expression)
         {
             return html.ViewData.TemplateInfo.GetFullHtmlFieldName(ExpressionHelper.GetExpressionText(expression));
@@ -236,8 +251,12 @@ namespace Nop.Web.Framework
 
             months.AppendFormat("<option value='{0}'>{1}</option>", "0", monthLocale);
             for (int i = 1; i <= 12; i++)
-                months.AppendFormat("<option value='{0}'{1}>{0}</option>", i,
-                    (selectedMonth.HasValue && selectedMonth.Value == i) ? " selected=\"selected\"" : null);
+            {
+                months.AppendFormat("<option value='{0}'{1}>{2}</option>",
+                                    i, 
+                                    (selectedMonth.HasValue && selectedMonth.Value == i) ? " selected=\"selected\"" : null,
+                                    CultureInfo.CurrentUICulture.DateTimeFormat.GetMonthName(i));
+            }
 
 
             years.AppendFormat("<option value='{0}'>{1}</option>", "0", yearLocale);
@@ -256,6 +275,12 @@ namespace Nop.Web.Framework
             yearsList.InnerHtml = years.ToString();
 
             return MvcHtmlString.Create(string.Concat(daysList, monthsList, yearsList));
+        }
+
+
+        public static MvcHtmlString Widget(this HtmlHelper helper, string widgetZone)
+        {
+            return helper.Action("WidgetsByZone", "Widget", new { widgetZone = widgetZone });
         }
     }
 }

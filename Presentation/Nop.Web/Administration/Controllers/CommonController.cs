@@ -3,30 +3,35 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security.Principal;
 using System.Web.Mvc;
 using Nop.Admin.Models.Common;
 using Nop.Core;
 using Nop.Core.Caching;
 using Nop.Core.Domain;
 using Nop.Core.Domain.Directory;
+using Nop.Core.Plugins;
 using Nop.Services.Customers;
 using Nop.Services.Directory;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
+using Nop.Services.Orders;
 using Nop.Services.Payments;
+using Nop.Services.Security;
 using Nop.Services.Shipping;
 using Nop.Web.Framework.Controllers;
-using Nop.Services.Security;
+using Nop.Web.Framework.Security;
 
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class CommonController : BaseNopController
+    public partial class CommonController : BaseNopController
     {
         #region Fields
 
         private readonly IPaymentService _paymentService;
         private readonly IShippingService _shippingService;
+        private readonly IShoppingCartService _shoppingCartService;
         private readonly ICurrencyService _currencyService;
         private readonly IMeasureService _measureService;
         private readonly ICustomerService _customerService;
@@ -38,21 +43,24 @@ namespace Nop.Admin.Controllers
         private readonly ILanguageService _languageService;
         private readonly IWorkContext _workContext;
         private readonly IPermissionService _permissionService;
+        private readonly ILocalizationService _localizationService;
 
         #endregion
 
         #region Constructors
 
         public CommonController(IPaymentService paymentService, IShippingService shippingService,
+            IShoppingCartService shoppingCartService, 
             ICurrencyService currencyService, IMeasureService measureService,
             ICustomerService customerService, IWebHelper webHelper,
             StoreInformationSettings storeInformationSettings, CurrencySettings currencySettings,
             MeasureSettings measureSettings, IDateTimeHelper dateTimeHelper,
             ILanguageService languageService, IWorkContext workContext,
-            IPermissionService permissionService)
+            IPermissionService permissionService, ILocalizationService localizationService)
         {
             this._paymentService = paymentService;
             this._shippingService = shippingService;
+            this._shoppingCartService = shoppingCartService;
             this._currencyService = currencyService;
             this._measureService = measureService;
             this._customerService = customerService;
@@ -64,6 +72,7 @@ namespace Nop.Admin.Controllers
             this._languageService = languageService;
             this._workContext = workContext;
             this._permissionService = permissionService;
+            this._localizationService = localizationService;
         }
 
         #endregion
@@ -93,6 +102,15 @@ namespace Nop.Admin.Controllers
             model.ServerLocalTime = DateTime.Now;
             model.UtcTime = DateTime.UtcNow;
             //Environment.GetEnvironmentVariable("USERNAME");
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                model.LoadedAssemblies.Add(new SystemInfoModel.LoadedAssembly()
+                {
+                    FullName =  assembly.FullName,
+                    //we cannot use Location property in medium trust
+                    //Location = assembly.Location
+                });
+            }
             return View(model);
         }
 
@@ -102,82 +120,126 @@ namespace Nop.Admin.Controllers
 
             //store URL
             if (!String.IsNullOrEmpty(_storeInformationSettings.StoreUrl) &&
-                _storeInformationSettings.StoreUrl.Equals(_webHelper.GetStoreLocation(false), StringComparison.InvariantCultureIgnoreCase))
+                (_storeInformationSettings.StoreUrl.Equals(_webHelper.GetStoreLocation(false), StringComparison.InvariantCultureIgnoreCase)
+                ||
+                _storeInformationSettings.StoreUrl.Equals(_webHelper.GetStoreLocation(true), StringComparison.InvariantCultureIgnoreCase)
+                ))
                 model.Add(new SystemWarningModel()
                     {
                         Level = SystemWarningLevel.Pass,
-                        Text = "Specified store URL matches this store URL",
+                        Text = _localizationService.GetResource("Admin.System.Warnings.URL.Match")
                     });
             else
                 model.Add(new SystemWarningModel()
                 {
                     Level = SystemWarningLevel.Warning,
-                    Text = string.Format("Specified store URL ({0}) doesn't match this store URL ({1})", _storeInformationSettings.StoreUrl, _webHelper.GetStoreLocation(false))
+                    Text = string.Format(_localizationService.GetResource("Admin.System.Warnings.URL.NoMatch"), _storeInformationSettings.StoreUrl, _webHelper.GetStoreLocation(false))
                 });
 
 
             //primary exchange rate currency
             var perCurrency = _currencyService.GetCurrencyById(_currencySettings.PrimaryExchangeRateCurrencyId);
             if (perCurrency != null)
+            {
                 model.Add(new SystemWarningModel()
                 {
                     Level = SystemWarningLevel.Pass,
-                    Text = "Primary exchange rate currency is set",
+                    Text = _localizationService.GetResource("Admin.System.Warnings.ExchangeCurrency.Set"),
                 });
+                if (perCurrency.Rate != 1)
+                {
+                    model.Add(new SystemWarningModel()
+                    {
+                        Level = SystemWarningLevel.Fail,
+                        Text = _localizationService.GetResource("Admin.System.Warnings.ExchangeCurrency.Rate1")
+                    });
+                }
+            }
             else
+            {
                 model.Add(new SystemWarningModel()
                 {
                     Level = SystemWarningLevel.Fail,
-                    Text = "Primary exchange rate currency is not set"
+                    Text = _localizationService.GetResource("Admin.System.Warnings.ExchangeCurrency.NotSet")
                 });
-
+            }
 
             //primary store currency
             var pscCurrency = _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId);
             if (pscCurrency != null)
+            {
                 model.Add(new SystemWarningModel()
                 {
                     Level = SystemWarningLevel.Pass,
-                    Text = "Primary store currency is set",
+                    Text = _localizationService.GetResource("Admin.System.Warnings.PrimaryCurrency.Set"),
                 });
+            }
             else
+            {
                 model.Add(new SystemWarningModel()
                 {
                     Level = SystemWarningLevel.Fail,
-                    Text = "Primary store currency is not set"
+                    Text = _localizationService.GetResource("Admin.System.Warnings.PrimaryCurrency.NotSet")
                 });
+            }
 
 
             //base measure weight
             var bWeight = _measureService.GetMeasureWeightById(_measureSettings.BaseWeightId);
             if (bWeight != null)
+            {
                 model.Add(new SystemWarningModel()
                 {
                     Level = SystemWarningLevel.Pass,
-                    Text = "Default weight is set",
+                    Text = _localizationService.GetResource("Admin.System.Warnings.DefaultWeight.Set"),
                 });
+
+                if (bWeight.Ratio != 1)
+                {
+                    model.Add(new SystemWarningModel()
+                    {
+                        Level = SystemWarningLevel.Fail,
+                        Text = _localizationService.GetResource("Admin.System.Warnings.DefaultWeight.Ratio1")
+                    });
+                }
+            }
             else
+            {
                 model.Add(new SystemWarningModel()
                 {
                     Level = SystemWarningLevel.Fail,
-                    Text = "Default weight is not set"
+                    Text = _localizationService.GetResource("Admin.System.Warnings.DefaultWeight.NotSet")
                 });
+            }
 
 
             //base dimension weight
             var bDimension = _measureService.GetMeasureDimensionById(_measureSettings.BaseDimensionId);
             if (bDimension != null)
+            {
                 model.Add(new SystemWarningModel()
                 {
                     Level = SystemWarningLevel.Pass,
-                    Text = "Default dimension is set",
+                    Text = _localizationService.GetResource("Admin.System.Warnings.DefaultDimension.Set"),
                 });
+
+                if (bDimension.Ratio != 1)
+                {
+                    model.Add(new SystemWarningModel()
+                    {
+                        Level = SystemWarningLevel.Fail,
+                        Text = _localizationService.GetResource("Admin.System.Warnings.DefaultDimension.Ratio1")
+                    });
+                }
+            }
             else
+            {
                 model.Add(new SystemWarningModel()
                 {
                     Level = SystemWarningLevel.Fail,
-                    Text = "Default dimension is not set"
+                    Text = _localizationService.GetResource("Admin.System.Warnings.DefaultDimension.NotSet")
                 });
+            }
 
             //shipping rate coputation methods
             if (_shippingService.LoadActiveShippingRateComputationMethods()
@@ -186,7 +248,7 @@ namespace Nop.Admin.Controllers
                 model.Add(new SystemWarningModel()
                 {
                     Level = SystemWarningLevel.Warning,
-                    Text = "Only one offline shipping rate computation method is recommended to use"
+                    Text = _localizationService.GetResource("Admin.System.Warnings.Shipping.OnlyOneOffline")
                 });
 
             //payment methods
@@ -195,14 +257,63 @@ namespace Nop.Admin.Controllers
                 model.Add(new SystemWarningModel()
                 {
                     Level = SystemWarningLevel.Pass,
-                    Text = "Payment methods are OK"
+                    Text = _localizationService.GetResource("Admin.System.Warnings.PaymentMethods.OK")
                 });
             else
                 model.Add(new SystemWarningModel()
                 {
                     Level = SystemWarningLevel.Fail,
-                    Text = "You don't have active payment methods"
+                    Text = _localizationService.GetResource("Admin.System.Warnings.PaymentMethods.NoActive")
                 });
+
+            //incompatible plugins
+            if (PluginManager.IncompatiblePlugins != null)
+                foreach (var pluginName in PluginManager.IncompatiblePlugins)
+                    model.Add(new SystemWarningModel()
+                    {
+                        Level = SystemWarningLevel.Warning,
+                        Text = string.Format(_localizationService.GetResource("Admin.System.Warnings.IncompatiblePlugin"), pluginName )
+                    });
+
+            //validate write permissions (the same procedure like during installation)
+            var dirPermissionsOk = true;
+            var dirsToCheck = FilePermissionHelper.GetDirectoriesWrite(_webHelper);
+            foreach (string dir in dirsToCheck)
+                if (!FilePermissionHelper.CheckPermissions(dir, false, true, true, false))
+                {
+                    model.Add(new SystemWarningModel()
+                    {
+                        Level = SystemWarningLevel.Warning,
+                        Text = string.Format(_localizationService.GetResource("Admin.System.Warnings.DirectoryPermission.Wrong"), WindowsIdentity.GetCurrent().Name, dir)
+                    });
+                    dirPermissionsOk = false;
+                }
+            if (dirPermissionsOk)
+                model.Add(new SystemWarningModel()
+                {
+                    Level = SystemWarningLevel.Pass,
+                    Text = _localizationService.GetResource("Admin.System.Warnings.DirectoryPermission.OK")
+                });
+
+            var filePermissionsOk = true;
+            var filesToCheck = FilePermissionHelper.GetFilesWrite(_webHelper);
+            foreach (string file in filesToCheck)
+                if (!FilePermissionHelper.CheckPermissions(file, false, true, true, true))
+                {
+                    model.Add(new SystemWarningModel()
+                    {
+                        Level = SystemWarningLevel.Warning,
+                        Text = string.Format(_localizationService.GetResource("Admin.System.Warnings.FilePermission.Wrong"), WindowsIdentity.GetCurrent().Name, file)
+                    });
+                    filePermissionsOk = false;
+                }
+            if (filePermissionsOk)
+                model.Add(new SystemWarningModel()
+                {
+                    Level = SystemWarningLevel.Pass,
+                    Text = _localizationService.GetResource("Admin.System.Warnings.FilePermission.OK")
+                });
+            
             
             return View(model);
         }
@@ -215,6 +326,7 @@ namespace Nop.Admin.Controllers
             var model = new MaintenanceModel();
             model.DeleteGuests.EndDate = DateTime.UtcNow.AddDays(-7);
             model.DeleteGuests.OnlyWithoutShoppingCart = true;
+            model.DeleteAbandonedCarts.OlderThan = DateTime.UtcNow.AddDays(-182);
             return View(model);
         }
 
@@ -237,6 +349,20 @@ namespace Nop.Admin.Controllers
         }
 
         [HttpPost, ActionName("Maintenance")]
+        [FormValueRequired("delete-abondoned-carts")]
+        public ActionResult MaintenanceDeleteAbandonedCarts(MaintenanceModel model)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageMaintenance))
+                return AccessDeniedView();
+
+            var olderThanDateValue = _dateTimeHelper.ConvertToUtcTime(model.DeleteAbandonedCarts.OlderThan, _dateTimeHelper.CurrentTimeZone);
+
+            model.DeleteAbandonedCarts.NumberOfDeletedItems = _shoppingCartService.DeleteExpiredShoppingCartItems(olderThanDateValue);
+            return View(model);
+        }
+
+
+        [HttpPost, ActionName("Maintenance")]
         [FormValueRequired("delete-exported-files")]
         public ActionResult MaintenanceDeleteFiles(MaintenanceModel model)
         {
@@ -251,7 +377,7 @@ namespace Nop.Admin.Controllers
 
 
             model.DeleteExportedFiles.NumberOfDeletedFiles = 0;
-            string path = string.Format("{0}content\\files\\exportimport\\", this.Request.PhysicalApplicationPath);
+            string path = System.IO.Path.Combine(this.Request.PhysicalApplicationPath, "content\\files\\exportimport");
             foreach (var fullPath in System.IO.Directory.GetFiles(path))
             {
                 try
@@ -315,8 +441,7 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             //restart application
-            _webHelper.RestartAppDomain("~/Admin/");
-
+            _webHelper.RestartAppDomain();
             return RedirectToAction("Index", "Home");
         }
         #endregion

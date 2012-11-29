@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Text;
 using System.Web.Mvc;
 using Nop.Admin.Models.Messages;
@@ -13,7 +12,7 @@ using Telerik.Web.Mvc;
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class MessageTemplateController : BaseNopController
+    public partial class MessageTemplateController : BaseNopController
     {
         #region Fields
 
@@ -63,7 +62,7 @@ namespace Nop.Admin.Controllers
         #region Utilities
 
         [NonAction]
-        public void UpdateLocales(MessageTemplate mt, MessageTemplateModel model)
+        protected void UpdateLocales(MessageTemplate mt, MessageTemplateModel model)
         {
             foreach (var localized in model.Locales)
             {
@@ -137,7 +136,10 @@ namespace Nop.Admin.Controllers
 
             var messageTemplate = _messageTemplateService.GetMessageTemplateById(id);
             if (messageTemplate == null)
-                throw new ArgumentException("No message template found with the specified id", "id");
+                //No message template found with the specified id
+                return RedirectToAction("List");
+
+
             var model = messageTemplate.ToModel();
             model.AllowedTokens = FormatTokens(_messageTokenProvider.GetListOfAllowedTokens());
             //available email accounts
@@ -157,7 +159,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Edit(MessageTemplateModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMessageTemplates))
@@ -165,7 +167,8 @@ namespace Nop.Admin.Controllers
 
             var messageTemplate = _messageTemplateService.GetMessageTemplateById(model.Id);
             if (messageTemplate == null)
-                throw new ArgumentException("No message template found with the specified id");
+                //No message template found with the specified id
+                return RedirectToAction("List");
             
             if (ModelState.IsValid)
             {

@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 using System;
-using System.Collections.Specialized;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -13,13 +13,17 @@ using System.Web.Routing;
 using System.Xml;
 using Nop.Core;
 using Nop.Core.Domain.Directory;
+using Nop.Core.Domain.Discounts;
 using Nop.Core.Domain.Shipping;
 using Nop.Core.Plugins;
 using Nop.Plugin.Shipping.UPS.Domain;
 using Nop.Services.Configuration;
 using Nop.Services.Directory;
+using Nop.Services.Localization;
+using Nop.Services.Logging;
+using Nop.Services.Orders;
 using Nop.Services.Shipping;
-using System.Collections.Generic;
+using Nop.Services.Shipping.Tracking;
 
 namespace Nop.Plugin.Shipping.UPS
 {
@@ -44,25 +48,38 @@ namespace Nop.Plugin.Shipping.UPS
         private readonly ISettingService _settingService;
         private readonly UPSSettings _upsSettings;
         private readonly ICountryService _countryService;
+        private readonly ICurrencyService _currencyService;
+        private readonly CurrencySettings _currencySettings;
+        private readonly IOrderTotalCalculationService _orderTotalCalculationService;
+        private readonly ILogger _logger;
+        private readonly ILocalizationService _localizationService;
 
         #endregion
 
         #region Ctor
         public UPSComputationMethod(IMeasureService measureService,
             IShippingService shippingService, ISettingService settingService,
-            UPSSettings upsSettings, ICountryService countryService)
+            UPSSettings upsSettings, ICountryService countryService,
+            ICurrencyService currencyService, CurrencySettings currencySettings,
+            IOrderTotalCalculationService orderTotalCalculationService, ILogger logger,
+            ILocalizationService localizationService)
         {
             this._measureService = measureService;
             this._shippingService = shippingService;
             this._settingService = settingService;
             this._upsSettings = upsSettings;
             this._countryService = countryService;
+            this._currencyService = currencyService;
+            this._currencySettings = currencySettings;
+            this._orderTotalCalculationService = orderTotalCalculationService;
+            this._logger = logger;
+            this._localizationService = localizationService;
         }
         #endregion
 
         #region Utilities
 
-        private string CreateRequest(string AccessKey, string Username, string Password,
+        private string CreateRequest(string accessKey, string username, string password,
             GetShippingOptionRequest getShippingOptionRequest, UPSCustomerClassification customerClassification,
             UPSPickupType pickupType, UPSPackagingType packagingType)
         {
@@ -92,12 +109,21 @@ namespace Nop.Plugin.Shipping.UPS
             string countryCodeFrom = getShippingOptionRequest.CountryFrom.TwoLetterIsoCode;
             string countryCodeTo = getShippingOptionRequest.ShippingAddress.Country.TwoLetterIsoCode;
 
+
+            decimal orderSubTotalDiscountAmount = decimal.Zero;
+            Discount orderSubTotalAppliedDiscount = null;
+            decimal subTotalWithoutDiscountBase = decimal.Zero;
+            decimal subTotalWithDiscountBase = decimal.Zero;
+            _orderTotalCalculationService.GetShoppingCartSubTotal(getShippingOptionRequest.Items,
+                out orderSubTotalDiscountAmount, out orderSubTotalAppliedDiscount,
+                out subTotalWithoutDiscountBase, out subTotalWithDiscountBase);
+
             var sb = new StringBuilder();
             sb.Append("<?xml version='1.0'?>");
             sb.Append("<AccessRequest xml:lang='en-US'>");
-            sb.AppendFormat("<AccessLicenseNumber>{0}</AccessLicenseNumber>", AccessKey);
-            sb.AppendFormat("<UserId>{0}</UserId>", Username);
-            sb.AppendFormat("<Password>{0}</Password>", Password);
+            sb.AppendFormat("<AccessLicenseNumber>{0}</AccessLicenseNumber>", accessKey);
+            sb.AppendFormat("<UserId>{0}</UserId>", username);
+            sb.AppendFormat("<Password>{0}</Password>", password);
             sb.Append("</AccessRequest>");
             sb.Append("<?xml version='1.0'?>");
             sb.Append("<RatingServiceSelectionRequest xml:lang='en-US'>");
@@ -157,6 +183,18 @@ namespace Nop.Plugin.Shipping.UPS
                 sb.Append("<PackageWeight>");
                 sb.AppendFormat("<Weight>{0}</Weight>", weight);
                 sb.Append("</PackageWeight>");
+
+                if (_upsSettings.InsurePackage)
+                {
+                    //The maximum declared amount per package: 50000 USD.
+                    int packageInsurancePrice = Convert.ToInt32(subTotalWithDiscountBase);
+                    sb.Append("<PackageServiceOptions>");
+                    sb.Append("<InsuredValue>");
+                    sb.AppendFormat("<CurrencyCode>{0}</CurrencyCode>", _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId).CurrencyCode);
+                    sb.AppendFormat("<MonetaryValue>{0}</MonetaryValue>", packageInsurancePrice);
+                    sb.Append("</InsuredValue>");
+                    sb.Append("</PackageServiceOptions>");
+                }
                 sb.Append("</Package>");
             }
             else
@@ -189,6 +227,9 @@ namespace Nop.Plugin.Shipping.UPS
                 if (length2 < 1)
                     length2 = 1;
 
+                //The maximum declared amount per package: 50000 USD.
+                int packageInsurancePrice = Convert.ToInt32(subTotalWithDiscountBase / totalPackages);
+
                 for (int i = 0; i < totalPackages; i++)
                 {
                     sb.Append("<Package>");
@@ -203,6 +244,17 @@ namespace Nop.Plugin.Shipping.UPS
                     sb.Append("<PackageWeight>");
                     sb.AppendFormat("<Weight>{0}</Weight>", weight2);
                     sb.Append("</PackageWeight>");
+
+                    if (_upsSettings.InsurePackage)
+                    {
+                        sb.Append("<PackageServiceOptions>");
+                        sb.Append("<InsuredValue>");
+                        sb.AppendFormat("<CurrencyCode>{0}</CurrencyCode>", _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId).CurrencyCode);
+                        sb.AppendFormat("<MonetaryValue>{0}</MonetaryValue>", packageInsurancePrice);
+                        sb.Append("</InsuredValue>");
+                        sb.Append("</PackageServiceOptions>");
+                    }
+
                     sb.Append("</Package>");
                 }
             }
@@ -543,6 +595,7 @@ namespace Nop.Plugin.Shipping.UPS
         /// </summary>
         public override void Install()
         {
+            //settings
             var settings = new UPSSettings()
             {
                 Url = "https://www.ups.com/ups.app/xml/Rate",
@@ -557,7 +610,86 @@ namespace Nop.Plugin.Shipping.UPS
             };
             _settingService.SaveSetting(settings);
 
+            //locales
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.Url", "URL");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.Url.Hint", "Specify UPS URL.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.AccessKey", "Access Key");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.AccessKey.Hint", "Specify UPS access key.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.Username", "Username");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.Username.Hint", "Specify UPS username.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.Password", "Password");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.Password.Hint", "Specify UPS password.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.AdditionalHandlingCharge", "Additional handling charge");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.AdditionalHandlingCharge.Hint", "Enter additional handling fee to charge your customers.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.InsurePackage", "Insure package");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.InsurePackage.Hint", "Check to ensure packages.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.CustomerClassification", "UPS Customer Classification");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.CustomerClassification.Hint", "Choose customer classification.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.PickupType", "UPS Pickup Type");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.PickupType.Hint", "Choose UPS pickup type.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.PackagingType", "UPS Packaging Type");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.PackagingType.Hint", "Choose UPS packaging type.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.DefaultShippedFromCountry", "Shipped from country");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.DefaultShippedFromCountry.Hint", "Specify origin country.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.DefaultShippedFromZipPostalCode", "Shipped from zip");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.DefaultShippedFromZipPostalCode.Hint", "Specify origin zip code.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.AvailableCarrierServices", "Carrier Services");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Fields.AvailableCarrierServices.Hint", "Select the services you want to offer to customers.");
+            //tracker events
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Tracker.Departed", "Departed");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Tracker.ExportScanned", "Export scanned");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Tracker.OriginScanned", "Origin scanned");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Tracker.Arrived", "Arrived");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Tracker.NotDelivered", "Not delivered");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Tracker.Booked", "Booked");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.UPS.Tracker.Delivered", "Delivered");
+
             base.Install();
+        }
+
+        /// <summary>
+        /// Uninstall plugin
+        /// </summary>
+        public override void Uninstall()
+        {
+            //settings
+            _settingService.DeleteSetting<UPSSettings>();
+
+            //locales
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.Url");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.Url.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.AccessKey");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.AccessKey.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.Username");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.Username.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.Password");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.Password.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.AdditionalHandlingCharge");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.AdditionalHandlingCharge.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.InsurePackage");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.InsurePackage.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.CustomerClassification");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.CustomerClassification.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.PickupType");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.PickupType.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.PackagingType");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.PackagingType.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.DefaultShippedFromCountry");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.DefaultShippedFromCountry.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.DefaultShippedFromZipPostalCode");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.DefaultShippedFromZipPostalCode.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.AvailableCarrierServices");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Fields.AvailableCarrierServices.Hint");
+            //tracker events
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Tracker.Departed");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Tracker.ExportScanned");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Tracker.OriginScanned");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Tracker.Arrived");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Tracker.NotDelivered");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Tracker.Booked");
+            this.DeletePluginLocaleResource("Plugins.Shipping.UPS.Tracker.Delivered");
+
+            base.Uninstall();
         }
 
         #endregion
@@ -573,6 +705,14 @@ namespace Nop.Plugin.Shipping.UPS
             {
                 return ShippingRateComputationMethodType.Realtime;
             }
+        }
+
+        /// <summary>
+        /// Gets a shipment tracker
+        /// </summary>
+        public IShipmentTracker ShipmentTracker
+        {
+            get { return new UPSShipmentTracker(_logger, _localizationService, _upsSettings); }
         }
 
         #endregion

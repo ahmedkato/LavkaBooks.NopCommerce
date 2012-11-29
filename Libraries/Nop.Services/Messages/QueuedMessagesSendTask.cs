@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Xml;
-using Nop.Core;
-using Nop.Core.Infrastructure;
-using Nop.Core.Tasks;
 using Nop.Services.Logging;
+using Nop.Services.Tasks;
 
 namespace Nop.Services.Messages
 {
@@ -12,26 +9,26 @@ namespace Nop.Services.Messages
     /// </summary>
     public partial class QueuedMessagesSendTask : ITask
     {
-        private int _maxTries = 5;
+        private readonly IQueuedEmailService _queuedEmailService;
+        private readonly IEmailSender _emailSender;
+        private readonly ILogger _logger;
 
-        private readonly IQueuedEmailService _queuedEmailService = EngineContext.Current.Resolve<IQueuedEmailService>();
-        private readonly IEmailSender _emailSender = EngineContext.Current.Resolve<IEmailSender>();
-        private readonly ILogger _logger = EngineContext.Current.Resolve<ILogger>();
+        public QueuedMessagesSendTask(IQueuedEmailService queuedEmailService,
+            IEmailSender emailSender, ILogger logger)
+        {
+            this._queuedEmailService = queuedEmailService;
+            this._emailSender = emailSender;
+            this._logger = logger;
+        }
 
         /// <summary>
         /// Executes a task
         /// </summary>
-        /// <param name="node">Xml node that represents a task description</param>
-        public void Execute(XmlNode node)
+        public void Execute()
         {
-            var maxTriesAttribute = node.Attributes["maxTries"];
-            if (maxTriesAttribute != null && !string.IsNullOrWhiteSpace(maxTriesAttribute.Value))
-            {
-                this._maxTries = int.Parse(maxTriesAttribute.Value);
-            }
-
+            var maxTries = 3;
             var queuedEmails = _queuedEmailService.SearchEmails(null, null, null, null,
-                true, _maxTries, 0, 10000);
+                true, maxTries, false, 0, 10000);
             foreach (var queuedEmail in queuedEmails)
             {
                 var bcc = String.IsNullOrWhiteSpace(queuedEmail.Bcc) 

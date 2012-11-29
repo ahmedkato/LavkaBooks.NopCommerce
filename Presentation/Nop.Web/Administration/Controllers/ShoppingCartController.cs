@@ -6,6 +6,7 @@ using Nop.Core.Domain.Orders;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
 using Nop.Services.Helpers;
+using Nop.Services.Localization;
 using Nop.Services.Orders;
 using Nop.Services.Security;
 using Nop.Services.Tax;
@@ -15,7 +16,7 @@ using Telerik.Web.Mvc;
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class ShoppingCartController : BaseNopController
+    public partial class ShoppingCartController : BaseNopController
     {
         #region Fields
 
@@ -25,6 +26,7 @@ namespace Nop.Admin.Controllers
         private readonly ITaxService _taxService;
         private readonly IPriceCalculationService _priceCalculationService;
         private readonly IPermissionService _permissionService;
+        private readonly ILocalizationService _localizationService;
         #endregion
 
         #region Constructors
@@ -32,7 +34,7 @@ namespace Nop.Admin.Controllers
         public ShoppingCartController(ICustomerService customerService,
             IDateTimeHelper dateTimeHelper, IPriceFormatter priceFormatter,
             ITaxService taxService, IPriceCalculationService priceCalculationService,
-            IPermissionService permissionService)
+            IPermissionService permissionService, ILocalizationService localizationService)
         {
             this._customerService = customerService;
             this._dateTimeHelper = dateTimeHelper;
@@ -40,6 +42,7 @@ namespace Nop.Admin.Controllers
             this._taxService = taxService;
             this._priceCalculationService = priceCalculationService;
             this._permissionService = permissionService;
+            this._localizationService = localizationService;
         }
 
         #endregion
@@ -62,7 +65,8 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var customers = _customerService.GetAllCustomers(null, null, null, null, null,
-                null,null, true, ShoppingCartType.ShoppingCart, command.Page - 1, command.PageSize);
+                null, null, 0, 0, null, null, null, true, ShoppingCartType.ShoppingCart,
+                command.Page - 1, command.PageSize);
 
             var gridModel = new GridModel<ShoppingCartModel>
             {
@@ -71,9 +75,9 @@ namespace Nop.Admin.Controllers
                     return new ShoppingCartModel()
                     {
                         CustomerId = x.Id,
-                        CustomerName = x.IsGuest() ?
-                        "Guest" :
-                        x.GetFullName(),
+                        CustomerEmail = x.IsGuest() ?
+                        _localizationService.GetResource("Admin.Customers.Guest") :
+                        x.Email,
                         TotalItems = x.ShoppingCartItems.Where(sci => sci.ShoppingCartType == ShoppingCartType.ShoppingCart).ToList().GetTotalProducts()
                     };
                 }),
@@ -141,7 +145,8 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var customers = _customerService.GetAllCustomers(null, null, null, null, null,
-                null, null, true, ShoppingCartType.Wishlist, command.Page - 1, command.PageSize);
+                null, null, 0, 0, null, null, null, 
+                true, ShoppingCartType.Wishlist, command.Page - 1, command.PageSize);
 
             var gridModel = new GridModel<ShoppingCartModel>
             {
@@ -150,9 +155,9 @@ namespace Nop.Admin.Controllers
                     return new ShoppingCartModel()
                     {
                         CustomerId = x.Id,
-                        CustomerName = x.IsGuest() ?
-                        "Guest" :
-                        x.GetFullName(),
+                        CustomerEmail = x.IsGuest() ?
+                        _localizationService.GetResource("Admin.Customers.Guest") :
+                        x.Email,
                         TotalItems = x.ShoppingCartItems.Where(sci => sci.ShoppingCartType == ShoppingCartType.Wishlist).ToList().GetTotalProducts()
                     };
                 }),

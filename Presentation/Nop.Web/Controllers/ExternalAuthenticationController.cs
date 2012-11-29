@@ -1,13 +1,13 @@
-﻿using System.Web.Mvc;
+﻿using System.Collections.Generic;
+using System.Web.Mvc;
 using System.Web.Routing;
 using Nop.Services.Authentication.External;
 using Nop.Web.Models.Customer;
-using System.Collections.Generic;
 
 namespace Nop.Web.Controllers
 {
 
-    public class ExternalAuthenticationController : BaseNopController
+    public partial class ExternalAuthenticationController : BaseNopController
     {
 		#region Fields
 

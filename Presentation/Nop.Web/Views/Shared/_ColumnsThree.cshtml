@@ -19,6 +19,15 @@
     {
         currentManufacturerId = Convert.ToInt32(Url.RequestContext.RouteData.Values["manufacturerId"].ToString());
     }
+
+
+    //current product ID
+    int currentProductId = 0;
+    if (Url.RequestContext.RouteData.Values["controller"].ToString().Equals("catalog", StringComparison.InvariantCultureIgnoreCase) &&
+        Url.RequestContext.RouteData.Values["action"].ToString().Equals("product", StringComparison.InvariantCultureIgnoreCase))
+    {
+        currentProductId = Convert.ToInt32(Url.RequestContext.RouteData.Values["productId"].ToString());
+    }
 }
 <div class="master-wrapper-leftside-3">
     @if (IsSectionDefined("left"))
@@ -27,10 +36,10 @@
     }
     else
     {
-        @Html.Action("WidgetsByZone", "Widget", new { widgetZone = Nop.Core.Domain.Cms.WidgetZone.BeforeLeftSideColumn })
+        @Html.Widget("left_side_column_before")
         <div class="clear">
         </div>
-        @Html.Action("CategoryNavigation", "Catalog", new { currentCategoryId = currentCategoryId })
+        @Html.Action("CategoryNavigation", "Catalog", new { currentCategoryId = currentCategoryId, currentProductId = currentProductId })
         <div class="clear">
         </div>
         @Html.Action("ManufacturerNavigation", "Catalog", new { currentManufacturerId = currentManufacturerId })
@@ -45,15 +54,13 @@
         @Html.Action("PollBlock", "Poll", new { systemKeyword = "LeftColumnPoll" })
         <div class="clear">
         </div>
-        @Html.Action("WidgetsByZone", "Widget", new { widgetZone = Nop.Core.Domain.Cms.WidgetZone.AfterLeftSideColumn })
+        @Html.Widget("left_side_column_after")
     }
 </div>
 <div class="master-wrapper-center-3">
-    <div class="master-wrapper-cph-3">        
-        @Html.Action("WidgetsByZone", "Widget", new { widgetZone = Nop.Core.Domain.Cms.WidgetZone.BeforeMainColumn })
-        @RenderBody()
-        @Html.Action("WidgetsByZone", "Widget", new { widgetZone = Nop.Core.Domain.Cms.WidgetZone.AfterMainColumn })
-    </div>
+    @Html.Widget("main_column_before")
+    @RenderBody()
+    @Html.Widget("main_column_after")
 </div>
 <div class="master-wrapper-rightside-3">
     @if (IsSectionDefined("right"))
@@ -62,10 +69,7 @@
     }
     else
     {
-        @Html.Action("WidgetsByZone", "Widget", new { widgetZone = Nop.Core.Domain.Cms.WidgetZone.BeforeRightSideColumn })
-        <div class="clear">
-        </div>
-        @Html.Action("MiniShoppingCart", "ShoppingCart")
+        @Html.Widget("right_side_column_before")
         <div class="clear">
         </div>
         @Html.Action("NewsletterBox", "Newsletter")
@@ -77,6 +81,6 @@
         @Html.Action("PollBlock", "Poll", new { systemKeyword = "RightColumnPoll" })
         <div class="clear">
         </div>
-        @Html.Action("WidgetsByZone", "Widget", new { widgetZone = Nop.Core.Domain.Cms.WidgetZone.AfterRightSideColumn })
+        @Html.Widget("right_side_column_after")
     }
 </div>

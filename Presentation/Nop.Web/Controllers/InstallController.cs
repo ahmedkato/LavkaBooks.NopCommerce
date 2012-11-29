@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
-using System.IO;
 using System.Linq;
-using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Threading;
 using System.Web.Hosting;
@@ -14,12 +12,29 @@ using Nop.Core.Infrastructure;
 using Nop.Core.Plugins;
 using Nop.Services.Installation;
 using Nop.Services.Security;
+using Nop.Web.Framework.Security;
+using Nop.Web.Infrastructure.Installation;
 using Nop.Web.Models.Install;
 
 namespace Nop.Web.Controllers
 {
-    public class InstallController : BaseNopController
+    public partial class InstallController : BaseNopController
     {
+        #region Fields
+
+        private readonly IInstallationLocalizationService _locService;
+
+        #endregion
+
+        #region Ctor
+
+        public InstallController(IInstallationLocalizationService locService)
+        {
+            this._locService = locService;
+        }
+
+        #endregion
+
         #region Utilities
 
         /// <summary>
@@ -27,7 +42,8 @@ namespace Nop.Web.Controllers
         /// </summary>
         /// <param name="connectionString">Connection string</param>
         /// <returns>Returns true if the database exists.</returns>
-        private bool sqlServerDatabaseExists(string connectionString)
+        [NonAction]
+        protected bool SqlServerDatabaseExists(string connectionString)
         {
             try
             {
@@ -48,8 +64,10 @@ namespace Nop.Web.Controllers
         /// Creates a database on the server.
         /// </summary>
         /// <param name="connectionString">Connection string</param>
+        /// <param name="collation">Server collation; the default one will be used if not specified</param>
         /// <returns>Error</returns>
-        private string createDatabase(string connectionString)
+        [NonAction]
+        protected string CreateDatabase(string connectionString, string collation)
         {
             try
             {
@@ -59,8 +77,9 @@ namespace Nop.Web.Controllers
                 //now create connection string to 'master' dabatase. It always exists.
                 builder.InitialCatalog = "master";
                 var masterCatalogConnectionString = builder.ToString();
-                string query = string.Format("CREATE DATABASE [{0}] COLLATE SQL_Latin1_General_CP1_CI_AS", databaseName);
-
+                string query = string.Format("CREATE DATABASE [{0}]", databaseName);
+                if (!String.IsNullOrWhiteSpace(collation))
+                    query = string.Format("{0} COLLATE {1}", query, collation);
                 using (var conn = new SqlConnection(masterCatalogConnectionString))
                 {
                     conn.Open();
@@ -74,144 +93,10 @@ namespace Nop.Web.Controllers
             }
             catch (Exception ex)
             {
-                return string.Format("An error occured when creating database: {0}", ex.Message);
+                return string.Format(_locService.GetResource("DatabaseCreationError"), ex.Message);
             }
         }
-
-        /// <summary>
-        /// Check permissions
-        /// </summary>
-        /// <param name="path">Path</param>
-        /// <param name="checkRead">Check read</param>
-        /// <param name="checkWrite">Check write</param>
-        /// <param name="checkModify">Check modify</param>
-        /// <param name="checkDelete">Check delete</param>
-        /// <returns>Resulr</returns>
-        private bool checkPermissions(string path, bool checkRead, bool checkWrite, bool checkModify, bool checkDelete)
-        {
-            bool flag = false;
-            bool flag2 = false;
-            bool flag3 = false;
-            bool flag4 = false;
-            bool flag5 = false;
-            bool flag6 = false;
-            bool flag7 = false;
-            bool flag8 = false;
-            WindowsIdentity current = WindowsIdentity.GetCurrent();
-            System.Security.AccessControl.AuthorizationRuleCollection rules = null;
-            try
-            {
-                rules = Directory.GetAccessControl(path).GetAccessRules(true, true, typeof(SecurityIdentifier));
-            }
-            catch
-            {
-                return true;
-            }
-            try
-            {
-                foreach (FileSystemAccessRule rule in rules)
-                {
-                    if (!current.User.Equals(rule.IdentityReference))
-                    {
-                        continue;
-                    }
-                    if (AccessControlType.Deny.Equals(rule.AccessControlType))
-                    {
-                        if ((FileSystemRights.Delete & rule.FileSystemRights) == FileSystemRights.Delete)
-                            flag4 = true;
-                        if ((FileSystemRights.Modify & rule.FileSystemRights) == FileSystemRights.Modify)
-                            flag3 = true;
-
-                        if ((FileSystemRights.Read & rule.FileSystemRights) == FileSystemRights.Read)
-                            flag = true;
-
-                        if ((FileSystemRights.Write & rule.FileSystemRights) == FileSystemRights.Write)
-                            flag2 = true;
-
-                        continue;
-                    }
-                    if (AccessControlType.Allow.Equals(rule.AccessControlType))
-                    {
-                        if ((FileSystemRights.Delete & rule.FileSystemRights) == FileSystemRights.Delete)
-                        {
-                            flag8 = true;
-                        }
-                        if ((FileSystemRights.Modify & rule.FileSystemRights) == FileSystemRights.Modify)
-                        {
-                            flag7 = true;
-                        }
-                        if ((FileSystemRights.Read & rule.FileSystemRights) == FileSystemRights.Read)
-                        {
-                            flag5 = true;
-                        }
-                        if ((FileSystemRights.Write & rule.FileSystemRights) == FileSystemRights.Write)
-                        {
-                            flag6 = true;
-                        }
-                    }
-                }
-                foreach (IdentityReference reference in current.Groups)
-                {
-                    foreach (FileSystemAccessRule rule2 in rules)
-                    {
-                        if (!reference.Equals(rule2.IdentityReference))
-                        {
-                            continue;
-                        }
-                        if (AccessControlType.Deny.Equals(rule2.AccessControlType))
-                        {
-                            if ((FileSystemRights.Delete & rule2.FileSystemRights) == FileSystemRights.Delete)
-                                flag4 = true;
-                            if ((FileSystemRights.Modify & rule2.FileSystemRights) == FileSystemRights.Modify)
-                                flag3 = true;
-                            if ((FileSystemRights.Read & rule2.FileSystemRights) == FileSystemRights.Read)
-                                flag = true;
-                            if ((FileSystemRights.Write & rule2.FileSystemRights) == FileSystemRights.Write)
-                                flag2 = true;
-                            continue;
-                        }
-                        if (AccessControlType.Allow.Equals(rule2.AccessControlType))
-                        {
-                            if ((FileSystemRights.Delete & rule2.FileSystemRights) == FileSystemRights.Delete)
-                                flag8 = true;
-                            if ((FileSystemRights.Modify & rule2.FileSystemRights) == FileSystemRights.Modify)
-                                flag7 = true;
-                            if ((FileSystemRights.Read & rule2.FileSystemRights) == FileSystemRights.Read)
-                                flag5 = true;
-                            if ((FileSystemRights.Write & rule2.FileSystemRights) == FileSystemRights.Write)
-                                flag6 = true;
-                        }
-                    }
-                }
-                bool flag9 = !flag4 && flag8;
-                bool flag10 = !flag3 && flag7;
-                bool flag11 = !flag && flag5;
-                bool flag12 = !flag2 && flag6;
-                bool flag13 = true;
-                if (checkRead)
-                {
-                    flag13 = flag13 && flag11;
-                }
-                if (checkWrite)
-                {
-                    flag13 = flag13 && flag12;
-                }
-                if (checkModify)
-                {
-                    flag13 = flag13 && flag10;
-                }
-                if (checkDelete)
-                {
-                    flag13 = flag13 && flag9;
-                }
-                return flag13;
-            }
-            catch (IOException)
-            {
-            }
-            return false;
-        }
-
+        
         /// <summary>
         /// Create contents of connection strings used by the SqlConnection class
         /// </summary>
@@ -222,8 +107,10 @@ namespace Nop.Web.Controllers
         /// <param name="password">The password for the SQL Server account</param>
         /// <param name="timeout">The connection timeout</param>
         /// <returns>Connection string</returns>
-        private string createConnectionString(bool trustedConnection,
-            string serverName, string databaseName, string userName, string password, int timeout = 0)
+        [NonAction]
+        protected string CreateConnectionString(bool trustedConnection,
+            string serverName, string databaseName, 
+            string userName, string password, int timeout = 0)
         {
             var builder = new SqlConnectionStringBuilder();
             builder.IntegratedSecurity = trustedConnection;
@@ -242,6 +129,7 @@ namespace Nop.Web.Controllers
             }
             return builder.ConnectionString;
         }
+
         #endregion
 
         #region Methods
@@ -249,7 +137,7 @@ namespace Nop.Web.Controllers
         public ActionResult Index()
         {
             if (DataSettingsHelper.DatabaseIsInstalled())
-                return RedirectToAction("Index", "Home");
+                return RedirectToRoute("HomePage");
 
             //set page timeout to 5 minutes
             this.Server.ScriptTimeout = 300;
@@ -265,7 +153,19 @@ namespace Nop.Web.Controllers
                 SqlAuthenticationType = "sqlauthentication",
                 SqlConnectionInfo = "sqlconnectioninfo_values",
                 SqlServerCreateDatabase = false,
+                UseCustomCollation = false,
+                Collation = "SQL_Latin1_General_CP1_CI_AS",
             };
+            foreach (var lang in _locService.GetAvailableLanguages())
+            {
+                model.AvailableLanguages.Add(new SelectListItem()
+                {
+                    Value = Url.Action("ChangeLanguage", "Install", new { language = lang.Code}),
+                    Text = lang.Name,
+                    Selected = _locService.GetCurrentLanguage().Code == lang.Code,
+                });
+            }
+
             return View(model);
         }
 
@@ -273,13 +173,24 @@ namespace Nop.Web.Controllers
         public ActionResult Index(InstallModel model)
         {
             if (DataSettingsHelper.DatabaseIsInstalled())
-                return RedirectToAction("Index", "Home");
+                return RedirectToRoute("HomePage");
 
             //set page timeout to 5 minutes
             this.Server.ScriptTimeout = 300;
 
             if (model.DatabaseConnectionString != null)
                 model.DatabaseConnectionString = model.DatabaseConnectionString.Trim();
+
+            //prepare language list
+            foreach (var lang in _locService.GetAvailableLanguages())
+            {
+                model.AvailableLanguages.Add(new SelectListItem()
+                {
+                    Value = Url.Action("ChangeLanguage", "Install", new { language = lang.Code }),
+                    Text = lang.Name,
+                    Selected = _locService.GetCurrentLanguage().Code == lang.Code,
+                });
+            }
 
             //SQL Server
             if (model.DataProvider.Equals("sqlserver", StringComparison.InvariantCultureIgnoreCase))
@@ -288,7 +199,7 @@ namespace Nop.Web.Controllers
                 {
                     //raw connection string
                     if (string.IsNullOrEmpty(model.DatabaseConnectionString))
-                        ModelState.AddModelError("", "A SQL connection string is required");
+                        ModelState.AddModelError("", _locService.GetResource("ConnectionStringRequired"));
 
                     try
                     {
@@ -297,25 +208,25 @@ namespace Nop.Web.Controllers
                     }
                     catch
                     {
-                        ModelState.AddModelError("", "Wrong SQL connection string format");
+                        ModelState.AddModelError("", _locService.GetResource("ConnectionStringWrongFormat"));
                     }
                 }
                 else
                 {
                     //values
                     if (string.IsNullOrEmpty(model.SqlServerName))
-                        ModelState.AddModelError("", "SQL Server name is required");
+                        ModelState.AddModelError("", _locService.GetResource("SqlServerNameRequired"));
                     if (string.IsNullOrEmpty(model.SqlDatabaseName))
-                        ModelState.AddModelError("", "Database name is required");
+                        ModelState.AddModelError("", _locService.GetResource("DatabaseNameRequired"));
 
                     //authentication type
                     if (model.SqlAuthenticationType.Equals("sqlauthentication", StringComparison.InvariantCultureIgnoreCase))
                     {
                         //SQL authentication
                         if (string.IsNullOrEmpty(model.SqlServerUsername))
-                            ModelState.AddModelError("", "SQL Username is required");
+                            ModelState.AddModelError("", _locService.GetResource("SqlServerUsernameRequired"));
                         if (string.IsNullOrEmpty(model.SqlServerPassword))
-                            ModelState.AddModelError("", "SQL Password is required");
+                            ModelState.AddModelError("", _locService.GetResource("SqlServerPasswordRequired"));
                     }
                 }
             }
@@ -327,30 +238,17 @@ namespace Nop.Web.Controllers
             //and the configured application pool identity on IIS 7.5) that is used if the application is not impersonating.
             //If the application is impersonating via <identity impersonate="true"/>, 
             //the identity will be the anonymous user (typically IUSR_MACHINENAME) or the authenticated request user.
-
+            var webHelper = EngineContext.Current.Resolve<IWebHelper>();
             //validate permissions
-            string rootDir = Server.MapPath("~/");
-            var dirsToCheck = new List<string>();
-            dirsToCheck.Add(rootDir);
-            dirsToCheck.Add(rootDir + "App_Data");
-            dirsToCheck.Add(rootDir + "bin");
-            dirsToCheck.Add(rootDir + "content");
-            dirsToCheck.Add(rootDir + "content\\images");
-            dirsToCheck.Add(rootDir + "content\\images\\thumbs");
-            dirsToCheck.Add(rootDir + "content\\files\\exportimport");
-            dirsToCheck.Add(rootDir + "plugins");
-            dirsToCheck.Add(rootDir + "plugins\\bin");
+            var dirsToCheck = FilePermissionHelper.GetDirectoriesWrite(webHelper);
             foreach (string dir in dirsToCheck)
-                if (!checkPermissions(dir, false, true, true, true))
-                    ModelState.AddModelError("", string.Format("The '{0}' account is not granted with Modify permission on folder '{1}'. Please configure these permissions.", WindowsIdentity.GetCurrent().Name, dir));
+                if (!FilePermissionHelper.CheckPermissions(dir, false, true, true, false))
+                    ModelState.AddModelError("", string.Format(_locService.GetResource("ConfigureDirectoryPermissions"), WindowsIdentity.GetCurrent().Name, dir));
 
-            var filesToCheck = new List<string>();
-            filesToCheck.Add(rootDir + "web.config");
-            filesToCheck.Add(rootDir + "App_Data\\InstalledPlugins.txt");
-            filesToCheck.Add(rootDir + "App_Data\\Settings.txt");
+            var filesToCheck = FilePermissionHelper.GetFilesWrite(webHelper);
             foreach (string file in filesToCheck)
-                if (!checkPermissions(file, false, true, true, true))
-                    ModelState.AddModelError("", string.Format("The '{0}' account is not granted with Modify permission on file '{1}'. Please configure these permissions.", WindowsIdentity.GetCurrent().Name, file));
+                if (!FilePermissionHelper.CheckPermissions(file, false, true, true, true))
+                    ModelState.AddModelError("", string.Format(_locService.GetResource("ConfigureFilePermissions"), WindowsIdentity.GetCurrent().Name, file));
             
             if (ModelState.IsValid)
             {
@@ -365,22 +263,28 @@ namespace Nop.Web.Controllers
                         if (model.SqlConnectionInfo.Equals("sqlconnectioninfo_raw", StringComparison.InvariantCultureIgnoreCase))
                         {
                             //raw connection string
-                            connectionString = model.DatabaseConnectionString;
+
+                            //we know that MARS option is required when using Entity Framework
+                            //let's ensure that it's specified
+                            var sqlCsb = new SqlConnectionStringBuilder(model.DatabaseConnectionString);
+                            sqlCsb.MultipleActiveResultSets = true;
+                            connectionString = sqlCsb.ToString();
                         }
                         else
                         {
                             //values
-                            connectionString = createConnectionString(model.SqlAuthenticationType == "windowsauthentication",
+                            connectionString = CreateConnectionString(model.SqlAuthenticationType == "windowsauthentication",
                                 model.SqlServerName, model.SqlDatabaseName,
                                 model.SqlServerUsername, model.SqlServerPassword);
                         }
                         
                         if (model.SqlServerCreateDatabase)
                         {
-                            if (!sqlServerDatabaseExists(connectionString))
+                            if (!SqlServerDatabaseExists(connectionString))
                             {
                                 //create database
-                                var errorCreatingDatabase = createDatabase(connectionString);
+                                var collation = model.UseCustomCollation ? model.Collation : "";
+                                var errorCreatingDatabase = CreateDatabase(connectionString, collation);
                                 if (!String.IsNullOrEmpty(errorCreatingDatabase))
                                     throw new Exception(errorCreatingDatabase);
                                 else
@@ -394,15 +298,13 @@ namespace Nop.Web.Controllers
                         else
                         {
                             //check whether database exists
-                            if (!sqlServerDatabaseExists(connectionString))
-                                throw new Exception("Database does not exist or you don't have permissions to connect to it");
+                            if (!SqlServerDatabaseExists(connectionString))
+                                throw new Exception(_locService.GetResource("DatabaseNotExists"));
                         }
                     }
                     else
                     {
                         //SQL CE
-                        //little hack here (SQL CE 4 bug - http://www.hanselman.com/blog/PDC10BuildingABlogWithMicrosoftUnnamedPackageOfWebLove.aspx)
-                        //string databasePath = HostingEnvironment.MapPath("~/App_Data/") + @"Nop.Db.sdf";
                         string databaseFileName = "Nop.Db.sdf";
                         string databasePath = @"|DataDirectory|\" + databaseFileName;
                         connectionString = "Data Source=" + databasePath + ";Persist Security Info=False";
@@ -415,7 +317,6 @@ namespace Nop.Web.Controllers
                         }
                     }
 
-                    //save settings
                     //save settings
                     var dataProvider = model.DataProvider;
                     var settings = new DataSettings()
@@ -461,11 +362,10 @@ namespace Nop.Web.Controllers
                     }
 
                     //restart application
-                    var webHelper = EngineContext.Current.Resolve<IWebHelper>();
                     webHelper.RestartAppDomain();
 
                     //Redirect to home page
-                    return RedirectToAction("Index", "Home");
+                    return RedirectToRoute("HomePage");
                 }
                 catch (Exception exception)
                 {
@@ -478,24 +378,35 @@ namespace Nop.Web.Controllers
                         DataProvider = null,
                         DataConnectionString = null
                     });
-                    
-                    ModelState.AddModelError("", "Setup failed: " + exception);
+
+                    ModelState.AddModelError("", string.Format(_locService.GetResource("SetupFailed"), exception.Message));
                 }
             }
             return View(model);
         }
 
+        public ActionResult ChangeLanguage(string language)
+        {
+            if (DataSettingsHelper.DatabaseIsInstalled())
+                return RedirectToRoute("HomePage");
+
+            _locService.SaveCurrentLanguage(language);
+
+            //Reload the page);
+            return RedirectToAction("Index", "Install");
+        }
+
         public ActionResult RestartInstall()
         {
             if (DataSettingsHelper.DatabaseIsInstalled())
-                return RedirectToAction("Index", "Home");
+                return RedirectToRoute("HomePage");
             
             //restart application
             var webHelper = EngineContext.Current.Resolve<IWebHelper>();
-            webHelper.RestartAppDomain("~/Install/Index");
+            webHelper.RestartAppDomain();
 
             //Redirect to home page
-            return RedirectToAction("Index", "Home");
+            return RedirectToRoute("HomePage");
         }
 
         #endregion

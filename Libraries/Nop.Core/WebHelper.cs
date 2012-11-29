@@ -4,9 +4,10 @@ using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Web;
 using System.Web.Hosting;
+using Nop.Core.Domain;
+using Nop.Core.Infrastructure;
 
 namespace Nop.Core
 {
@@ -15,6 +16,17 @@ namespace Nop.Core
     /// </summary>
     public partial class WebHelper : IWebHelper
     {
+        private readonly HttpContextBase _httpContext;
+
+        /// <summary>
+        /// Ctor
+        /// </summary>
+        /// <param name="httpContext">HTTP context</param>
+        public WebHelper(HttpContextBase httpContext)
+        {
+            this._httpContext = httpContext;
+        }
+
         /// <summary>
         /// Get URL referrer
         /// </summary>
@@ -23,10 +35,10 @@ namespace Nop.Core
         {
             string referrerUrl = string.Empty;
 
-            if (HttpContext.Current != null &&
-                HttpContext.Current.Request != null &&
-                HttpContext.Current.Request.UrlReferrer != null)
-                referrerUrl = HttpContext.Current.Request.UrlReferrer.ToString();
+            if (_httpContext != null &&
+                _httpContext.Request != null &&
+                _httpContext.Request.UrlReferrer != null)
+                referrerUrl = _httpContext.Request.UrlReferrer.ToString();
 
             return referrerUrl;
         }
@@ -37,10 +49,10 @@ namespace Nop.Core
         /// <returns>URL referrer</returns>
         public virtual string GetCurrentIpAddress()
         {
-            if (HttpContext.Current != null &&
-                    HttpContext.Current.Request != null &&
-                    HttpContext.Current.Request.UserHostAddress != null)
-                return HttpContext.Current.Request.UserHostAddress;
+            if (_httpContext != null &&
+                    _httpContext.Request != null &&
+                    _httpContext.Request.UserHostAddress != null)
+                return _httpContext.Request.UserHostAddress;
             else
                 return string.Empty;
         }
@@ -65,7 +77,7 @@ namespace Nop.Core
         public virtual string GetThisPageUrl(bool includeQueryString, bool useSsl)
         {
             string url = string.Empty;
-            if (HttpContext.Current == null)
+            if (_httpContext == null)
                 return url;
 
             if (includeQueryString)
@@ -73,11 +85,11 @@ namespace Nop.Core
                 string storeHost = GetStoreHost(useSsl);
                 if (storeHost.EndsWith("/"))
                     storeHost = storeHost.Substring(0, storeHost.Length - 1);
-                url = storeHost + HttpContext.Current.Request.RawUrl;
+                url = storeHost + _httpContext.Request.RawUrl;
             }
             else
             {
-                url = HttpContext.Current.Request.Url.GetLeftPart(UriPartial.Path);
+                url = _httpContext.Request.Url.GetLeftPart(UriPartial.Path);
             }
             url = url.ToLowerInvariant();
             return url;
@@ -90,12 +102,12 @@ namespace Nop.Core
         public virtual bool IsCurrentConnectionSecured()
         {
             bool useSsl = false;
-            if (HttpContext.Current != null && HttpContext.Current.Request != null)
+            if (_httpContext != null && _httpContext.Request != null)
             {
-                useSsl = HttpContext.Current.Request.IsSecureConnection;
+                useSsl = _httpContext.Request.IsSecureConnection;
                 //when your hosting uses a load balancer on their server then the Request.IsSecureConnection is never got set to true, use the statement below
                 //just uncomment it
-                //useSSL = HttpContext.Current.Request.ServerVariables["HTTP_CLUSTER_HTTPS"] == "on" ? true : false;
+                //useSSL = _httpContext.Request.ServerVariables["HTTP_CLUSTER_HTTPS"] == "on" ? true : false;
             }
 
             return useSsl;
@@ -122,9 +134,9 @@ namespace Nop.Core
             string tmpS = string.Empty;
             try
             {
-                if (HttpContext.Current.Request.ServerVariables[name] != null)
+                if (_httpContext.Request.ServerVariables[name] != null)
                 {
-                    tmpS = HttpContext.Current.Request.ServerVariables[name];
+                    tmpS = _httpContext.Request.ServerVariables[name];
                 }
             }
             catch
@@ -141,7 +153,21 @@ namespace Nop.Core
         /// <returns>Store host location</returns>
         public virtual string GetStoreHost(bool useSsl)
         {
-            string result = "http://" + ServerVariables("HTTP_HOST");
+            var httpHost = ServerVariables("HTTP_HOST");
+            var result = "";
+            if (!String.IsNullOrEmpty(httpHost))
+            {
+                result = "http://" + httpHost;
+            }
+            else
+            {
+                //HTTP_HOST variable is not available.
+                //It's possible only when HttpContext is not available (for example, running in a schedule task)
+                //so let's resolve StoreInformationSettings here.
+                //Do not inject it via contructor because it'll break the installation (settings are not available at that moment)
+                var storeSettings = EngineContext.Current.Resolve<StoreInformationSettings>();
+                result = storeSettings.StoreUrl;
+            }
             if (!result.EndsWith("/"))
                 result += "/";
             if (useSsl)
@@ -218,7 +244,8 @@ namespace Nop.Core
             string result = GetStoreHost(useSsl);
             if (result.EndsWith("/"))
                 result = result.Substring(0, result.Length - 1);
-            result = result + HttpContext.Current.Request.ApplicationPath;
+            if (_httpContext != null && _httpContext.Request != null)
+                result = result + _httpContext.Request.ApplicationPath;
             if (!result.EndsWith("/"))
                 result += "/";
 
@@ -258,6 +285,8 @@ namespace Nop.Core
                 case ".bmp":
                 case ".css":
                 case ".gif":
+                case ".htm":
+                case ".html":
                 case ".ico":
                 case ".jpeg":
                 case ".jpg":
@@ -278,19 +307,15 @@ namespace Nop.Core
         /// <returns>The physical path. E.g. "c:\inetpub\wwwroot\bin"</returns>
         public virtual string MapPath(string path)
         {
-            if (HttpContext.Current != null)
+            if (HostingEnvironment.IsHosted)
             {
+                //hosted
                 return HostingEnvironment.MapPath(path);
             }
             else
             {
+                //not hosted. For example, run in unit tests
                 string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-                int binIndex = baseDirectory.IndexOf("\\bin\\");
-                if (binIndex >= 0)
-                    baseDirectory = baseDirectory.Substring(0, binIndex);
-                else if (baseDirectory.EndsWith("\\bin"))
-                    baseDirectory = baseDirectory.Substring(0, baseDirectory.Length - 4);
-
                 path = path.Replace("~/", "").TrimStart('/').Replace('/', '\\');
                 return Path.Combine(baseDirectory, path);
             }
@@ -301,9 +326,9 @@ namespace Nop.Core
         /// </summary>
         /// <param name="url">Url to modify</param>
         /// <param name="queryStringModification">Query string modification</param>
-        /// <param name="targetLocationModification">Target location modification</param>
+        /// <param name="anchor">Anchor</param>
         /// <returns>New url</returns>
-        public virtual string ModifyQueryString(string url, string queryStringModification, string targetLocationModification)
+        public virtual string ModifyQueryString(string url, string queryStringModification, string anchor)
         {
             if (url == null)
                 url = string.Empty;
@@ -313,9 +338,9 @@ namespace Nop.Core
                 queryStringModification = string.Empty;
             queryStringModification = queryStringModification.ToLowerInvariant();
 
-            if (targetLocationModification == null)
-                targetLocationModification = string.Empty;
-            targetLocationModification = targetLocationModification.ToLowerInvariant();
+            if (anchor == null)
+                anchor = string.Empty;
+            anchor = anchor.ToLowerInvariant();
 
 
             string str = string.Empty;
@@ -386,9 +411,9 @@ namespace Nop.Core
                     str = queryStringModification;
                 }
             }
-            if (!string.IsNullOrEmpty(targetLocationModification))
+            if (!string.IsNullOrEmpty(anchor))
             {
-                str2 = targetLocationModification;
+                str2 = anchor;
             }
             return (url + (string.IsNullOrEmpty(str) ? "" : ("?" + str)) + (string.IsNullOrEmpty(str2) ? "" : ("#" + str2))).ToLowerInvariant();
         }
@@ -467,8 +492,8 @@ namespace Nop.Core
         public virtual T QueryString<T>(string name)
         {
             string queryParam = null;
-            if (HttpContext.Current != null && HttpContext.Current.Request.QueryString[name] != null)
-                queryParam = HttpContext.Current.Request.QueryString[name];
+            if (_httpContext != null && _httpContext.Request.QueryString[name] != null)
+                queryParam = _httpContext.Request.QueryString[name];
 
             if (!String.IsNullOrEmpty(queryParam))
                 return CommonHelper.To<T>(queryParam);
@@ -479,37 +504,47 @@ namespace Nop.Core
         /// <summary>
         /// Restart application domain
         /// </summary>
+        /// <param name="makeRedirect">A value indicating whether </param>
         /// <param name="redirectUrl">Redirect URL; empty string if you want to redirect to the current page URL</param>
-        public virtual void RestartAppDomain(string redirectUrl = "")
+        public virtual void RestartAppDomain(bool makeRedirect = false, string redirectUrl = "")
         {
             if (CommonHelper.GetTrustLevel() > AspNetHostingPermissionLevel.Medium)
             {
                 //full trust
                 HttpRuntime.UnloadAppDomain();
+
+                TryWriteGlobalAsax();
             }
             else
             {
                 //medium trust
                 bool success = TryWriteWebConfig();
-
                 if (!success)
                 {
-                    throw new NopException("nopCommerce needs to be restarted due to a configuration change, but was unable to do so.\r\n" +
-                        "To prevent this issue in the future, a change to the web server configuration is required:\r\n" +
-                        "- run the application in a full trust environment, or\r\n" +
+                    throw new NopException("nopCommerce needs to be restarted due to a configuration change, but was unable to do so." + Environment.NewLine +
+                        "To prevent this issue in the future, a change to the web server configuration is required:" + Environment.NewLine + 
+                        "- run the application in a full trust environment, or" + Environment.NewLine +
                         "- give the application write access to the 'web.config' file.");
+                }
+
+                success = TryWriteGlobalAsax();
+                if (!success)
+                {
+                    throw new NopException("nopCommerce needs to be restarted due to a configuration change, but was unable to do so." + Environment.NewLine +
+                        "To prevent this issue in the future, a change to the web server configuration is required:" + Environment.NewLine +
+                        "- run the application in a full trust environment, or" + Environment.NewLine +
+                        "- give the application write access to the 'Global.asax' file.");
                 }
             }
 
             // If setting up extensions/modules requires an AppDomain restart, it's very unlikely the
             // current request can be processed correctly.  So, we redirect to the same URL, so that the
             // new request will come to the newly started AppDomain.
-            var httpContext = HttpContext.Current;
-            if (httpContext != null)
+            if (_httpContext != null && makeRedirect)
             {
                 if (String.IsNullOrEmpty(redirectUrl))
                     redirectUrl = GetThisPageUrl(true);
-                httpContext.Response.Redirect(redirectUrl, true /*endResponse*/);
+                _httpContext.Response.Redirect(redirectUrl, true /*endResponse*/);
             }
         }
 
@@ -528,20 +563,43 @@ namespace Nop.Core
             }
         }
 
+        private bool TryWriteGlobalAsax()
+        {
+            try
+            {
+                //When a new plugin is dropped in the Plugins folder and is installed into nopCommerce, 
+                //even if the plugin has registered routes for its controllers, 
+                //these routes will not be working as the MVC framework couldn't 
+                //find the new controller types and couldn't instantiate the requested controller. 
+                //That's why you get these nasty errors 
+                //i.e "Controller does not implement IController".
+                //The issue is described here: http://www.nopcommerce.com/boards/t/10969/nop-20-plugin.aspx?p=4#51318
+                //The solutino is to touch global.asax file
+                File.SetLastWriteTimeUtc(MapPath("~/global.asax"), DateTime.UtcNow);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         /// <summary>
         /// Get a value indicating whether the request is made by search engine (web crawler)
         /// </summary>
-        /// <param name="request">HTTP Request</param>
+        /// <param name="context">HTTP context</param>
         /// <returns>Result</returns>
-        public virtual bool IsSearchEngine(HttpRequestBase request)
+        public virtual bool IsSearchEngine(HttpContextBase context)
         {
-            if (request == null)
+            //we accept HttpContext instead of HttpRequest and put required logic in try-catch block
+            //more info: http://www.nopcommerce.com/boards/t/17711/unhandled-exception-request-is-not-available-in-this-context.aspx
+            if (context == null)
                 return false;
 
             bool result = false;
             try
             {
-                result = request.Browser.Crawler;
+                result = context.Request.Browser.Crawler;
                 if (!result)
                 {
                     //put any additional known crawlers in the Regex below for some custom validation
@@ -554,6 +612,35 @@ namespace Nop.Core
                 Debug.WriteLine(exc);
             }
             return result;
+        }
+
+        /// <summary>
+        /// Gets a value that indicates whether the client is being redirected to a new location
+        /// </summary>
+        public virtual bool IsRequestBeingRedirected
+        {
+            get
+            {
+                var response = _httpContext.Response;
+                return response.IsRequestBeingRedirected;   
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value that indicates whether the client is being redirected to a new location using POST
+        /// </summary>
+        public virtual bool IsPostBeingDone
+        {
+            get
+            {
+                if (_httpContext.Items["nop.IsPOSTBeingDone"] == null)
+                    return false;
+                return Convert.ToBoolean(_httpContext.Items["nop.IsPOSTBeingDone"]);
+            }
+            set
+            {
+                _httpContext.Items["nop.IsPOSTBeingDone"] = value;
+            }
         }
     }
 }

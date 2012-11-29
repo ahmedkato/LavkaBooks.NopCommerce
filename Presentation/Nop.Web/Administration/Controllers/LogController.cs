@@ -5,19 +5,18 @@ using System.Web.Mvc;
 using Nop.Admin.Models.Logging;
 using Nop.Core;
 using Nop.Core.Domain.Logging;
-using Nop.Services.Customers;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
+using Nop.Services.Security;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
 
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class LogController : BaseNopController
+    public partial class LogController : BaseNopController
     {
         private readonly ILogger _logger;
         private readonly IWorkContext _workContext;
@@ -82,7 +81,7 @@ namespace Nop.Admin.Controllers
                         FullMessage = x.FullMessage,
                         IpAddress = x.IpAddress,
                         CustomerId = x.CustomerId,
-                        CustomerName = x.Customer!= null ? x.Customer.GetFullName() : null,
+                        CustomerEmail = x.Customer != null ? x.Customer.Email : null,
                         PageUrl = x.PageUrl,
                         ReferrerUrl = x.ReferrerUrl,
                         CreatedOn = _dateTimeHelper.ConvertToUserTime(x.CreatedOnUtc, DateTimeKind.Utc)
@@ -116,7 +115,8 @@ namespace Nop.Admin.Controllers
 
             var log = _logger.GetLogById(id);
             if (log == null)
-                throw new ArgumentException("No log found with the specified id", "id");
+                //No log found with the specified id
+                return RedirectToAction("List");
 
             var model = new LogModel()
             {
@@ -126,7 +126,7 @@ namespace Nop.Admin.Controllers
                 FullMessage = log.FullMessage,
                 IpAddress = log.IpAddress,
                 CustomerId = log.CustomerId,
-                CustomerName = log.Customer != null ? log.Customer.GetFullName() : null,
+                CustomerEmail = log.Customer != null ? log.Customer.Email : null,
                 PageUrl = log.PageUrl,
                 ReferrerUrl = log.ReferrerUrl,
                 CreatedOn = _dateTimeHelper.ConvertToUserTime(log.CreatedOnUtc, DateTimeKind.Utc)
@@ -135,15 +135,16 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageSystemLog))
                 return AccessDeniedView();
 
             var log = _logger.GetLogById(id);
             if (log == null)
-                throw new ArgumentException("No log found with the specified id", "id");
+                //No log found with the specified id
+                return RedirectToAction("List");
 
             _logger.DeleteLog(log);
 
@@ -152,27 +153,20 @@ namespace Nop.Admin.Controllers
             return RedirectToAction("List");
         }
 
-        //TODO: currently, only records within current page are passed, 
-        //need to somehow pass all of the records
-        [HttpPost, ActionName("List")]
-        [FormValueRequired("delete-selected")]
-        public ActionResult DeleteSelected(LogListModel model, ICollection<int> checkedRecords)
+        [HttpPost]
+        public ActionResult DeleteSelected(ICollection<int> selectedIds)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageSystemLog))
                 return AccessDeniedView();
 
-            if (checkedRecords != null)
+            if (selectedIds != null)
             {
-                foreach (var logId in checkedRecords)
-                {
-                    var logRecord = _logger.GetLogById(logId);
-                    _logger.DeleteLog(logRecord);
-                }
+                var logItems = _logger.GetLogByIds(selectedIds.ToArray());
+                foreach (var logItem in logItems)
+                    _logger.DeleteLog(logItem);
             }
 
-            //return View(model);
-            //refresh page 
-            return List();
+            return Json(new { Result = true});
         }
     }
 }

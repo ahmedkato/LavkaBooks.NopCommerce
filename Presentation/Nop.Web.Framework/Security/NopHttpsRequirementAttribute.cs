@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Web.Mvc;
 using Nop.Core;
+using Nop.Core.Data;
+using Nop.Core.Domain.Security;
 using Nop.Core.Infrastructure;
 
 namespace Nop.Web.Framework.Security
@@ -16,7 +18,10 @@ namespace Nop.Web.Framework.Security
         {
             if (filterContext == null)
                 throw new ArgumentNullException("filterContext");
-            
+
+            //don't apply filter to child methods
+            if (filterContext.IsChildAction)
+                return;
             
             // only redirect for GET requests, 
             // otherwise the browser might not propagate the verb and request body correctly.
@@ -25,6 +30,14 @@ namespace Nop.Web.Framework.Security
 
             var currentConnectionSecured = filterContext.HttpContext.Request.IsSecureConnection;
             //currentConnectionSecured = webHelper.IsCurrentConnectionSecured();
+
+
+            if (!DataSettingsHelper.DatabaseIsInstalled())
+                return;
+            var securitySettings = EngineContext.Current.Resolve<SecuritySettings>();
+            if (securitySettings.ForceSslForAllPages)
+                //all pages are forced to be SSL no matter of the specified value
+                this.SslRequirement = SslRequirement.Yes;
 
             switch (this.SslRequirement)
             {
@@ -54,6 +67,11 @@ namespace Nop.Web.Framework.Security
                             string url = webHelper.GetThisPageUrl(true, false);
                             filterContext.Result = new RedirectResult(url);
                         }
+                    }
+                    break;
+                case SslRequirement.NoMatter:
+                    {
+                        //do nothing
                     }
                     break;
                 default:

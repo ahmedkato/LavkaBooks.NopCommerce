@@ -1,5 +1,5 @@
 ﻿@model TopicModel
-@using Nop.Web.Models.Topics
+@using Nop.Web.Models.Topics;
 @{
     var isPopup = ViewBag.IsPopup;
     if (isPopup == null || isPopup == false)
@@ -28,27 +28,27 @@
     }    
     <script type="text/javascript">
         $(document).ready(function () {
-            $('#phTopic').hide();
-            $('#phPassword #password').select().focus();
+            $('#ph-topic').hide();
+            $('#ph-password #password').select().focus();
         });
         function OnAuthenticateSuccess(context) {
             if (context.Authenticated) {
-                $('#phTitle .page-title h1').html(context.Title);
-                if ($('#phTitle .page-title h1').text().length == 0) {
-                    $('#phTitle').hide();
+                $('#ph-title .page-title h1').html(context.Title);
+                if ($('#ph-title .page-title h1').text().length == 0) {
+                    $('#ph-title').hide();
                 }
-                $('#phTopic .topicpage-body').html(context.Body);
-                $('#phPassword').hide();
-                $('#phTopic').show();
+                $('#ph-topic .page-body').html(context.Body);
+                $('#ph-password').hide();
+                $('#ph-topic').show();
             }
             else {
-                $('#passworderror').text(context.Error);
-                $('#phPassword #password').select().focus();
+                $('#password-error').text(context.Error);
+                $('#ph-password #password').select().focus();
             }
         }
     </script>
-    <div id="phPassword">
-        @using (Ajax.BeginForm("Authenticate", new AjaxOptions
+    <div id="ph-password">
+        @using (Ajax.BeginRouteForm("TopicAuthenticate", new AjaxOptions
         {
             HttpMethod = "Post",
             OnSuccess = "OnAuthenticateSuccess",
@@ -56,28 +56,32 @@
         }))
         {
             @Html.HiddenFor(model => model.Id)
-            @T("Topic.EnterPassword")
-            <br />
-            @Html.Password("password", null, new { @class = "textBox" })
-            <input type="submit" id="btnPassword" value = @T("Topic.Button") class="useragreementbutton"/>            
-            <span id="authenticate-progress" style="display: none;">@T("Common.Wait...")
-                <img src='@Url.Content("~/Content/Images/ajax_loader_small.gif")' alt="@T("Common.Wait...")" />
-            </span>
-            <br />
-            <span id="passworderror"></span>
+            <div class="enter-password-title">
+                @T("Topic.EnterPassword")
+            </div>
+            <div class="enter-password-form">
+                @Html.Password("password")
+                <input type="submit" value="@T("Topic.Button")" class="button-1 topic-password-button"/>
+                <span id="authenticate-progress" style="display: none;">@T("Common.Wait...")
+                    <img src='@Url.Content("~/Content/Images/ajax_loader_small.gif")' alt="@T("Common.Wait...")" />
+                </span>
+            </div>
+            <div class="password-error">
+                <span id="password-error"></span>
+            </div>
         }
     </div>
 }
-<div class="topicpage" id="phTopic">
-    <div id="phTitle">
+<div class="page topic-page" id="ph-topic">
+    <div id="ph-title">
         <div class="page-title">
             <h1>
-                @Html.Raw(@Model.Title)</h1>
+                @Model.Title</h1>
         </div>
         <div class="clear">
         </div>
     </div>
-    <div class="topicpage-body">
+    <div class="page-body">
         @Html.Raw(Model.Body)
     </div>
 </div>

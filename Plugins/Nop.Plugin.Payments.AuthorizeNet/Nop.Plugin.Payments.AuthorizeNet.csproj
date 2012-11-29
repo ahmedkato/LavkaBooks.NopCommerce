@@ -31,9 +31,8 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="FluentValidation, Version=2.0.0.0, Culture=neutral, PublicKeyToken=a82054b837897c66, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\packages\FluentValidation.2.0.0.0\lib\NET35\FluentValidation.dll</HintPath>
+    <Reference Include="FluentValidation">
+      <HintPath>..\..\packages\FluentValidation.3.4.0.0\lib\Net40\FluentValidation.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
@@ -42,7 +41,7 @@
     <Reference Include="System.Web" />
     <Reference Include="System.Web.Mvc, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>C:\Program Files\Microsoft ASP.NET\ASP.NET MVC 3\Assemblies\System.Web.Mvc.dll</HintPath>
+      <HintPath>..\..\packages\aspnetmvc\System.Web.Mvc.dll</HintPath>
     </Reference>
     <Reference Include="System.Web.Services" />
     <Reference Include="System.Xml.Linq" />
@@ -91,10 +90,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
+    <EmbeddedResource Include="Views\PaymentAuthorizeNet\PaymentInfo.Mobile.cshtml" />
     <None Include="Web References\net.authorize.api\ANetApiResponseType.datasource">
       <DependentUpon>Reference.map</DependentUpon>
     </None>
@@ -169,7 +170,6 @@
     <EmbeddedResource Include="Views\PaymentAuthorizeNet\Configure.cshtml" />
     <EmbeddedResource Include="Views\PaymentAuthorizeNet\PaymentInfo.cshtml" />
     <Content Include="Notes.txt" />
-    <Content Include="packages.config" />
     <None Include="Web References\net.authorize.api\Service.wsdl" />
     <None Include="Web References\net.authorize.api\UpdateCustomerPaymentProfileResponseType.datasource">
       <DependentUpon>Reference.map</DependentUpon>
@@ -192,9 +192,6 @@
     <Content Include="Description.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-  </ItemGroup>
-  <ItemGroup>
-    <WCFMetadata Include="Service References\" />
   </ItemGroup>
   <ItemGroup>
     <WebReferences Include="Web References\" />

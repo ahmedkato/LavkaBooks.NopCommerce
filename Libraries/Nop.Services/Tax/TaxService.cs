@@ -1,16 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Tax;
-using Nop.Core.Events;
 using Nop.Core.Plugins;
 using Nop.Services.Common;
-using System.Text.RegularExpressions;
 
 namespace Nop.Services.Tax
 {
@@ -25,7 +24,6 @@ namespace Nop.Services.Tax
         private readonly IWorkContext _workContext;
         private readonly TaxSettings _taxSettings;
         private readonly IPluginFinder _pluginFinder;
-        private readonly IEventPublisher _eventPublisher;
 
         #endregion
 
@@ -38,18 +36,15 @@ namespace Nop.Services.Tax
         /// <param name="workContext">Work context</param>
         /// <param name="taxSettings">Tax settings</param>
         /// <param name="pluginFinder">Plugin finder</param>
-        /// <param name="eventPublisher"></param>
         public TaxService(IAddressService addressService,
             IWorkContext workContext,
             TaxSettings taxSettings,
-            IPluginFinder pluginFinder,
-            IEventPublisher eventPublisher)
+            IPluginFinder pluginFinder)
         {
             _addressService = addressService;
             _workContext = workContext;
             _taxSettings = taxSettings;
             _pluginFinder = pluginFinder;
-            _eventPublisher = eventPublisher;
         }
 
         #endregion
@@ -238,11 +233,18 @@ namespace Nop.Services.Tax
 
             //active tax provider
             var activeTaxProvider = LoadActiveTaxProvider();
+            if (activeTaxProvider == null)
+                throw new NopException("Active tax provider cannot be loaded. Please select at least one in admin area.");
 
             //get tax rate
             var calculateTaxResult = activeTaxProvider.GetTaxRate(calculateTaxRequest);
             if (calculateTaxResult.Success)
+            {
+                //ensure that tax is equal or greater than zero
+                if (calculateTaxResult.TaxRate < decimal.Zero)
+                    calculateTaxResult.TaxRate = decimal.Zero;
                 return calculateTaxResult.TaxRate;
+            }
             else
                 return decimal.Zero;
         }
@@ -612,10 +614,6 @@ namespace Nop.Services.Tax
             name = string.Empty;
             address = string.Empty;
 
-            if (vatNumber == null)
-                vatNumber = string.Empty;
-            vatNumber = vatNumber.Trim();
-
             if (String.IsNullOrEmpty(twoLetterIsoCode))
                 return VatNumberStatus.Empty;
 
@@ -644,12 +642,21 @@ namespace Nop.Services.Tax
             name = string.Empty;
             address = string.Empty;
 
+            if (vatNumber == null)
+                vatNumber = string.Empty;
+            vatNumber = vatNumber.Trim().Replace(" ", "");
+
+            if (twoLetterIsoCode == null)
+                twoLetterIsoCode = string.Empty;
+            if (!String.IsNullOrEmpty(twoLetterIsoCode))
+                //The service returns INVALID_INPUT for country codes that are not uppercase.
+                twoLetterIsoCode = twoLetterIsoCode.ToUpper();
+
             EuropaCheckVatService.checkVatService s = null;
 
             try
             {
                 bool valid;
-                vatNumber = vatNumber.Trim().Replace(" ", "");
 
                 s = new EuropaCheckVatService.checkVatService();
                 s.checkVat(ref twoLetterIsoCode, ref vatNumber, out valid, out name, out address);

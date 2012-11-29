@@ -18,8 +18,9 @@
         $("#@Html.FieldIdFor(model => model.IsShipEnabled)").click(toggleShipping);
         $("#@Html.FieldIdFor(model => model.IsTaxExempt)").click(toggleTax);
         $("#@Html.FieldIdFor(model => model.ManageInventoryMethodId)").change(toggleManageStock);
+        $("#@Html.FieldIdFor(model => model.BackorderModeId)").change(toggleManageStock);
         $("#@Html.FieldIdFor(model => model.DisplayStockAvailability)").click(toggleManageStock);
-
+        
         toggleRequireOtherProducts();
         toggleGiftCard();
         toggleCustomerEntersPrice();
@@ -31,7 +32,7 @@
     });
 
     function toggleRequireOtherProducts() {
-        if (getE('@Html.FieldIdFor(model => model.RequireOtherProducts)').checked) {
+        if ($('#@Html.FieldIdFor(model => model.RequireOtherProducts)').is(':checked')) {
             $('#pnlRequiredProductVariantIds').show();
             $('#pnlAutomaticallyAddRequiredProductVariants').show();
         }
@@ -42,7 +43,7 @@
     }
 
     function toggleGiftCard() {
-        if (getE('@Html.FieldIdFor(model => model.IsGiftCard)').checked) {
+        if ($('#@Html.FieldIdFor(model => model.IsGiftCard)').is(':checked')) {
             $('#pnlGiftCardType').show();
         }
         else {
@@ -51,7 +52,7 @@
     }
 
     function toggleCustomerEntersPrice() {
-        if (getE('@Html.FieldIdFor(model => model.CustomerEntersPrice)').checked) {
+        if ($('#@Html.FieldIdFor(model => model.CustomerEntersPrice)').is(':checked')) {
             $('#pnlMinimumCustomerEnteredPrice').show();
             $('#pnlMaximumCustomerEnteredPrice').show();
         }
@@ -62,11 +63,11 @@
     }
 
     function toggleDownloadableProduct() {
-        if (getE('@Html.FieldIdFor(model => model.IsDownload)').checked) {
+        if ($('#@Html.FieldIdFor(model => model.IsDownload)').is(':checked')) {
 
             $('#pnlDownloadFile').show();
             $('#pnlUnlimitedDownloads').show();
-            if (getE('@Html.FieldIdFor(model => model.UnlimitedDownloads)').checked) {
+            if ($('#@Html.FieldIdFor(model => model.UnlimitedDownloads)').is(':checked')) {
                 $('#pnlMaxNumberOfDownloads').hide();
             }
             else {
@@ -76,7 +77,7 @@
             $('#pnlDownloadActivationType').show();
 
             $('#pnlHasUserAgreement').show();
-            if (getE('@Html.FieldIdFor(model => model.HasUserAgreement)').checked) {
+            if ($('#@Html.FieldIdFor(model => model.HasUserAgreement)').is(':checked')) {
                 $('#pnlUserAgreementText').show();
             }
             else {
@@ -85,7 +86,7 @@
 
             $('#pnlHasSampleDownload').show();
 
-            if (getE('@Html.FieldIdFor(model => model.HasSampleDownload)').checked) {
+            if ($('#@Html.FieldIdFor(model => model.HasSampleDownload)').is(':checked')) {
                 $('#pnlSampleDownloadFile').show();
             }
             else {
@@ -106,7 +107,7 @@
     }
 
     function toggleShipping() {
-        if (getE('@Html.FieldIdFor(model => model.IsShipEnabled)').checked) {
+        if ($('#@Html.FieldIdFor(model => model.IsShipEnabled)').is(':checked')) {
             $('#pnlFreeShipping').show();
             $('#pnlAdditionalShippingCharge').show();
             $('#pnlWeight').show();
@@ -125,7 +126,7 @@
     }
 
     function toggleRecurring() {
-        if (getE('@Html.FieldIdFor(model => model.IsRecurring)').checked) {
+        if ($('#@Html.FieldIdFor(model => model.IsRecurring)').is(':checked')) {
             $('#pnlCycleLength').show();
             $('#pnlCyclePeriod').show();
             $('#pnlTotalCycles').show();
@@ -138,7 +139,7 @@
     }
 
     function toggleTax() {
-        if (getE('@Html.FieldIdFor(model => model.IsTaxExempt)').checked) {
+        if ($('#@Html.FieldIdFor(model => model.IsTaxExempt)').is(':checked')) {
             $('#pnlTaxCategory').hide();
         }
         else {
@@ -147,22 +148,22 @@
     }
 
     function toggleManageStock() {
-        var selectedManageInventoryMethod = document.getElementById('@Html.FieldIdFor(model => model.ManageInventoryMethodId)');
-        var selectedManageInventoryMethodId = selectedManageInventoryMethod.options[selectedManageInventoryMethod.selectedIndex].value;
-        if (selectedManageInventoryMethodId == 0) {
+        var selectedManageInventoryMethodId = $("#@Html.FieldIdFor(model => model.ManageInventoryMethodId)").val();
+        if (selectedManageInventoryMethodId == @(((int)ManageInventoryMethod.DontManageStock).ToString())) {
             $('#pnlStockQuantity').hide();
             $('#pnlDisplayStockAvailability').hide();
             $('#pnlDisplayStockQuantity').hide();
             $('#pnlMinStockQuantity').hide();
             $('#pnlLowStockActivity').hide();
             $('#pnlNotifyForQuantityBelow').hide();
+            $('#pnlAllowBackInStockSubscriptions').hide();            
             $('#pnlBackorders').hide();
         }
-        else if (selectedManageInventoryMethodId == 1) {
+        else if (selectedManageInventoryMethodId == @(((int)ManageInventoryMethod.ManageStock).ToString())) {
             $('#pnlStockQuantity').show();
             $('#pnlDisplayStockAvailability').show();
 
-            if (getE('@Html.FieldIdFor(model => model.DisplayStockAvailability)').checked) {
+            if ($('#@Html.FieldIdFor(model => model.DisplayStockAvailability)').is(':checked')) {
                 $('#pnlDisplayStockQuantity').show();
             }
             else {
@@ -173,6 +174,15 @@
             $('#pnlLowStockActivity').show();
             $('#pnlNotifyForQuantityBelow').show();
             $('#pnlBackorders').show();
+            var selectedBackorderModeId = $("#@Html.FieldIdFor(model => model.BackorderModeId)").val();
+            if (selectedBackorderModeId == @(((int)BackorderMode.NoBackorders).ToString())) {
+                //no backorders
+                $('#pnlAllowBackInStockSubscriptions').show();
+            }
+            else {
+                //backorders are enabled
+                $('#pnlAllowBackInStockSubscriptions').hide();
+            }
         }
         else {
             $('#pnlStockQuantity').hide();
@@ -181,6 +191,7 @@
             $('#pnlMinStockQuantity').hide();
             $('#pnlLowStockActivity').hide();
             $('#pnlNotifyForQuantityBelow').hide();
+            $('#pnlAllowBackInStockSubscriptions').hide();
             $('#pnlBackorders').hide();
         }
     }
@@ -286,6 +297,15 @@
             @Html.ValidationMessageFor(model => model.ManufacturerPartNumber)
         </td>
     </tr>
+    <tr>
+        <td class="adminTitle">
+            @Html.NopLabelFor(model => model.Gtin):
+        </td>
+        <td class="adminData">
+            @Html.EditorFor(model => model.Gtin)
+            @Html.ValidationMessageFor(model => model.Gtin)
+        </td>
+    </tr>
     <tr class="adminSeparator">
         <td colspan="2">
             <hr />
@@ -320,6 +340,33 @@
     </tr>
     <tr>
         <td class="adminTitle">
+            @Html.NopLabelFor(model => model.SpecialPrice):
+        </td>
+        <td class="adminData">
+            @Html.EditorFor(model => model.SpecialPrice) [@Model.PrimaryStoreCurrencyCode]
+            @Html.ValidationMessageFor(model => model.SpecialPrice)
+        </td>
+    </tr>
+    <tr>
+        <td class="adminTitle">
+            @Html.NopLabelFor(model => model.SpecialPriceStartDateTimeUtc):
+        </td>
+        <td class="adminData">
+            @Html.EditorFor(model => model.SpecialPriceStartDateTimeUtc)
+            @Html.ValidationMessageFor(model => model.SpecialPriceStartDateTimeUtc)
+        </td>
+    </tr>
+    <tr>
+        <td class="adminTitle">
+            @Html.NopLabelFor(model => model.SpecialPriceEndDateTimeUtc):
+        </td>
+        <td class="adminData">
+            @Html.EditorFor(model => model.SpecialPriceEndDateTimeUtc)
+            @Html.ValidationMessageFor(model => model.SpecialPriceEndDateTimeUtc)
+        </td>
+    </tr>
+    <tr>
+        <td class="adminTitle">
             @Html.NopLabelFor(model => model.DisableBuyButton):
         </td>
         <td class="adminData">
@@ -334,6 +381,15 @@
         <td class="adminData">
             @Html.EditorFor(model => model.DisableWishlistButton)
             @Html.ValidationMessageFor(model => model.DisableWishlistButton)
+        </td>
+    </tr>
+    <tr>
+        <td class="adminTitle">
+            @Html.NopLabelFor(model => model.AvailableForPreOrder):
+        </td>
+        <td class="adminData">
+            @Html.EditorFor(model => model.AvailableForPreOrder)
+            @Html.ValidationMessageFor(model => model.AvailableForPreOrder)
         </td>
     </tr>
     <tr>
@@ -749,6 +805,15 @@
             @Html.ValidationMessageFor(model => model.BackorderModeId)
         </td>
     </tr>
+    <tr id="pnlAllowBackInStockSubscriptions">
+        <td class="adminTitle">
+            @Html.NopLabelFor(model => model.AllowBackInStockSubscriptions):
+        </td>
+        <td class="adminData">
+            @Html.EditorFor(model => model.AllowBackInStockSubscriptions)
+            @Html.ValidationMessageFor(model => model.AllowBackInStockSubscriptions)
+        </td>
+    </tr>
     <tr>
         <td class="adminTitle">
             @Html.NopLabelFor(model => model.OrderMinimumQuantity):
@@ -765,6 +830,15 @@
         <td class="adminData">
             @Html.EditorFor(model => model.OrderMaximumQuantity)
             @Html.ValidationMessageFor(model => model.OrderMaximumQuantity)
+        </td>
+    </tr>
+    <tr>
+        <td class="adminTitle">
+            @Html.NopLabelFor(model => model.AllowedQuantities):
+        </td>
+        <td class="adminData">
+            @Html.EditorFor(model => model.AllowedQuantities)
+            @Html.ValidationMessageFor(model => model.AllowedQuantities)
         </td>
     </tr>
     <tr class="adminSeparator">

@@ -4,7 +4,7 @@ using System.Linq;
 using Nop.Core.Caching;
 using Nop.Core.Data;
 using Nop.Core.Domain.Messages;
-using Nop.Core.Events;
+using Nop.Services.Events;
 
 namespace Nop.Services.Messages
 {
@@ -34,7 +34,7 @@ namespace Nop.Services.Messages
         /// </summary>
         /// <param name="cacheManager">Cache manager</param>
         /// <param name="messageTemplateRepository">Message template repository</param>
-        /// <param name="eventPublisher"></param>
+        /// <param name="eventPublisher">Event published</param>
         public MessageTemplateService(ICacheManager cacheManager,
             IRepository<MessageTemplate> messageTemplateRepository,
             IEventPublisher eventPublisher)

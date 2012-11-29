@@ -4,9 +4,11 @@ using System.Web.Mvc;
 using Nop.Admin.Models.Customers;
 using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
+using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Directory;
 using Nop.Services.Helpers;
+using Nop.Services.Localization;
 using Nop.Services.Security;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
@@ -14,7 +16,7 @@ using Telerik.Web.Mvc;
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class OnlineCustomerController : BaseNopController
+    public partial class OnlineCustomerController : BaseNopController
     {
         #region Fields
 
@@ -24,6 +26,7 @@ namespace Nop.Admin.Controllers
         private readonly CustomerSettings _customerSettings;
         private readonly AdminAreaSettings _adminAreaSettings;
         private readonly IPermissionService _permissionService;
+        private readonly ILocalizationService _localizationService;
 
         #endregion
 
@@ -32,7 +35,7 @@ namespace Nop.Admin.Controllers
         public OnlineCustomerController(ICustomerService customerService,
             IGeoCountryLookup geoCountryLookup, IDateTimeHelper dateTimeHelper,
             CustomerSettings customerSettings, AdminAreaSettings adminAreaSettings,
-            IPermissionService permissionService)
+            IPermissionService permissionService, ILocalizationService localizationService)
         {
             this._customerService = customerService;
             this._geoCountryLookup = geoCountryLookup;
@@ -40,6 +43,7 @@ namespace Nop.Admin.Controllers
             this._customerSettings = customerSettings;
             this._adminAreaSettings = adminAreaSettings;
             this._permissionService = permissionService;
+            this._localizationService = localizationService;
         }
 
         #endregion
@@ -61,7 +65,7 @@ namespace Nop.Admin.Controllers
                     return new OnlineCustomerModel()
                     {
                         Id = x.Id,
-                        CustomerInfo = x.IsRegistered() ? x.Email : "Guest",
+                        CustomerInfo = x.IsRegistered() ? x.Email : _localizationService.GetResource("Admin.Customers.Guest"),
                         LastIpAddress = x.LastIpAddress,
                         Location = _geoCountryLookup.LookupCountryName(x.LastIpAddress),
                         LastActivityDate = _dateTimeHelper.ConvertToUserTime(x.LastActivityDateUtc, DateTimeKind.Utc),
@@ -88,7 +92,7 @@ namespace Nop.Admin.Controllers
                     return new OnlineCustomerModel()
                     {
                         Id = x.Id,
-                        CustomerInfo = x.IsRegistered() ? x.Email : "Guest",
+                        CustomerInfo = x.IsRegistered() ? x.Email : _localizationService.GetResource("Admin.Customers.Guest"),
                         LastIpAddress = x.LastIpAddress,
                         Location = _geoCountryLookup.LookupCountryName(x.LastIpAddress),
                         LastActivityDate = _dateTimeHelper.ConvertToUserTime(x.LastActivityDateUtc, DateTimeKind.Utc),

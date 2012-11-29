@@ -1,6 +1,9 @@
 ﻿@model Telerik.Web.Mvc.GridModel<EmailAccountModel>
 @using Telerik.Web.Mvc.UI
-
+@{
+    //page title
+    ViewBag.Title = @T("Admin.Configuration.EmailAccounts").Text;
+}
 <div class="section-header">
     <div class="title">
         <img src="@Url.Content("~/Administration/Content/images/ico-configuration.png")" alt="" />
@@ -26,14 +29,18 @@
                         columns.Bound(x => x.DisplayName)
                             .Width(150)
                             .Centered();
-                        columns.Bound(x => x.IsDefaultEmailAccount).Width(100).ReadOnly();
-                        columns.Command(commands => commands.Select()).Title("Mark as default email account").Width(100);
+                        columns.Bound(x => x.IsDefaultEmailAccount)
+                            .Template(x => x.IsDefaultEmailAccount.ToString().ToLower())
+                            .Width(100)
+                            .ReadOnly();
+                        columns.Command(commands => commands.Select())                            
+                            .Title(T("Admin.Configuration.EmailAccounts.Fields.MarkAsDefaultEmail").Text).Width(100);
                         columns.Bound(x => x.Id)
                             .Template(x => Html.ActionLink(T("Admin.Common.Edit").Text, "Edit", new { id = x.Id }))
                             .ClientTemplate("<a href=\"Edit/<#= Id #>\">" + T("Admin.Common.Edit").Text + "</a>")
                             .Width(50)
                             .Centered()
-                            .HeaderTemplate("Edit")
+                            .HeaderTemplate(T("Admin.Common.Edit").Text)
                             .Filterable(false);
                     })
                     .DataBinding(dataBinding => dataBinding.Ajax().Select("List", "EmailAccount"))

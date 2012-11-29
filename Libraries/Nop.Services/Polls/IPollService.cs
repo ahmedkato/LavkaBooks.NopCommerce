@@ -9,10 +9,6 @@ namespace Nop.Services.Polls
     public partial interface IPollService
     {
         /// <summary>
-        /// Deletes a news
-        /// </summary>
-        /// <param name="newsItem">News item</param>
-        /// <summary>
         /// Gets a poll
         /// </summary>
         /// <param name="pollId">The poll identifier</param>
@@ -69,5 +65,12 @@ namespace Nop.Services.Polls
         /// <param name="pollAnswer">Poll answer</param>
         void DeletePollAnswer(PollAnswer pollAnswer);
 
+        /// <summary>
+        /// Gets a value indicating whether customer already vited for this poll
+        /// </summary>
+        /// <param name="pollId">Poll identifier</param>
+        /// <param name="customerId">Customer identifier</param>
+        /// <returns>Result</returns>
+        bool AlreadyVoted(int pollId, int customerId);
     }
 }

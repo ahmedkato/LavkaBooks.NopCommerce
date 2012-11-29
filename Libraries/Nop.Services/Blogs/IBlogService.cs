@@ -31,24 +31,30 @@ namespace Nop.Services.Blogs
         /// <param name="dateTo">Filter by created date; null if you want to get all records</param>
         /// <param name="pageIndex">Page index</param>
         /// <param name="pageSize">Page size</param>
+        /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Blog posts</returns>
-        PagedList<BlogPost> GetAllBlogPosts(int languageId,
-            DateTime? dateFrom, DateTime? dateTo, int pageIndex, int pageSize);
+        IPagedList<BlogPost> GetAllBlogPosts(int languageId,
+            DateTime? dateFrom, DateTime? dateTo, int pageIndex, int pageSize, bool showHidden = false);
 
         /// <summary>
         /// Gets all blog posts
         /// </summary>
         /// <param name="languageId">Language identifier. 0 if you want to get all news</param>
         /// <param name="tag">Tag</param>
+        /// <param name="pageIndex">Page index</param>
+        /// <param name="pageSize">Page size</param>
+        /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Blog posts</returns>
-        IList<BlogPost> GetAllBlogPostsByTag(int languageId, string tag);
+        IPagedList<BlogPost> GetAllBlogPostsByTag(int languageId, string tag, 
+            int pageIndex, int pageSize, bool showHidden = false);
 
         /// <summary>
         /// Gets all blog post tags
         /// </summary>
         /// <param name="languageId">Language identifier. 0 if you want to get all news</param>
+        /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Blog post tags</returns>
-        IList<BlogPostTag> GetAllBlogPostTags(int languageId);
+        IList<BlogPostTag> GetAllBlogPostTags(int languageId, bool showHidden = false);
 
         /// <summary>
         /// Inserts an blog post
@@ -61,5 +67,11 @@ namespace Nop.Services.Blogs
         /// </summary>
         /// <param name="blogPost">Blog post</param>
         void UpdateBlogPost(BlogPost blogPost);
+
+        /// <summary>
+        /// Update blog post comment totals
+        /// </summary>
+        /// <param name="blogPost">Blog post</param>
+        void UpdateCommentTotals(BlogPost blogPost);
     }
 }

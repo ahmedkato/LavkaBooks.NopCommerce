@@ -1,20 +1,18 @@
-﻿using System;
-using System.Linq;
-using System.Web;
+﻿using System.Linq;
 using System.Web.Mvc;
 using Nop.Admin.Models.Catalog;
 using Nop.Core.Domain.Catalog;
 using Nop.Services.Catalog;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
+using Nop.Services.Security;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
 
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class ProductAttributeController : BaseNopController
+    public partial class ProductAttributeController : BaseNopController
     {
         #region Fields
 
@@ -47,7 +45,7 @@ namespace Nop.Admin.Controllers
         #region Utilities
 
         [NonAction]
-        public void UpdateLocales(ProductAttribute productAttribute, ProductAttributeModel model)
+        protected void UpdateLocales(ProductAttribute productAttribute, ProductAttributeModel model)
         {
             foreach (var localized in model.Locales)
             {
@@ -62,8 +60,7 @@ namespace Nop.Admin.Controllers
                                                            localized.LanguageId);
             }
         }
-
-
+        
         #endregion
         
         #region Methods
@@ -118,16 +115,11 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Create(ProductAttributeModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
-
-            //decode description
-            model.Description = HttpUtility.HtmlDecode(model.Description);
-            foreach (var localized in model.Locales)
-                localized.Description = HttpUtility.HtmlDecode(localized.Description);
 
             if (ModelState.IsValid)
             {
@@ -154,7 +146,9 @@ namespace Nop.Admin.Controllers
 
             var productAttribute = _productAttributeService.GetProductAttributeById(id);
             if (productAttribute == null)
-                throw new ArgumentException("No product attribute found with the specified id", "id");
+                //No product attribute found with the specified id
+                return RedirectToAction("List");
+
             var model = productAttribute.ToModel();
             //locales
             AddLocales(_languageService, model.Locales, (locale, languageId) =>
@@ -166,7 +160,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Edit(ProductAttributeModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
@@ -174,13 +168,9 @@ namespace Nop.Admin.Controllers
 
             var productAttribute = _productAttributeService.GetProductAttributeById(model.Id);
             if (productAttribute == null)
-                throw new ArgumentException("No product attribute found with the specified id");
+                //No product attribute found with the specified id
+                return RedirectToAction("List");
             
-            //decode description
-            model.Description = HttpUtility.HtmlDecode(model.Description);
-            foreach (var localized in model.Locales)
-                localized.Description = HttpUtility.HtmlDecode(localized.Description);
-
             if (ModelState.IsValid)
             {
                 productAttribute = model.ToEntity(productAttribute);
@@ -200,13 +190,17 @@ namespace Nop.Admin.Controllers
         }
 
         //delete
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
 
             var productAttribute = _productAttributeService.GetProductAttributeById(id);
+            if (productAttribute == null)
+                //No product attribute found with the specified id
+                return RedirectToAction("List");
+
             _productAttributeService.DeleteProductAttribute(productAttribute);
 
             //activity log

@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
+﻿
 namespace Nop.Core.Events
 {
     /// <summary>
@@ -11,13 +7,11 @@ namespace Nop.Core.Events
     /// <typeparam name="T"></typeparam>
     public class EntityDeleted<T> where T : BaseEntity
     {
-        private readonly T _entity;
-
         public EntityDeleted(T entity)
         {
-            _entity = entity;
+            this.Entity = entity;
         }
 
-        public T Entity { get { return _entity; } }
+        public T Entity { get; private set; }
     }
 }

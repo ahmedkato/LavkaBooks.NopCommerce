@@ -11,15 +11,16 @@ using Nop.Core.Domain.Media;
 using Nop.Core.Html;
 using Nop.Core.Plugins;
 using Nop.Services.Catalog;
+using Nop.Services.Common;
 using Nop.Services.Configuration;
 using Nop.Services.Directory;
+using Nop.Services.Localization;
 using Nop.Services.Media;
-using Nop.Services.PromotionFeed;
 using Nop.Services.Seo;
 
 namespace Nop.Plugin.Feed.PriceGrabber
 {
-    public class PriceGrabberService : BasePlugin,  IPromotionFeed
+    public class PriceGrabberService : BasePlugin,  IMiscPlugin
     {
         #region Fields
 
@@ -137,10 +138,12 @@ namespace Nop.Plugin.Feed.PriceGrabber
 
                         string imageUrl = string.Empty;
                         var pictures = _pictureService.GetPicturesByProductId(p.Id, 1);
+
+                        //always use HTTP when getting image URL
                         if (pictures.Count > 0)
-                            imageUrl = _pictureService.GetPictureUrl(pictures[0], _priceGrabberSettings.ProductPictureSize , true);
+                            imageUrl = _pictureService.GetPictureUrl(pictures[0], _priceGrabberSettings.ProductPictureSize, useSsl: false);
                         else
-                            imageUrl = _pictureService.GetDefaultPictureUrl(_priceGrabberSettings.ProductPictureSize, PictureType.Entity);
+                            imageUrl = _pictureService.GetDefaultPictureUrl(_priceGrabberSettings.ProductPictureSize, useSsl: false);
 
                         string description = pv.Description;
                         var currency = GetUsedCurrency();
@@ -206,14 +209,45 @@ namespace Nop.Plugin.Feed.PriceGrabber
         /// </summary>
         public override void Install()
         {
+            //settings
             var settings = new PriceGrabberSettings()
             {
                 ProductPictureSize = 125,
             };
             _settingService.SaveSetting(settings);
 
+            //locales
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.PriceGrabber.ClickHere", "Click here");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.PriceGrabber.Currency", "Currency");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.PriceGrabber.Currency.Hint", "Select the default currency that will be used to generate the feed.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.PriceGrabber.Generate", "Generate feed");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.PriceGrabber.ProductPictureSize", "Product thumbnail image size");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.PriceGrabber.ProductPictureSize.Hint", "The default size (pixels) for product thumbnail images.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.PriceGrabber.SuccessResult", "PriceGrabber feed has been successfully generated. {0} to see generated feed");
+            
             base.Install();
         }
+
+        /// <summary>
+        /// Uninstall plugin
+        /// </summary>
+        public override void Uninstall()
+        {
+            //settings
+            _settingService.DeleteSetting<PriceGrabberSettings>();
+
+            //locales
+            this.DeletePluginLocaleResource("Plugins.Feed.PriceGrabber.ClickHere");
+            this.DeletePluginLocaleResource("Plugins.Feed.PriceGrabber.Currency");
+            this.DeletePluginLocaleResource("Plugins.Feed.PriceGrabber.Currency.Hint");
+            this.DeletePluginLocaleResource("Plugins.Feed.PriceGrabber.Generate");
+            this.DeletePluginLocaleResource("Plugins.Feed.PriceGrabber.ProductPictureSize");
+            this.DeletePluginLocaleResource("Plugins.Feed.PriceGrabber.ProductPictureSize.Hint");
+            this.DeletePluginLocaleResource("Plugins.Feed.PriceGrabber.SuccessResult");
+            
+            base.Uninstall();
+        }
+
         #endregion
     }
 }

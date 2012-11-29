@@ -1,6 +1,8 @@
 using System.Web.Routing;
 using Nop.Core.Plugins;
 using Nop.Services.Authentication.External;
+using Nop.Services.Configuration;
+using Nop.Services.Localization;
 
 namespace Nop.Plugin.ExternalAuth.Twitter
 {
@@ -10,14 +12,16 @@ namespace Nop.Plugin.ExternalAuth.Twitter
     public class TwitterExternalAuthMethod : BasePlugin, IExternalAuthenticationMethod
     {
         #region Fields
-        private readonly TwitterExternalAuthSettings _twitterExternalAuthSettings;
+
+        private readonly ISettingService _settingService;
+
         #endregion
 
         #region Ctor
 
-        public TwitterExternalAuthMethod(TwitterExternalAuthSettings twitterExternalAuthSettings)
+        public TwitterExternalAuthMethod(ISettingService settingService)
         {
-            this._twitterExternalAuthSettings = twitterExternalAuthSettings;
+            this._settingService = settingService;
         }
 
         #endregion
@@ -49,7 +53,45 @@ namespace Nop.Plugin.ExternalAuth.Twitter
             controllerName = "ExternalAuthTwitter";
             routeValues = new RouteValueDictionary() { { "Namespaces", "Nop.Plugin.ExternalAuth.Twitter.Controllers" }, { "area", null } };
         }
-        
+
+        /// <summary>
+        /// Install plugin
+        /// </summary>
+        public override void Install()
+        {
+            //settings
+            var settings = new TwitterExternalAuthSettings()
+            {
+                ConsumerKey = "",
+                ConsumerSecret = "",
+            };
+            _settingService.SaveSetting(settings);
+
+            //locales
+            this.AddOrUpdatePluginLocaleResource("Plugins.ExternalAuth.Twitter.Login", "Login using Twitter account");
+            this.AddOrUpdatePluginLocaleResource("Plugins.ExternalAuth.Twitter.ConsumerKey", "Consumer key");
+            this.AddOrUpdatePluginLocaleResource("Plugins.ExternalAuth.Twitter.ConsumerKey.Hint", "Enter your consumer key here.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.ExternalAuth.Twitter.ConsumerSecret", "Consumer secret");
+            this.AddOrUpdatePluginLocaleResource("Plugins.ExternalAuth.Twitter.ConsumerSecret.Hint", "Enter your consumer secret here.");
+
+            base.Install();
+        }
+
+        public override void Uninstall()
+        {
+            //settings
+            _settingService.DeleteSetting<TwitterExternalAuthSettings>();
+
+            //locales
+            this.DeletePluginLocaleResource("Plugins.ExternalAuth.Twitter.Login");
+            this.DeletePluginLocaleResource("Plugins.ExternalAuth.Twitter.ConsumerKey");
+            this.DeletePluginLocaleResource("Plugins.ExternalAuth.Twitter.ConsumerKey.Hint");
+            this.DeletePluginLocaleResource("Plugins.ExternalAuth.Twitter.ConsumerSecret");
+            this.DeletePluginLocaleResource("Plugins.ExternalAuth.Twitter.ConsumerSecret.Hint");
+            
+            base.Uninstall();
+        }
+
         #endregion
         
     }

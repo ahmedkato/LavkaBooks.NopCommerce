@@ -4,19 +4,20 @@ using System.Web.Mvc;
 using Nop.Admin.Models.Orders;
 using Nop.Core;
 using Nop.Core.Domain.Orders;
+using Nop.Services.Customers;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Orders;
 using Nop.Services.Payments;
+using Nop.Services.Security;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
 
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class RecurringPaymentController : BaseNopController
+    public partial class RecurringPaymentController : BaseNopController
     {
         #region Fields
 
@@ -51,7 +52,7 @@ namespace Nop.Admin.Controllers
         #region Utilities
 
         [NonAction]
-        private void PrepareRecurringPaymentModel(RecurringPaymentModel model, 
+        protected void PrepareRecurringPaymentModel(RecurringPaymentModel model, 
             RecurringPayment recurringPayment, bool includeHistory)
         {
             if (model == null)
@@ -70,6 +71,9 @@ namespace Nop.Admin.Controllers
             model.NextPaymentDate = recurringPayment.NextPaymentDate.HasValue ? _dateTimeHelper.ConvertToUserTime(recurringPayment.NextPaymentDate.Value, DateTimeKind.Utc).ToString() : "";
             model.CyclesRemaining = recurringPayment.CyclesRemaining;
             model.InitialOrderId = recurringPayment.InitialOrder.Id;
+            var customer = recurringPayment.InitialOrder.Customer;
+            model.CustomerId = customer.Id;
+            model.CustomerEmail = customer.IsGuest() ? _localizationService.GetResource("Admin.Customers.Guest") : customer.Email;
             model.PaymentType = _paymentService.GetRecurringPaymentType(recurringPayment.InitialOrder.PaymentMethodSystemName).GetLocalizedEnum(_localizationService, _workContext);
             model.CanCancelRecurringPayment = _orderProcessingService.CanCancelRecurringPayment(_workContext.CurrentCustomer, recurringPayment);
                     
@@ -83,7 +87,7 @@ namespace Nop.Admin.Controllers
         }
 
         [NonAction]
-        private void PrepareRecurringPaymentHistoryModel(RecurringPaymentModel.RecurringPaymentHistoryModel model,
+        protected void PrepareRecurringPaymentHistoryModel(RecurringPaymentModel.RecurringPaymentHistoryModel model,
             RecurringPaymentHistory history)
         {
             if (model == null)
@@ -153,13 +157,15 @@ namespace Nop.Admin.Controllers
 
             var payment = _orderService.GetRecurringPaymentById(id);
             if (payment == null || payment.Deleted)
-                throw new ArgumentException("No recurring payment found with the specified id", "id");
+                //No recurring payment found with the specified id
+                return RedirectToAction("List");
+
             var model = new RecurringPaymentModel();
             PrepareRecurringPaymentModel(model, payment, true);
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         [FormValueRequired("save", "save-continue")]
         public ActionResult Edit(RecurringPaymentModel model, bool continueEditing)
         {
@@ -168,7 +174,8 @@ namespace Nop.Admin.Controllers
 
             var payment = _orderService.GetRecurringPaymentById(model.Id);
             if (payment == null || payment.Deleted)
-                throw new ArgumentException("No recurring payment found with the specified id");
+                //No recurring payment found with the specified id
+                return RedirectToAction("List");
 
             payment.CycleLength = model.CycleLength;
             payment.CyclePeriodId = model.CyclePeriodId;
@@ -181,13 +188,17 @@ namespace Nop.Admin.Controllers
         }
 
         //delete
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageOrders))
                 return AccessDeniedView();
 
             var payment = _orderService.GetRecurringPaymentById(id);
+            if (payment == null)
+                //No recurring payment found with the specified id
+                return RedirectToAction("List");
+
             _orderService.DeleteRecurringPayment(payment);
 
             SuccessNotification(_localizationService.GetResource("Admin.RecurringPayments.Deleted"));
@@ -237,7 +248,8 @@ namespace Nop.Admin.Controllers
 
             var payment = _orderService.GetRecurringPaymentById(id);
             if (payment == null)
-                throw new ArgumentException("No recurring payment found with the specified id");
+                //No recurring payment found with the specified id
+                return RedirectToAction("List");
 
             ViewData["selectedTab"] = "history";
 
@@ -269,7 +281,8 @@ namespace Nop.Admin.Controllers
 
             var payment = _orderService.GetRecurringPaymentById(id);
             if (payment == null)
-                throw new ArgumentException("No recurring payment found with the specified id");
+                //No recurring payment found with the specified id
+                return RedirectToAction("List");
 
             ViewData["selectedTab"] = "history";
 

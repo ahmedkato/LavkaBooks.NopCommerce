@@ -32,9 +32,34 @@ namespace Nop.Core.Domain.Blogs
         public virtual bool AllowComments { get; set; }
 
         /// <summary>
+        /// Gets or sets the total number of approved comments
+        /// <remarks>The same as if we run newsItem.NewsComments.Where(n => n.IsApproved).Count()
+        /// We use this property for performance optimization (no SQL command executed)
+        /// </remarks>
+        /// </summary>
+        public virtual int ApprovedCommentCount { get; set; }
+        /// <summary>
+        /// Gets or sets the total number of not approved comments
+        /// <remarks>The same as if we run newsItem.NewsComments.Where(n => !n.IsApproved).Count()
+        /// We use this property for performance optimization (no SQL command executed)
+        /// </remarks>
+        /// </summary>
+        public virtual int NotApprovedCommentCount { get; set; }
+
+        /// <summary>
         /// Gets or sets the blog tags
         /// </summary>
         public virtual string Tags { get; set; }
+
+        /// <summary>
+        /// Gets or sets the blog post start date and time
+        /// </summary>
+        public virtual DateTime? StartDateUtc { get; set; }
+
+        /// <summary>
+        /// Gets or sets the blog post end date and time
+        /// </summary>
+        public virtual DateTime? EndDateUtc { get; set; }
 
         /// <summary>
         /// Gets or sets the date and time of entity creation

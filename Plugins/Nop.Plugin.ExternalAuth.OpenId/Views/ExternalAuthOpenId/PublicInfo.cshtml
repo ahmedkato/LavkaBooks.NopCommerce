@@ -1,33 +1,38 @@
-﻿@{
+﻿@using Nop.Core.Infrastructure
+@using Nop.Core.Infrastructure.DependencyManagement
+@using Nop.Web.Framework.UI
+@{
     Layout = "";
 
 
     Html.AddCssFileParts(@Url.Content("~/Plugins/ExternalAuth.OpenId/Content/openidstyles.css"));
-    
+
     Html.AddScriptParts(@Url.Content("~/Plugins/ExternalAuth.OpenId/Scripts/openid-jquery-1.3b1.js"));
     Html.AddScriptParts(@Url.Content("~/Plugins/ExternalAuth.OpenId/Scripts/openid-en.js"));
+
+    var storeLocation = EngineContext.Current.Resolve<Nop.Core.IWebHelper>().GetStoreLocation();
 }
 
-@using (Html.BeginRouteForm("Plugin.ExternalAuth.OpenId.Login", new { ReturnUrl = Request.QueryString["ReturnUrl"] }, FormMethod.Post, new { id = "openid_form" }))
+@using (Html.BeginRouteForm("Plugin.ExternalAuth.OpenId.Login", new { ReturnUrl = HttpContext.Current.Request.QueryString["ReturnUrl"] }, FormMethod.Post, new { id = "openid_form" }))
 {
     <input type="hidden" name="action" value="verify" />
     <fieldset class="oauth-login-openid">
-        <legend>Login using OpenID account</legend>
+        <legend>@T("Plugins.ExternalAuth.OpenId.Login")</legend>
         <ol>
             <li>
                 <div id="openid_choice">
                     <p>
-                        Please click your account provider:</p>
+                        @T("Plugins.ExternalAuth.OpenId.YourAccount"):</p>
                     <div id="openid_btns">
                     </div>
                 </div>
             </li>
             <li>
                 <div id="openid_input_area">
-                    <label for="ExternalIdentifier">Enter manually your OpenID</label>
+                    <label for="ExternalIdentifier">@T("Plugins.ExternalAuth.OpenId.Manually")</label>
                     @Html.TextBox("ExternalIdentifier", "http://", new { id = "ExternalIdentifier", @class = "textMedium", autofocus = "autofocus" })
                     @Html.ValidationMessage("ExternalIdentifier")
-                    <button class="primaryAction" type="submit">Sign In</button>
+                    <button class="primaryAction" type="submit">@T("Plugins.ExternalAuth.OpenId.SignIn")</button>
                 </div>
             </li>
         </ol>
@@ -35,8 +40,8 @@
 }
 <script type="text/javascript">
     $(document).ready(function () {
-        openid.setSignInText('Sign In');
-        openid.init('ExternalIdentifier');
+        openid.setSignInText('@T("Plugins.ExternalAuth.OpenId.SignIn").Text');
+        openid.init('ExternalIdentifier', '@Html.Raw(storeLocation)');
         //openid.setDemoMode(true); //Stops form submission for client javascript-only test purposes
     });
 </script>

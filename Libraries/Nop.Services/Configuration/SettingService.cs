@@ -1,14 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
 using Nop.Core;
 using Nop.Core.Caching;
 using Nop.Core.Configuration;
 using Nop.Core.Data;
 using Nop.Core.Domain.Configuration;
-using Nop.Core.Events;
 using Nop.Core.Infrastructure;
+using Nop.Services.Events;
 
 namespace Nop.Services.Configuration
 {
@@ -35,6 +34,7 @@ namespace Nop.Services.Configuration
         /// Ctor
         /// </summary>
         /// <param name="cacheManager">Cache manager</param>
+        /// <param name="eventPublisher">Event publisher</param>
         /// <param name="settingRepository">Setting repository</param>
         public SettingService(ICacheManager cacheManager, IEventPublisher eventPublisher,
             IRepository<Setting> settingRepository)
@@ -95,7 +95,7 @@ namespace Nop.Services.Configuration
         /// <summary>
         /// Gets a setting by identifier
         /// </summary>
-        /// <param name="settingId">Setting identifer</param>
+        /// <param name="settingId">Setting identifier</param>
         /// <returns>Setting</returns>
         public virtual Setting GetSettingById(int settingId)
         {
@@ -105,6 +105,29 @@ namespace Nop.Services.Configuration
             var setting = _settingRepository.GetById(settingId);
             return setting;
         }
+
+        /// <summary>
+        /// Get setting by key
+        /// </summary>
+        /// <param name="key">Key</param>
+        /// <returns>Setting object</returns>
+        public virtual Setting GetSettingByKey(string key)
+        {
+            if (String.IsNullOrEmpty(key))
+                return null;
+
+            key = key.Trim().ToLowerInvariant();
+
+            var settings = GetAllSettings();
+            if (settings.ContainsKey(key))
+            {
+                var id = settings[key].Key;
+                return GetSettingById(id);
+            }
+
+            return null;
+        }
+
 
         /// <summary>
         /// Get setting value by key
@@ -121,10 +144,9 @@ namespace Nop.Services.Configuration
             key = key.Trim().ToLowerInvariant();
 
             var settings = GetAllSettings();
-            if (settings.ContainsKey(key)) {
-                var setting = settings[key];
-                return setting.As<T>();
-            }
+            if (settings.ContainsKey(key))
+                return CommonHelper.To<T>(settings[key].Value);
+
             return defaultValue;
         }
 
@@ -148,9 +170,8 @@ namespace Nop.Services.Configuration
             if (settings.ContainsKey(key))
             {
                 //update
-                setting = settings[key];
-                //little hack here because of EF issue
-                setting = GetSettingById(setting.Id);
+                var settingId = settings[key].Key;
+                setting = GetSettingById(settingId);
                 setting.Value = valueStr;
                 UpdateSetting(setting, clearCache);
             }
@@ -188,7 +209,7 @@ namespace Nop.Services.Configuration
         /// Gets all settings
         /// </summary>
         /// <returns>Setting collection</returns>
-        public virtual IDictionary<string, Setting> GetAllSettings()
+        public virtual IDictionary<string, KeyValuePair<int, string>> GetAllSettings()
         {
             //cache
             string key = string.Format(SETTINGS_ALL_KEY);
@@ -197,9 +218,16 @@ namespace Nop.Services.Configuration
                 var query = from s in _settingRepository.Table
                             orderby s.Name
                             select s;
-                var settings = query.ToDictionary(s => s.Name.ToLowerInvariant());
-
-                return settings;
+                var settings = query.ToList();
+                //format: <name, <id, value>>
+                var dictionary = new Dictionary<string, KeyValuePair<int, string>>();
+                foreach (var s in settings)
+                {
+                    var resourceName = s.Name.ToLowerInvariant();
+                    if (!dictionary.ContainsKey(resourceName))
+                        dictionary.Add(resourceName, new KeyValuePair<int, string>(s.Id, s.Value));
+                }
+                return dictionary;
             });
         }
 
@@ -212,6 +240,15 @@ namespace Nop.Services.Configuration
         {
             //We should be sure that an appropriate ISettings object will not be cached in IoC tool after updating (by default cached per HTTP request)
             EngineContext.Current.Resolve<IConfigurationProvider<T>>().SaveSettings(settingInstance);
+        }
+
+        /// <summary>
+        /// Delete all settings
+        /// </summary>
+        /// <typeparam name="T">Type</typeparam>
+        public virtual void DeleteSetting<T>() where T : ISettings, new()
+        {
+            EngineContext.Current.Resolve<IConfigurationProvider<T>>().DeleteSettings();
         }
 
         /// <summary>

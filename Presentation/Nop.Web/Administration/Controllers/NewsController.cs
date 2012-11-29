@@ -1,24 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web;
 using System.Web.Mvc;
 using Nop.Admin.Models.News;
+using Nop.Core.Domain.Common;
 using Nop.Core.Domain.News;
 using Nop.Services.Customers;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.News;
+using Nop.Services.Security;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
-using Nop.Core.Domain.Common;
 
 namespace Nop.Admin.Controllers
 {
 	[AdminAuthorize]
-    public class NewsController : BaseNopController
+    public partial class NewsController : BaseNopController
 	{
 		#region Fields
 
@@ -62,15 +61,19 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageNews))
                 return AccessDeniedView();
 
-            var news = _newsService.GetAllNews(0, null, null, 0, _adminAreaSettings.GridPageSize, true);
+            var news = _newsService.GetAllNews(0, 0, _adminAreaSettings.GridPageSize, true);
             var gridModel = new GridModel<NewsItemModel>
             {
                 Data = news.Select(x =>
                 {
                     var m = x.ToModel();
+                    if (x.StartDateUtc.HasValue)
+                        m.StartDate = _dateTimeHelper.ConvertToUserTime(x.StartDateUtc.Value, DateTimeKind.Utc);
+                    if (x.EndDateUtc.HasValue)
+                        m.EndDate = _dateTimeHelper.ConvertToUserTime(x.EndDateUtc.Value, DateTimeKind.Utc);
                     m.CreatedOn = _dateTimeHelper.ConvertToUserTime(x.CreatedOnUtc, DateTimeKind.Utc);
                     m.LanguageName = x.Language.Name;
-                    m.Comments = x.NewsComments.Count;
+                    m.Comments = x.ApprovedCommentCount + x.NotApprovedCommentCount;
                     return m;
                 }),
                 Total = news.TotalCount
@@ -84,15 +87,19 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageNews))
                 return AccessDeniedView();
 
-            var news = _newsService.GetAllNews(0, null, null, command.Page - 1, command.PageSize, true);
+            var news = _newsService.GetAllNews(0, command.Page - 1, command.PageSize, true);
             var gridModel = new GridModel<NewsItemModel>
             {
                 Data = news.Select(x =>
                 {
                     var m = x.ToModel();
+                    if (x.StartDateUtc.HasValue)
+                        m.StartDate = _dateTimeHelper.ConvertToUserTime(x.StartDateUtc.Value, DateTimeKind.Utc);
+                    if (x.EndDateUtc.HasValue)
+                        m.EndDate = _dateTimeHelper.ConvertToUserTime(x.EndDateUtc.Value, DateTimeKind.Utc);
                     m.CreatedOn = _dateTimeHelper.ConvertToUserTime(x.CreatedOnUtc, DateTimeKind.Utc);
                     m.LanguageName = x.Language.Name;
-                    m.Comments = x.NewsComments.Count;
+                    m.Comments = x.ApprovedCommentCount + x.NotApprovedCommentCount;
                     return m;
                 }),
                 Total = news.TotalCount
@@ -116,18 +123,17 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Create(NewsItemModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageNews))
                 return AccessDeniedView();
 
-            //decode body
-            model.Full = HttpUtility.HtmlDecode(model.Full);
-
             if (ModelState.IsValid)
             {
                 var newsItem = model.ToEntity();
+                newsItem.StartDateUtc = model.StartDate;
+                newsItem.EndDateUtc = model.EndDate;
                 newsItem.CreatedOnUtc = DateTime.UtcNow;
                 _newsService.InsertNews(newsItem);
 
@@ -147,14 +153,17 @@ namespace Nop.Admin.Controllers
 
             var newsItem = _newsService.GetNewsById(id);
             if (newsItem == null)
-                throw new ArgumentException("No news item found with the specified id", "id");
+                //No news item found with the specified id
+                return RedirectToAction("List");
 
             ViewBag.AllLanguages = _languageService.GetAllLanguages(true);
             var model = newsItem.ToModel();
+            model.StartDate = newsItem.StartDateUtc;
+            model.EndDate = newsItem.EndDateUtc;
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Edit(NewsItemModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageNews))
@@ -162,14 +171,14 @@ namespace Nop.Admin.Controllers
 
             var newsItem = _newsService.GetNewsById(model.Id);
             if (newsItem == null)
-                throw new ArgumentException("No news item found with the specified id");
-
-            //decode body
-            model.Full = HttpUtility.HtmlDecode(model.Full);
+                //No news item found with the specified id
+                return RedirectToAction("List");
 
             if (ModelState.IsValid)
             {
                 newsItem = model.ToEntity(newsItem);
+                newsItem.StartDateUtc = model.StartDate;
+                newsItem.EndDateUtc = model.EndDate;
                 _newsService.UpdateNews(newsItem);
 
                 SuccessNotification(_localizationService.GetResource("Admin.ContentManagement.News.NewsItems.Updated"));
@@ -181,15 +190,17 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageNews))
                 return AccessDeniedView();
 
             var newsItem = _newsService.GetNewsById(id);
             if (newsItem == null)
-                throw new ArgumentException("No news item found with the specified id", "id");
+                //No news item found with the specified id
+                return RedirectToAction("List");
+
             _newsService.DeleteNews(newsItem);
 
             SuccessNotification(_localizationService.GetResource("Admin.ContentManagement.News.NewsItems.Deleted"));
@@ -258,8 +269,14 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageNews))
                 return AccessDeniedView();
 
-            var comment = _customerContentService.GetCustomerContentById(id);
+            var comment = _customerContentService.GetCustomerContentById(id) as NewsComment;
+            if (comment == null)
+                throw new ArgumentException("No comment found with the specified id");
+
+            var newsItem = comment.NewsItem;
             _customerContentService.DeleteCustomerContent(comment);
+            //update totals
+            _newsService.UpdateCommentTotals(newsItem);
 
             return Comments(filterByNewsItemId, command);
         }

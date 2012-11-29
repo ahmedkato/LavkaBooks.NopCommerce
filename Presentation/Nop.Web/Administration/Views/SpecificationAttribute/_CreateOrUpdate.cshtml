@@ -8,6 +8,9 @@
 {
     x.Add().Text(T("Admin.Catalog.Attributes.SpecificationAttributes.Info").Text).Content(TabInfo().ToHtmlString()).Selected(true);
     x.Add().Text(T("Admin.Catalog.Attributes.SpecificationAttributes.Options").Text).Content(TabOptions().ToHtmlString());
+
+    //generate an event
+    EngineContext.Current.Resolve<IEventPublisher>().Publish(new AdminTabStripCreated(x, "specificationattribute-edit"));
 })
 @helper TabInfo()
     { 
@@ -78,7 +81,7 @@
                                 columns.Bound(x => x.Id)
                                     .Width(50)
                                     .Centered()
-                                    .ClientTemplate("<input type='submit' id='btnEditOption<#= Id #>' name='btnEditOption<#= Id #>' value='Edit' onclick=\"" + "javascript:OpenWindow('" + @Url.Content("~/Admin/SpecificationAttribute/OptionEditPopup/") + "<#= Id #>?btnId=btnRefresh&formId=specificationattribute-form', 800, 250, true); return false;\" class='t-button' />")
+                                    .ClientTemplate("<input type='submit' value='" + @T("Admin.Common.Edit").Text + "' onclick=\"" + "javascript:OpenWindow('" + @Url.Content("~/Admin/SpecificationAttribute/OptionEditPopup/") + "<#= Id #>?btnId=btnRefresh&formId=specificationattribute-form', 800, 250, true); return false;\" class='t-button' />")
                                     .Title(T("Admin.Common.Edit").Text);
                                 columns.Command(commands =>
                                 {

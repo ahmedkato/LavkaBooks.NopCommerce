@@ -5,15 +5,16 @@ using Nop.Admin.Models.Directory;
 using Nop.Core.Domain.Directory;
 using Nop.Services.Configuration;
 using Nop.Services.Directory;
+using Nop.Services.Localization;
+using Nop.Services.Security;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
 
 namespace Nop.Admin.Controllers
 {
 	[AdminAuthorize]
-    public class MeasureController : BaseNopController
+    public partial class MeasureController : BaseNopController
 	{
 		#region Fields
 
@@ -21,6 +22,7 @@ namespace Nop.Admin.Controllers
         private readonly MeasureSettings _measureSettings;
         private readonly ISettingService _settingService;
         private readonly IPermissionService _permissionService;
+        private readonly ILocalizationService _localizationService;
 
 		#endregion
 
@@ -28,12 +30,13 @@ namespace Nop.Admin.Controllers
 
         public MeasureController(IMeasureService measureService,
             MeasureSettings measureSettings, ISettingService settingService,
-            IPermissionService permissionService)
+            IPermissionService permissionService, ILocalizationService localizationService)
 		{
             this._measureService = measureService;
             this._measureSettings = measureSettings;
             this._settingService = settingService;
             this._permissionService = permissionService;
+            this._localizationService = localizationService;
 		}
 
 		#endregion 
@@ -101,10 +104,12 @@ namespace Nop.Admin.Controllers
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMeasures))
                 return AccessDeniedView();
-
+            
             if (!ModelState.IsValid)
             {
-                return new JsonResult { Data = "error" };
+                //display the first model error
+                var modelStateErrors = this.ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage);
+                return Content(modelStateErrors.FirstOrDefault());
             }
 
             var weight = _measureService.GetMeasureWeightById(model.Id);
@@ -122,7 +127,9 @@ namespace Nop.Admin.Controllers
 
             if (!ModelState.IsValid)
             {
-                return new JsonResult {Data = "error"};
+                //display the first model error
+                var modelStateErrors = this.ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage);
+                return Content(modelStateErrors.FirstOrDefault());
             }
 
             var weight = new MeasureWeight();
@@ -139,6 +146,12 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var weight = _measureService.GetMeasureWeightById(id);
+            if (weight == null)
+                throw new ArgumentException("No weight found with the specified id");
+
+            if (weight.Id == _measureSettings.BaseWeightId)
+                return Content(_localizationService.GetResource("Admin.Configuration.Measures.Weights.CantDeletePrimary"));
+
             _measureService.DeleteMeasureWeight(weight);
 
             return Weights(command);
@@ -210,7 +223,9 @@ namespace Nop.Admin.Controllers
 
             if (!ModelState.IsValid)
             {
-                return new JsonResult { Data = "error" };
+                //display the first model error
+                var modelStateErrors = this.ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage);
+                return Content(modelStateErrors.FirstOrDefault());
             }
 
             var dimension = _measureService.GetMeasureDimensionById(model.Id);
@@ -228,7 +243,9 @@ namespace Nop.Admin.Controllers
 
             if (!ModelState.IsValid)
             {
-                return new JsonResult { Data = "error" };
+                //display the first model error
+                var modelStateErrors = this.ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage);
+                return Content(modelStateErrors.FirstOrDefault());
             }
 
             var dimension = new MeasureDimension();
@@ -245,6 +262,12 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var dimension = _measureService.GetMeasureDimensionById(id);
+            if (dimension == null)
+                throw new ArgumentException("No dimension found with the specified id");
+
+            if (dimension.Id == _measureSettings.BaseDimensionId)
+                return Content(_localizationService.GetResource("Admin.Configuration.Measures.Dimensions.CantDeletePrimary"));
+
             _measureService.DeleteMeasureDimension(dimension);
 
             return Dimensions(command);

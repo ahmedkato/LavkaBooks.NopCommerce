@@ -16,5 +16,20 @@ namespace Nop.Core.Domain.Common
         public bool SitemapIncludeManufacturers { get; set; }
         public bool SitemapIncludeProducts { get; set; }
         public bool SitemapIncludeTopics { get; set; }
+
+        /// <summary>
+        /// Gets a sets a value indicating whether to display a warning if java-script is disabled
+        /// </summary>
+        public bool DisplayJavaScriptDisabledWarning { get; set; }
+
+        /// <summary>
+        /// Gets a sets a value indicating whether full-text search is supported
+        /// </summary>
+        public bool UseFullTextSearch { get; set; }
+
+        /// <summary>
+        /// Gets a sets a Full-Text search mode
+        /// </summary>
+        public FulltextSearchMode FullTextMode { get; set; }
     }
 }

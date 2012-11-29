@@ -29,6 +29,7 @@ namespace Nop.Services.Tests.ExportImport
         IPictureService _pictureService;
         INewsLetterSubscriptionService _newsLetterSubscriptionService;
         IExportManager _exportManager;
+        StoreInformationSettings _storeInformationSettings;
 
         [SetUp]
         public new void SetUp()
@@ -39,8 +40,9 @@ namespace Nop.Services.Tests.ExportImport
             _pictureService = MockRepository.GenerateMock<IPictureService>();
             _newsLetterSubscriptionService = MockRepository.GenerateMock<INewsLetterSubscriptionService>();
 
+            _storeInformationSettings = new StoreInformationSettings();
             _exportManager = new ExportManager(_categoryService,
-                _manufacturerService, _productService, _pictureService, _newsLetterSubscriptionService);
+                _manufacturerService, _productService, _pictureService, _newsLetterSubscriptionService, _storeInformationSettings);
         }
 
         [Test]
@@ -92,7 +94,7 @@ namespace Nop.Services.Tests.ExportImport
         }
 
         [Test]
-        public void Can_export_orders_xls()
+        public void Can_export_orders_xlsx()
         {
             var orders = new List<Order>()
             {
@@ -146,17 +148,13 @@ namespace Nop.Services.Tests.ExportImport
                 ShippingAddress = GetTestShippingAddress(),
                 ShippingMethod = "ShippingMethod1",
                 ShippingRateComputationMethodSystemName="ShippingRateComputationMethodSystemName1",
-                ShippedDateUtc = new DateTime(2010, 01, 02),
-                DeliveryDateUtc = new DateTime(2010, 01, 03),
-                OrderWeight = 16.1M,
-                TrackingNumber="TrackingNumber1",
                 Deleted = false,
                 CreatedOnUtc = new DateTime(2010, 01, 04)
             }
             };
             string fileName = Path.GetTempFileName();
             //TODO uncomment
-            //_exportManager.ExportOrdersToXls(fileName, orders);
+            //_exportManager.ExportOrdersToXlsx(fileName, orders);
         }
 
         protected Address GetTestBillingAddress()

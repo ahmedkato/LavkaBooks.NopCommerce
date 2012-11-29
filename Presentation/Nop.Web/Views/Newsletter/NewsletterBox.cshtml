@@ -1,6 +1,5 @@
 ﻿@model NewsletterBoxModel
-@using Nop.Web.Framework
-@using Nop.Web.Models.Newsletter
+@using Nop.Web.Models.Newsletter;
 <div class="block block-newsletter">
     <div class="title">
         @T("Newsletter.Title")
@@ -8,34 +7,30 @@
     <div class="clear">
     </div>
     <div class="listbox">
-        @using (Html.BeginForm())
-        {
-            <div id="pnl-newsletter-subscribe">
-                @T("Newsletter.Email"):
-                @Html.TextBoxFor(x => x.Email)
-                @Html.ValidationMessageFor(x => x.Email)
-                <div class="options">
-                    <input id="newsletter-subscribe" type="radio" name="newsletter-subscribe" value="newsletter-subscribe"
-                        checked="checked" />
-                    <label for="newsletter-subscribe">@T("Newsletter.Subscribe")</label>
-                    <input id="newsletter-unsubscribe" type="radio" name="newsletter-subscribe" value="newsletter-unsubscribe" />
-                    <label for="newsletter-unsubscribe">@T("Newsletter.Unsubscribe")</label>
-                </div>
-                <div class="clear">
-                </div>
-                <div class="buttons">
-                    <input type="submit" name="newsletter-subscribe-button" value="@T("Newsletter.Button")" id="newsletter-subscribe-button" class="newsletterbox-subscribebutton" />
-                    <span id="subscribe-loading-progress" style="display: none;">@T("Common.Wait...")
-                            <img src='@Url.Content("~/Content/Images/ajax_loader_small.gif")' alt="@T("Common.Wait...")" />
-                        </span>
-                        @*TODO add a new 'ajax_loader_small.gif' with transparent background*@
-                </div>
+        <div id="newsletter-subscribe-block">
+            @T("Newsletter.Email"):
+            @Html.TextBoxFor(x => x.NewsletterEmail, new { id = "newsletter-email" })
+            @Html.ValidationMessageFor(x => x.NewsletterEmail)
+            <div class="options">
+                <input id="newsletter-subscribe" type="radio" name="newsletter-subscribe" value="newsletter-subscribe"
+                    checked="checked" />
+                <label for="newsletter-subscribe">@T("Newsletter.Subscribe")</label>
+                <input id="newsletter-unsubscribe" type="radio" name="newsletter-subscribe" value="newsletter-unsubscribe" />
+                <label for="newsletter-unsubscribe">@T("Newsletter.Unsubscribe")</label>
             </div>
             <div class="clear">
             </div>
-            <div id="pnl-newsletter-result">
+            <div class="buttons">
+                <input type="button" value="@T("Newsletter.Button")" id="newsletter-subscribe-button" class="button-1 newsletter-subscribe-button" />
+                <span id="subscribe-loading-progress" style="display: none;">@T("Common.Wait...")
+                    <img src='@Url.Content("~/Content/Images/ajax_loader_small.gif")' alt="@T("Common.Wait...")" />
+                </span>
             </div>
-        }
+        </div>
+        <div class="clear">
+        </div>
+        <div id="newsletter-result-block">
+        </div>
     </div>
     <script type="text/javascript">
         $(document).ready(function () {
@@ -45,22 +40,23 @@
                 if($('#newsletter-unsubscribe').is(':checked')) { 
                     subscribe = 'false';
                 }
-                var email = $("#@Html.FieldIdFor(model => model.Email)").val();
+                var email = $("#newsletter-email").val();
                 var subscribeProgress = $("#subscribe-loading-progress");
                 subscribeProgress.show();
                 $.ajax({
-                    cache:false,
+                    cache: false,
                     type: "POST",
-                    url: "@(Url.Action("SubscribeNewsletter", "Newsletter"))",
-                    data: "subscribe=" + subscribe + "&email=" +email ,
+                    url: "@(Url.RouteUrl("SubscribeNewsletter"))",
+                    data: { "subscribe": subscribe, "email": email },
                     success: function (data) {
                         subscribeProgress.hide();
-                        $("#pnl-newsletter-result").html(data.Result);
+                        $("#newsletter-result-block").html(data.Result);
                          if (data.Success) {
-                            $('#pnl-newsletter-subscribe').hide();                            
+                            $('#newsletter-subscribe-block').hide();
+                            $('#newsletter-result-block').show();
                          }
                          else {
-                            $('#pnl-newsletter-result').fadeIn("slow").delay(2000).fadeOut("slow");
+                            $('#newsletter-result-block').fadeIn("slow").delay(2000).fadeOut("slow");
                          }
                     },
                     error:function (xhr, ajaxOptions, thrownError){

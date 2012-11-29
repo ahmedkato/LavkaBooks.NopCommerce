@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using System.ServiceModel.Syndication;
 using System.Web.Mvc;
 using System.Xml;
@@ -11,7 +12,7 @@ using Nop.Web.Framework.Controllers;
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class HomeController : BaseNopController
+    public partial class HomeController : BaseNopController
     {
         #region Fields
         private readonly StoreInformationSettings _storeInformationSettings;
@@ -49,8 +50,12 @@ namespace Nop.Admin.Controllers
                     Request.Url.IsLoopback, 
                     _commonSettings.HideAdvertisementsOnAdminArea, 
                     _storeInformationSettings.StoreUrl);
-                //TODO cache results (based on feed URL)
-                using (var reader = XmlReader.Create(feedUrl))
+
+                //specify timeout (5 secs)
+                var request = WebRequest.Create(feedUrl);
+                request.Timeout = 5000;
+                using (WebResponse response = request.GetResponse())
+                using (var reader = XmlReader.Create(response.GetResponseStream()))
                 {
                     var rssData = SyndicationFeed.Load(reader);
                     return PartialView(rssData);

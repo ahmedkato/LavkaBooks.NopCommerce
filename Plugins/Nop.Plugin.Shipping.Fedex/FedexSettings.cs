@@ -15,6 +15,8 @@ namespace Nop.Plugin.Shipping.Fedex
 
         public string MeterNumber { get; set; }
 
+        public DropoffType DropoffType { get; set; }
+
         public bool UseResidentialRates { get; set; }
 
         public bool ApplyDiscounts { get; set; }
@@ -32,5 +34,11 @@ namespace Nop.Plugin.Shipping.Fedex
         public string PostalCode { get; set; }
 
         public string CountryCode { get; set; }
+
+        public bool PassDimensions { get; set; }
+
+        public int PackingPackageVolume { get; set; }
+
+        public PackingType PackingType { get; set; }
     }
 }

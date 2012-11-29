@@ -2,16 +2,21 @@
 @using Nop.Web.Models.Common;
 <div class="header-links">
     <ul>
+        @Html.Widget("header_links_before")
         @if (Model.IsCustomerImpersonated)
         {
-@*customer is impersonated *@
             <li><span class="impersonate">(@(string.Format(T("Account.ImpersonatedAs").Text, Model.CustomerEmailUsername)))
                 - <a href="@Url.RouteUrl("Logout")" class="finish-impersonation" title="@T("Account.ImpersonatedAs.Finish.Hint")">@T("Account.ImpersonatedAs.Finish")</a>
                 ) </span></li>
         }
+        @if (Model.DisplayAdminLink)
+        {
+            <li><a href="@Url.Content("~/admin")" class="ico-admin">@T("Account.Administration")</a>
+            </li>
+        }
         @if (Model.IsAuthenticated)
         {
-            <li><a href="@Url.RouteUrl("CustomerMyAccount")" class="account">@Model.CustomerEmailUsername</a></li>
+            <li><a href="@Url.RouteUrl("CustomerInfo")" class="account">@Model.CustomerEmailUsername</a></li>
             <li><a href="@Url.RouteUrl("Logout")" class="ico-logout">@T("Account.Logout")</a></li>
             
             if (Model.AllowPrivateMessages)
@@ -20,10 +25,9 @@
                 @Model.UnreadPrivateMessages</li>
                 if (!string.IsNullOrEmpty(Model.AlertMessage))
                 {
-                    //using $(document).bind instead of $(document).ready to execute the alert after tabs load (on privatemessages page)
             <script type="text/javascript">
-                $(document).bind("ready", function () {
-                    alert('@Model.AlertMessage');
+                $(document).ready(function () {
+                    displayPopupNotification('@(Model.AlertMessage)', 'success', false);
                 });
             </script>
                 }
@@ -34,18 +38,34 @@
             <li><a href="@Url.RouteUrl("Register")" class="ico-register">@T("Account.Register")</a></li>
             <li><a href="@Url.RouteUrl("Login")" class="ico-login">@T("Account.Login")</a></li>
         }
-        <li><a href="@Url.RouteUrl("ShoppingCart")" class="ico-cart">@T("ShoppingCart")</a>
-            <a href="@Url.RouteUrl("ShoppingCart")">(@Model.ShoppingCartItems)</a> </li>
-        @if (Model.WishlistEnabled)
+        @if (Model.ShoppingCartEnabled)
         {
-            <li><a href="@Url.RouteUrl("Wishlist")" class="ico-wishlist">@T("Wishlist")</a> <a href="@Url.RouteUrl("Wishlist")">
-                (@Model.WishlistItems)</a> </li>
-        }
-        @if (Model.DisplayAdminLink)
-        {
-            <li><a href="@Url.Content("~/admin")" class="ico-admin">@T("Account.Administration")</a>
+            <li id="topcartlink"><a href="@Url.RouteUrl("ShoppingCart")" class="ico-cart">@T("ShoppingCart")</a>
+                <a href="@Url.RouteUrl("ShoppingCart")" class="cart-qty">(@Model.ShoppingCartItems)</a>
             </li>
         }
-        @Html.Action("WidgetsByZone", "Widget", new { widgetZone = Nop.Core.Domain.Cms.WidgetZone.HeaderLinks })
+        @if (Model.WishlistEnabled)
+        {
+            <li><a href="@Url.RouteUrl("Wishlist")" class="ico-wishlist">@T("Wishlist")</a> <a href="@Url.RouteUrl("Wishlist")" class="wishlist-qty">
+                (@Model.WishlistItems)</a> </li>
+        }
+        @Html.Widget("header_links_after")
     </ul>
+    @if (Model.ShoppingCartEnabled)
+    {
+        <script type="text/javascript">
+            $('#topcartlink').live('mouseenter', function () {
+                $('#flyout-cart').addClass('active');
+            });
+            $('#topcartlink').live('mouseleave', function () {
+                $('#flyout-cart').removeClass('active');
+            });
+            $('#flyout-cart').live('mouseenter', function () {
+                $('#flyout-cart').addClass('active');
+            });
+            $('#flyout-cart').live('mouseleave', function () {
+                $('#flyout-cart').removeClass('active');
+            });
+        </script>
+    }
 </div>

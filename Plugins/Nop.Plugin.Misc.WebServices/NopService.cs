@@ -4,12 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
 using System.Linq;
 using System.ServiceModel.Activation;
 using Nop.Core;
-using Nop.Core.Data;
-using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Orders;
@@ -36,6 +33,7 @@ namespace Nop.Plugin.Misc.WebServices
         private readonly ICountryService _countryService;
         private readonly IStateProvinceService _stateProvinceService;
         private readonly ICustomerService _customerService;
+        private readonly ICustomerRegistrationService _customerRegistrationService;
         private readonly CustomerSettings _customerSettings;
         private readonly IPermissionService _permissionSettings;
         private readonly IOrderProcessingService _orderProcessingService;
@@ -54,6 +52,7 @@ namespace Nop.Plugin.Misc.WebServices
             _countryService = EngineContext.Current.Resolve<ICountryService>();
             _stateProvinceService = EngineContext.Current.Resolve<IStateProvinceService>();
             _customerService = EngineContext.Current.Resolve<ICustomerService>();
+            _customerRegistrationService = EngineContext.Current.Resolve<ICustomerRegistrationService>();
             _customerSettings = EngineContext.Current.Resolve<CustomerSettings>();
             _permissionSettings = EngineContext.Current.Resolve<IPermissionService>();
             _orderProcessingService = EngineContext.Current.Resolve<IOrderProcessingService>();
@@ -71,10 +70,10 @@ namespace Nop.Plugin.Misc.WebServices
         {
             //check whether web service plugin is installed
             var pluginDescriptor = _pluginFinder.GetPluginDescriptorBySystemName("Misc.WebServices");
-            if (pluginDescriptor == null || !pluginDescriptor.Installed)
+            if (pluginDescriptor == null)
                 throw new ApplicationException("Web services plugin cannot be loaded");
-            
-            if  (!_customerService.ValidateCustomer(usernameOrEmail, userPassword))
+
+            if (!_customerRegistrationService.ValidateCustomer(usernameOrEmail, userPassword))
                     throw new ApplicationException("Not allowed");
             
             var customer = _customerSettings.UsernamesEnabled ? _customerService.GetCustomerByUsername(usernameOrEmail) : _customerService.GetCustomerByEmail(usernameOrEmail);
@@ -206,7 +205,7 @@ namespace Nop.Plugin.Misc.WebServices
             {
                 try
                 {
-                    _orderService.DeleteOrder(order);
+                    _orderProcessingService.DeleteOrder(order);
                 }
                 catch (Exception ex)
                 {
@@ -420,27 +419,6 @@ namespace Nop.Plugin.Misc.WebServices
                 catch (Exception ex)
                 {
                     throw new ApplicationException(ex.Message);
-                }
-            }
-            return errors;
-        }
-        
-        public List<OrderError> SetOrdersShippingShipped(int[] ordersId, string usernameOrEmail, string userPassword)
-        {
-            CheckAccess(usernameOrEmail, userPassword);
-            if (!_permissionSettings.Authorize(StandardPermissionProvider.ManageOrders))
-                throw new ApplicationException("Not allowed to manage orders");
-
-            var errors = new List<OrderError>();
-            foreach (var order in GetOrderCollection(ordersId))
-            {
-                try
-                {
-                    _orderProcessingService.Ship(order, false);
-                }
-                catch (Exception ex)
-                {
-                    errors.Add(new OrderError() { OrderId = order.Id, ErrorMessage = ex.Message });
                 }
             }
             return errors;

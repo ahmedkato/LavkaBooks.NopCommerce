@@ -4,12 +4,12 @@ using Nop.Web.Framework.Mvc;
 
 namespace Nop.Web.Models.Blogs
 {
-    public class AddBlogCommentModel : BaseNopEntityModel
+    public partial class AddBlogCommentModel : BaseNopEntityModel
     {
         [NopResourceDisplayName("Blog.Comments.CommentText")]
         [AllowHtml]
         public string CommentText { get; set; }
 
-        public string Result { get; set; }
+        public bool DisplayCaptcha { get; set; }
     }
 }

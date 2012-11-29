@@ -1,4 +1,5 @@
-﻿using Nop.Core;
+﻿using System;
+using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Discounts;
@@ -96,6 +97,8 @@ namespace Nop.Services.Tests.Catalog
                 Quantity = 5,
                 ProductVariant = productVariant
             });
+            //set HasTierPrices property
+            productVariant.HasTierPrices = true;
 
             //customer
             Customer customer = null;
@@ -167,6 +170,8 @@ namespace Nop.Services.Tests.Catalog
                 ProductVariant = productVariant,
                 CustomerRole = customerRole2
             });
+            //set HasTierPrices property
+            productVariant.HasTierPrices = true;
 
             //customer
             Customer customer = new Customer();
@@ -235,9 +240,47 @@ namespace Nop.Services.Tests.Catalog
             };
             discount1.AppliedToProductVariants.Add(productVariant);
             productVariant.AppliedDiscounts.Add(discount1);
+            //set HasDiscountsApplied property
+            productVariant.HasDiscountsApplied = true;
             _discountService.Expect(ds => ds.IsDiscountValid(discount1, customer)).Return(true);
             
             _priceCalcService.GetFinalPrice(productVariant, customer, 0, true, 1).ShouldEqual(9.34M);
+        }
+
+        [Test]
+        public void Can_get_final_product_price_with_special_price()
+        {
+            var productVariant = new ProductVariant
+            {
+                Id = 1,
+                Name = "Product variant name 1",
+                Price = 12.34M,
+                SpecialPrice = 10.01M,
+                SpecialPriceStartDateTimeUtc = DateTime.UtcNow.AddDays(-1),
+                SpecialPriceEndDateTimeUtc= DateTime.UtcNow.AddDays(1),
+                CustomerEntersPrice = false,
+                Published = true,
+                Product = new Product()
+                {
+                    Id = 1,
+                    Name = "Product name 1",
+                    Published = true
+                }
+            };
+
+            //customer
+            Customer customer = null;
+            //valid dates
+            _priceCalcService.GetFinalPrice(productVariant, customer, 0, true, 1).ShouldEqual(10.01M);
+            
+            //invalid date
+            productVariant.SpecialPriceStartDateTimeUtc = DateTime.UtcNow.AddDays(1);
+            _priceCalcService.GetFinalPrice(productVariant, customer, 0, true, 1).ShouldEqual(12.34M);
+
+            //no dates
+            productVariant.SpecialPriceStartDateTimeUtc = null;
+            productVariant.SpecialPriceEndDateTimeUtc = null;
+            _priceCalcService.GetFinalPrice(productVariant, customer, 0, true, 1).ShouldEqual(10.01M);
         }
 
         [Test]
@@ -272,6 +315,8 @@ namespace Nop.Services.Tests.Catalog
             };
             discount1.AppliedToProductVariants.Add(productVariant);
             productVariant.AppliedDiscounts.Add(discount1);
+            //set HasDiscountsApplied property
+            productVariant.HasDiscountsApplied = true;
             _discountService.Expect(ds => ds.IsDiscountValid(discount1, customer)).Return(true);
 
             var discount2 = new Discount()

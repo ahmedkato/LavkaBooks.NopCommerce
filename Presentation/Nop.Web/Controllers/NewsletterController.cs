@@ -9,7 +9,7 @@ using Nop.Web.Models.Newsletter;
 
 namespace Nop.Web.Controllers
 {
-    public class NewsletterController : BaseNopController
+    public partial class NewsletterController : BaseNopController
     {
         private readonly ILocalizationService _localizationService;
         private readonly IWorkContext _workContext;
@@ -60,7 +60,7 @@ namespace Nop.Web.Controllers
                     {
                         if (!subscription.Active)
                         {
-                            _workflowMessageService.SendNewsLetterSubscriptionActivationMessage(subscription, _workContext.WorkingCurrency.Id);
+                            _workflowMessageService.SendNewsLetterSubscriptionActivationMessage(subscription, _workContext.WorkingLanguage.Id);
                         }
                         result = _localizationService.GetResource("Newsletter.SubscribeEmailSent");
                     }
@@ -105,7 +105,7 @@ namespace Nop.Web.Controllers
         {
             var subscription = _newsLetterSubscriptionService.GetNewsLetterSubscriptionByGuid(token);
             if (subscription == null)
-                return RedirectToAction("Index", "Home");
+                return RedirectToRoute("HomePage");
 
             var model = new SubscriptionActivationModel();
 

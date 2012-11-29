@@ -5,7 +5,7 @@ using Nop.Core;
 using Nop.Core.Caching;
 using Nop.Core.Data;
 using Nop.Core.Domain.Blogs;
-using Nop.Core.Events;
+using Nop.Services.Events;
 
 namespace Nop.Services.Blogs
 {
@@ -29,7 +29,8 @@ namespace Nop.Services.Blogs
 
         #region Ctor
 
-        public BlogService(IRepository<BlogPost> blogPostRepository, ICacheManager cacheManager, IEventPublisher eventPublisher)
+        public BlogService(IRepository<BlogPost> blogPostRepository, 
+            ICacheManager cacheManager, IEventPublisher eventPublisher)
         {
             _blogPostRepository = blogPostRepository;
             _cacheManager = cacheManager;
@@ -83,9 +84,10 @@ namespace Nop.Services.Blogs
         /// <param name="dateTo">Filter by created date; null if you want to get all records</param>
         /// <param name="pageIndex">Page index</param>
         /// <param name="pageSize">Page size</param>
+        /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Blog posts</returns>
-        public virtual PagedList<BlogPost> GetAllBlogPosts(int languageId,
-            DateTime? dateFrom, DateTime? dateTo, int pageIndex, int pageSize)
+        public virtual IPagedList<BlogPost> GetAllBlogPosts(int languageId,
+            DateTime? dateFrom, DateTime? dateTo, int pageIndex, int pageSize, bool showHidden = false)
         {
             var query = _blogPostRepository.Table;
             if (dateFrom.HasValue)
@@ -94,6 +96,12 @@ namespace Nop.Services.Blogs
                 query = query.Where(b => dateTo.Value >= b.CreatedOnUtc);
             if (languageId > 0)
                 query = query.Where(b => languageId == b.LanguageId);
+            if (!showHidden)
+            {
+                var utcNow = DateTime.UtcNow;
+                query = query.Where(b => !b.StartDateUtc.HasValue || b.StartDateUtc <= utcNow);
+                query = query.Where(b => !b.EndDateUtc.HasValue || b.EndDateUtc >= utcNow);
+            }
             query = query.OrderByDescending(b => b.CreatedOnUtc);
             
             var blogPosts = new PagedList<BlogPost>(query, pageIndex, pageSize);
@@ -105,33 +113,41 @@ namespace Nop.Services.Blogs
         /// </summary>
         /// <param name="languageId">Language identifier. 0 if you want to get all news</param>
         /// <param name="tag">Tag</param>
+        /// <param name="pageIndex">Page index</param>
+        /// <param name="pageSize">Page size</param>
+        /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Blog posts</returns>
-        public virtual IList<BlogPost> GetAllBlogPostsByTag(int languageId, string tag)
+        public virtual IPagedList<BlogPost> GetAllBlogPostsByTag(int languageId, string tag,
+            int pageIndex, int pageSize, bool showHidden = false)
         {
             tag = tag.Trim();
 
-            var blogPostsAll = GetAllBlogPosts(languageId, null, null, 0, int.MaxValue);
-            var blogPosts = new List<BlogPost>();
+            //we laod all records and only then filter them by tag
+            var blogPostsAll = GetAllBlogPosts(languageId, null, null, 0, int.MaxValue, showHidden);
+            var taggedBlogPosts = new List<BlogPost>();
             foreach (var blogPost in blogPostsAll)
             {
                 var tags = blogPost.ParseTags();
                 if (!String.IsNullOrEmpty(tags.FirstOrDefault(t => t.Equals(tag, StringComparison.InvariantCultureIgnoreCase))))
-                    blogPosts.Add(blogPost);
+                    taggedBlogPosts.Add(blogPost);
             }
 
-            return blogPosts;
+            //server-side paging
+            var result = new PagedList<BlogPost>(taggedBlogPosts, pageIndex, pageSize);
+            return result;
         }
 
         /// <summary>
         /// Gets all blog post tags
         /// </summary>
         /// <param name="languageId">Language identifier. 0 if you want to get all news</param>
+        /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Blog post tags</returns>
-        public virtual IList<BlogPostTag> GetAllBlogPostTags(int languageId)
+        public virtual IList<BlogPostTag> GetAllBlogPostTags(int languageId, bool showHidden = false)
         {
             var blogPostTags = new List<BlogPostTag>();
 
-            var blogPosts = GetAllBlogPosts(languageId, null, null, 0, int.MaxValue);
+            var blogPosts = GetAllBlogPosts(languageId, null, null, 0, int.MaxValue, showHidden);
             foreach (var blogPost in blogPosts)
             {
                 var tags = blogPost.ParseTags();
@@ -187,6 +203,31 @@ namespace Nop.Services.Blogs
 
             //event notification
             _eventPublisher.EntityUpdated(blogPost);
+        }
+        
+        /// <summary>
+        /// Update blog post comment totals
+        /// </summary>
+        /// <param name="blogPost">Blog post</param>
+        public virtual void UpdateCommentTotals(BlogPost blogPost)
+        {
+            if (blogPost == null)
+                throw new ArgumentNullException("blogPost");
+
+            int approvedCommentCount = 0;
+            int notApprovedCommentCount = 0;
+            var blogComments = blogPost.BlogComments;
+            foreach (var bc in blogComments)
+            {
+                if (bc.IsApproved)
+                    approvedCommentCount++;
+                else
+                    notApprovedCommentCount++;
+            }
+
+            blogPost.ApprovedCommentCount = approvedCommentCount;
+            blogPost.NotApprovedCommentCount = notApprovedCommentCount;
+            UpdateBlogPost(blogPost);
         }
 
         #endregion

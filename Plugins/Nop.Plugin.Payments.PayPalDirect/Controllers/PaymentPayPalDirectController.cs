@@ -163,6 +163,8 @@ namespace Nop.Plugin.Payments.PayPalDirect.Controllers
                 CardholderName = form["CardholderName"],
                 CardNumber = form["CardNumber"],
                 CardCode = form["CardCode"],
+                ExpireMonth = form["ExpireMonth"],
+                ExpireYear = form["ExpireYear"]
             };
             var validationResult = validator.Validate(model);
             if (!validationResult.IsValid)
@@ -288,8 +290,6 @@ namespace Nop.Plugin.Payments.PayPalDirect.Controllers
                                                 {
                                                     //next payments
                                                     _orderProcessingService.ProcessNextRecurringPayment(rp);
-                                                    //UNDONE change new order status according to newPaymentStatus
-                                                    //UNDONE refund/void is not supported
                                                 }
                                             }
                                             break;

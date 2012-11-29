@@ -1,11 +1,11 @@
 ﻿using System.Collections.Generic;
+using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
 using Nop.Core.Infrastructure;
 using Nop.Core.Plugins;
 using Nop.Services.Payments;
 using Nop.Tests;
 using NUnit.Framework;
-using Nop.Core.Domain.Orders;
 
 namespace Nop.Services.Tests.Payments
 {
@@ -23,7 +23,7 @@ namespace Nop.Services.Tests.Payments
             _paymentSettings.ActivePaymentMethodSystemNames = new List<string>();
             _paymentSettings.ActivePaymentMethodSystemNames.Add("Payments.TestMethod");
 
-            var pluginFinder = new PluginFinder(new AppDomainTypeFinder());
+            var pluginFinder = new PluginFinder();
 
             _shoppingCartSettings = new ShoppingCartSettings();
 

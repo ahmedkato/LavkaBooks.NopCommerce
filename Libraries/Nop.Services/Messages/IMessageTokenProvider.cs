@@ -6,6 +6,7 @@ using Nop.Core.Domain.Forums;
 using Nop.Core.Domain.Messages;
 using Nop.Core.Domain.News;
 using Nop.Core.Domain.Orders;
+using Nop.Core.Domain.Shipping;
 
 namespace Nop.Services.Messages
 {
@@ -15,6 +16,12 @@ namespace Nop.Services.Messages
 
         void AddOrderTokens(IList<Token> tokens, Order order, int languageId);
 
+        void AddShipmentTokens(IList<Token> tokens, Shipment shipment, int languageId);
+
+        void AddOrderNoteTokens(IList<Token> tokens, OrderNote orderNote);
+
+        void AddRecurringPaymentTokens(IList<Token> tokens, RecurringPayment recurringPayment);
+        
         void AddReturnRequestTokens(IList<Token> tokens, ReturnRequest returnRequest, OrderProductVariant opv);
 
         void AddGiftCardTokens(IList<Token> tokens, GiftCard giftCard);
@@ -35,11 +42,14 @@ namespace Nop.Services.Messages
 
         void AddForumTokens(IList<Token> tokens, Forum forum);
 
-        void AddForumTopicTokens(IList<Token> tokens, ForumTopic forumTopic);
+        void AddForumTopicTokens(IList<Token> tokens, ForumTopic forumTopic,
+            int? friendlyForumTopicPageIndex = null, int? appendedPostIdentifierAnchor = null);
 
         void AddForumPostTokens(IList<Token> tokens, ForumPost forumPost);
 
         void AddPrivateMessageTokens(IList<Token> tokens, PrivateMessage privateMessage);
+
+        void AddBackInStockTokens(IList<Token> tokens, BackInStockSubscription subscription);
 
         string[] GetListOfCampaignAllowedTokens();
 

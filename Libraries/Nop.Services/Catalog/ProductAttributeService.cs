@@ -4,7 +4,7 @@ using System.Linq;
 using Nop.Core.Caching;
 using Nop.Core.Data;
 using Nop.Core.Domain.Catalog;
-using Nop.Core.Events;
+using Nop.Services.Events;
 
 namespace Nop.Services.Catalog
 {
@@ -47,7 +47,7 @@ namespace Nop.Services.Catalog
         /// <param name="productVariantAttributeRepository">Product variant attribute mapping repository</param>
         /// <param name="productVariantAttributeCombinationRepository">Product variant attribute combination repository</param>
         /// <param name="productVariantAttributeValueRepository">Product variant attribute value repository</param>
-        /// <param name="eventPublisher"></param>
+        /// <param name="eventPublisher">Event published</param>
         public ProductAttributeService(ICacheManager cacheManager,
             IRepository<ProductAttribute> productAttributeRepository,
             IRepository<ProductVariantAttribute> productVariantAttributeRepository,

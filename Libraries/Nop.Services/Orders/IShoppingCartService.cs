@@ -16,16 +16,19 @@ namespace Nop.Services.Orders
         /// </summary>
         /// <param name="shoppingCartItem">Shopping cart item</param>
         /// <param name="resetCheckoutData">A value indicating whether to reset checkout data</param>
-        void DeleteShoppingCartItem(ShoppingCartItem shoppingCartItem, bool resetCheckoutData = true);
+        /// <param name="ensureOnlyActiveCheckoutAttributes">A value indicating whether to ensure that only active checkout attributes are attached to the current customer</param>
+        void DeleteShoppingCartItem(ShoppingCartItem shoppingCartItem, bool resetCheckoutData = true,
+            bool ensureOnlyActiveCheckoutAttributes = false);
 
         /// <summary>
         /// Deletes expired shopping cart items
         /// </summary>
         /// <param name="olderThanUtc">Older than date and time</param>
-        void DeleteExpiredShoppingCartItems(DateTime olderThanUtc);
+        /// <returns>Number of deleted items</returns>
+        int DeleteExpiredShoppingCartItems(DateTime olderThanUtc);
 
         /// <summary>
-        /// Validates required product variants
+        /// Validates required product variants (product variants which require other variant to be added to the cart)
         /// </summary>
         /// <param name="customer">Customer</param>
         /// <param name="shoppingCartType">Shopping cart type</param>
@@ -35,6 +38,20 @@ namespace Nop.Services.Orders
         IList<string> GetRequiredProductVariantWarnings(Customer customer,
             ShoppingCartType shoppingCartType, ProductVariant productVariant,
             bool automaticallyAddRequiredProductVariantsIfEnabled);
+
+        /// <summary>
+        /// Validates a product variant for standard properties
+        /// </summary>
+        /// <param name="customer">Customer</param>
+        /// <param name="shoppingCartType">Shopping cart type</param>
+        /// <param name="productVariant">Product variant</param>
+        /// <param name="selectedAttributes">Selected attributes</param>
+        /// <param name="customerEnteredPrice">Customer entered price</param>
+        /// <param name="quantity">Quantity</param>
+        /// <returns>Warnings</returns>
+        IList<string> GetStandardWarnings(Customer customer, ShoppingCartType shoppingCartType,
+            ProductVariant productVariant, string selectedAttributes,
+            decimal customerEnteredPrice, int quantity);
 
         /// <summary>
         /// Validates shopping cart item attributes
@@ -55,7 +72,7 @@ namespace Nop.Services.Orders
         /// <returns>Warnings</returns>
         IList<string> GetShoppingCartItemGiftCardWarnings(ShoppingCartType shoppingCartType,
             ProductVariant productVariant, string selectedAttributes);
-
+        
         /// <summary>
         /// Validates shopping cart item
         /// </summary>
@@ -66,10 +83,16 @@ namespace Nop.Services.Orders
         /// <param name="customerEnteredPrice">Customer entered price</param>
         /// <param name="quantity">Quantity</param>
         /// <param name="automaticallyAddRequiredProductVariantsIfEnabled">Automatically add required product variants if enabled</param>
+        /// <param name="getStandardWarnings">A value indicating whether we should validate a product variant for standard properties</param>
+        /// <param name="getAttributesWarnings">A value indicating whether we should validate product attributes</param>
+        /// <param name="getGiftCardWarnings">A value indicating whether we should validate gift card properties</param>
+        /// <param name="getRequiredProductVariantWarnings">A value indicating whether we should validate required product variants (product variants which require other variant to be added to the cart)</param>
         /// <returns>Warnings</returns>
         IList<string> GetShoppingCartItemWarnings(Customer customer, ShoppingCartType shoppingCartType,
             ProductVariant productVariant, string selectedAttributes, decimal customerEnteredPrice,
-            int quantity, bool automaticallyAddRequiredProductVariantsIfEnabled);
+            int quantity, bool automaticallyAddRequiredProductVariantsIfEnabled,
+            bool getStandardWarnings = true, bool getAttributesWarnings = true,
+            bool getGiftCardWarnings = true, bool getRequiredProductVariantWarnings = true);
 
         /// <summary>
         /// Validates whether this shopping cart is valid
@@ -122,14 +145,6 @@ namespace Nop.Services.Orders
         /// <returns>Warnings</returns>
         IList<string> UpdateShoppingCartItem(Customer customer, int shoppingCartItemId,
             int newQuantity, bool resetCheckoutData);
-
-        /// <summary>
-        /// Direct add to cart allowed
-        /// </summary>
-        /// <param name="productId">Product identifier</param>
-        /// <param name="productVariantId">Default product variant identifier for adding to cart</param>
-        /// <returns>A value indicating whether direct add to cart is allowed</returns>
-        bool DirectAddToCartAllowed(int productId, out int productVariantId);
         
         /// <summary>
         /// Migrate shopping cart

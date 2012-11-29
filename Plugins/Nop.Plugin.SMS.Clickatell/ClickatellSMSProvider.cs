@@ -4,24 +4,28 @@ using System.Web.Routing;
 using Nop.Core;
 using Nop.Core.Plugins;
 using Nop.Plugin.SMS.Clickatell.Clickatell;
+using Nop.Services.Common;
+using Nop.Services.Configuration;
+using Nop.Services.Localization;
 using Nop.Services.Logging;
-using Nop.Services.Messages;
 
 namespace Nop.Plugin.SMS.Clickatell
 {
     /// <summary>
     /// Represents the Clickatell SMS provider
     /// </summary>
-    public class ClickatellSmsProvider : BasePlugin, ISmsProvider
+    public class ClickatellSmsProvider : BasePlugin, IMiscPlugin
     {
         private readonly ILogger _logger;
+        private readonly ISettingService _settingService;
         private readonly ClickatellSettings _clickatellSettings;
 
         public ClickatellSmsProvider(ClickatellSettings clickatellSettings,
-            ILogger logger)
+            ILogger logger, ISettingService settingService)
         {
             this._clickatellSettings = clickatellSettings;
             this._logger = logger;
+            this._settingService = settingService;
         }
 
         /// <summary>
@@ -73,6 +77,68 @@ namespace Nop.Plugin.SMS.Clickatell
             actionName = "Configure";
             controllerName = "SmsClickatell";
             routeValues = new RouteValueDictionary() { { "Namespaces", "Nop.Plugin.SMS.Clickatell.Controllers" }, { "area", null } };
+        }
+
+        /// <summary>
+        /// Install plugin
+        /// </summary>
+        public override void Install()
+        {
+            //settings
+            var settings = new ClickatellSettings()
+            {
+                Enabled = false,
+            };
+            _settingService.SaveSetting(settings);
+
+            //locales
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Clickatell.TestFailed", "Test message sending failed");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Clickatell.TestSuccess", "Test message was sent");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Clickatell.Fields.Enabled", "Enabled");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Clickatell.Fields.Enabled.Hint", "Check to enable SMS provider");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Clickatell.Fields.ApiId", "API ID");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Clickatell.Fields.ApiId.Hint", "Clickatell API ID");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Clickatell.Fields.Password", "Password");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Clickatell.Fields.Password.Hint", "Clickatell password");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Clickatell.Fields.PhoneNumber", "Phone number");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Clickatell.Fields.PhoneNumber.Hint", "Your phone number");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Clickatell.Fields.Username", "Username");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Clickatell.Fields.Username.Hint", "Clickatell username");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Clickatell.Fields.TestMessage", "Message text");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Clickatell.Fields.TestMessage.Hint", "Text of the test message");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Clickatell.SendTest", "Send");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Clickatell.SendTest.Hint", "Send test message");
+
+            base.Install();
+        }
+
+        /// <summary>
+        /// Uninstall plugin
+        /// </summary>
+        public override void Uninstall()
+        {
+            //settings
+            _settingService.DeleteSetting<ClickatellSettings>();
+
+            //locales
+            this.DeletePluginLocaleResource("Plugins.Sms.Clickatell.TestFailed");
+            this.DeletePluginLocaleResource("Plugins.Sms.Clickatell.TestSuccess");
+            this.DeletePluginLocaleResource("Plugins.Sms.Clickatell.Fields.Enabled");
+            this.DeletePluginLocaleResource("Plugins.Sms.Clickatell.Fields.Enabled.Hint");
+            this.DeletePluginLocaleResource("Plugins.Sms.Clickatell.Fields.ApiId");
+            this.DeletePluginLocaleResource("Plugins.Sms.Clickatell.Fields.ApiId.Hint");
+            this.DeletePluginLocaleResource("Plugins.Sms.Clickatell.Fields.Password");
+            this.DeletePluginLocaleResource("Plugins.Sms.Clickatell.Fields.Password.Hint");
+            this.DeletePluginLocaleResource("Plugins.Sms.Clickatell.Fields.PhoneNumber");
+            this.DeletePluginLocaleResource("Plugins.Sms.Clickatell.Fields.PhoneNumber.Hint");
+            this.DeletePluginLocaleResource("Plugins.Sms.Clickatell.Fields.Username");
+            this.DeletePluginLocaleResource("Plugins.Sms.Clickatell.Fields.Username.Hint");
+            this.DeletePluginLocaleResource("Plugins.Sms.Clickatell.Fields.TestMessage");
+            this.DeletePluginLocaleResource("Plugins.Sms.Clickatell.Fields.TestMessage.Hint");
+            this.DeletePluginLocaleResource("Plugins.Sms.Clickatell.SendTest");
+            this.DeletePluginLocaleResource("Plugins.Sms.Clickatell.SendTest.Hint");
+
+            base.Uninstall();
         }
     }
 }

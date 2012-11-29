@@ -2,19 +2,19 @@
 using System.Linq;
 using System.Web.Mvc;
 using Nop.Admin.Models.Polls;
+using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Polls;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Polls;
+using Nop.Services.Security;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
-using Nop.Core.Domain.Common;
 
 namespace Nop.Admin.Controllers
 {
 	[AdminAuthorize]
-    public class PollController : BaseNopController
+    public partial class PollController : BaseNopController
 	{
 		#region Fields
 
@@ -113,7 +113,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Create(PollModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManagePolls))
@@ -142,7 +142,8 @@ namespace Nop.Admin.Controllers
 
             var poll = _pollService.GetPollById(id);
             if (poll == null)
-                throw new ArgumentException("No poll found with the specified id", "id");
+                //No poll found with the specified id
+                return RedirectToAction("List");
 
             ViewBag.AllLanguages = _languageService.GetAllLanguages(true);
             var model = poll.ToModel();
@@ -151,7 +152,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Edit(PollModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManagePolls))
@@ -159,7 +160,8 @@ namespace Nop.Admin.Controllers
 
             var poll = _pollService.GetPollById(model.Id);
             if (poll == null)
-                throw new ArgumentException("No poll found with the specified id");
+                //No poll found with the specified id
+                return RedirectToAction("List");
 
             if (ModelState.IsValid)
             {
@@ -177,15 +179,16 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManagePolls))
                 return AccessDeniedView();
 
             var poll = _pollService.GetPollById(id);
             if (poll == null)
-                throw new ArgumentException("No poll found with the specified id", "id");
+                //No poll found with the specified id
+                return RedirectToAction("List");
             
             _pollService.DeletePoll(poll);
 
@@ -236,13 +239,18 @@ namespace Nop.Admin.Controllers
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManagePolls))
                 return AccessDeniedView();
-
+            
             if (!ModelState.IsValid)
             {
-                return new JsonResult { Data = "error" };
+                //display the first model error
+                var modelStateErrors = this.ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage);
+                return Content(modelStateErrors.FirstOrDefault());
             }
 
             var pollAnswer = _pollService.GetPollAnswerById(model.Id);
+            if (pollAnswer == null)
+                throw new ArgumentException("No poll answer found with the specified id", "id");
+
             pollAnswer.Name = model.Name;
             pollAnswer.DisplayOrder = model.DisplayOrder1;
             _pollService.UpdatePoll(pollAnswer.Poll);
@@ -255,10 +263,12 @@ namespace Nop.Admin.Controllers
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManagePolls))
                 return AccessDeniedView();
-
+           
             if (!ModelState.IsValid)
             {
-                return new JsonResult { Data = "error" };
+                //display the first model error
+                var modelStateErrors = this.ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage);
+                return Content(modelStateErrors.FirstOrDefault());
             }
 
             var poll = _pollService.GetPollById(pollId);
@@ -283,6 +293,8 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var pollAnswer = _pollService.GetPollAnswerById(id);
+            if (pollAnswer == null)
+                throw new ArgumentException("No poll answer found with the specified id", "id");
 
             int pollId = pollAnswer.PollId;
             _pollService.DeletePollAnswer(pollAnswer);

@@ -4,7 +4,7 @@ using Nop.Core;
 using Nop.Core.Caching;
 using Nop.Core.Data;
 using Nop.Core.Domain.News;
-using Nop.Core.Events;
+using Nop.Services.Events;
 
 namespace Nop.Services.News
 {
@@ -78,29 +78,29 @@ namespace Nop.Services.News
         /// Gets all news
         /// </summary>
         /// <param name="languageId">Language identifier; 0 if you want to get all records</param>
-        /// <param name="dateFrom">Filter by created date; null if you want to get all records</param>
-        /// <param name="dateTo">Filter by created date; null if you want to get all records</param>
         /// <param name="pageIndex">Page index</param>
         /// <param name="pageSize">Page size</param>
         /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>News items</returns>
         public virtual IPagedList<NewsItem> GetAllNews(int languageId,
-            DateTime? dateFrom, DateTime? dateTo, int pageIndex, int pageSize, bool showHidden = false)
+            int pageIndex, int pageSize, bool showHidden = false)
         {
             var query = _newsItemRepository.Table;
-            if (dateFrom.HasValue)
-                query = query.Where(n => dateFrom.Value <= n.CreatedOnUtc);
-            if (dateTo.HasValue)
-                query = query.Where(n => dateTo.Value >= n.CreatedOnUtc);
             if (languageId > 0)
                 query = query.Where(n => languageId == n.LanguageId);
             if (!showHidden)
+            {
+                var utcNow = DateTime.UtcNow;
                 query = query.Where(n => n.Published);
+                query = query.Where(n => !n.StartDateUtc.HasValue || n.StartDateUtc <= utcNow);
+                query = query.Where(n => !n.EndDateUtc.HasValue || n.EndDateUtc >= utcNow);
+            }
             query = query.OrderByDescending(b => b.CreatedOnUtc);
 
             var news = new PagedList<NewsItem>(query, pageIndex, pageSize);
             return news;
         }
+
         /// <summary>
         /// Inserts a news item
         /// </summary>
@@ -133,6 +133,31 @@ namespace Nop.Services.News
 
             //event notification
             _eventPublisher.EntityUpdated(news);
+        }
+        
+        /// <summary>
+        /// Update news item comment totals
+        /// </summary>
+        /// <param name="newsItem">News item</param>
+        public virtual void UpdateCommentTotals(NewsItem newsItem)
+        {
+            if (newsItem == null)
+                throw new ArgumentNullException("newsItem");
+
+            int approvedCommentCount = 0;
+            int notApprovedCommentCount = 0;
+            var newsComments = newsItem.NewsComments;
+            foreach (var nc in newsComments)
+            {
+                if (nc.IsApproved)
+                    approvedCommentCount++;
+                else
+                    notApprovedCommentCount++;
+            }
+
+            newsItem.ApprovedCommentCount = approvedCommentCount;
+            newsItem.NotApprovedCommentCount = notApprovedCommentCount;
+            UpdateNews(newsItem);
         }
 
         #endregion

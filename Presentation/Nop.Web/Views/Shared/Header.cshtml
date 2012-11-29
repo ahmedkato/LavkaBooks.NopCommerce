@@ -4,18 +4,18 @@
     </div>
     <div class="header-links-wrapper">
         @Html.Action("HeaderLinks", "Common")
+        @Html.Action("FlyoutShoppingCart", "ShoppingCart")
     </div>
     <div class="header-selectors-wrapper">
-        <div class="header-taxDisplayTypeSelector">
+        <div class="tax-display-type-selector">
             @Html.Action("TaxTypeSelector", "Common")
         </div>
-        <div class="header-currencyselector">
+        <div class="currency-selector">
             @Html.Action("CurrencySelector", "Common")
         </div>
-        <div class="header-languageselector">
+        <div class="language-selector">
             @Html.Action("LanguageSelector", "Common")
         </div>
-        
-        @Html.Action("WidgetsByZone", "Widget", new { widgetZone = Nop.Core.Domain.Cms.WidgetZone.HeaderSelectors })
+        @Html.Widget("header_selectors")
     </div>
 </div>

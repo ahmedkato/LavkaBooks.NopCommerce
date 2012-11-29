@@ -8,7 +8,7 @@ using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
 using Nop.Core.Domain.Shipping;
-using Nop.Core.Events;
+using Nop.Services.Events;
 
 namespace Nop.Services.Orders
 {
@@ -24,7 +24,6 @@ namespace Nop.Services.Orders
         private readonly IRepository<OrderNote> _orderNoteRepository;
         private readonly IRepository<ProductVariant> _pvRepository;
         private readonly IRepository<RecurringPayment> _recurringPaymentRepository;
-        private readonly IRepository<RecurringPaymentHistory> _recurringPaymentHistoryRepository;
         private readonly IRepository<Customer> _customerRepository;
         private readonly IRepository<ReturnRequest> _returnRequestRepository;
         private readonly IEventPublisher _eventPublisher;
@@ -41,16 +40,14 @@ namespace Nop.Services.Orders
         /// <param name="orderNoteRepository">Order note repository</param>
         /// <param name="pvRepository">Product variant repository</param>
         /// <param name="recurringPaymentRepository">Recurring payment repository</param>
-        /// <param name="recurringPaymentHistoryRepository">Recurring payment history repository</param>
         /// <param name="customerRepository">Customer repository</param>
         /// <param name="returnRequestRepository">Return request repository</param>
-        /// <param name="eventPublisher"></param>
+        /// <param name="eventPublisher">Event published</param>
         public OrderService(IRepository<Order> orderRepository,
             IRepository<OrderProductVariant> opvRepository,
             IRepository<OrderNote> orderNoteRepository,
             IRepository<ProductVariant> pvRepository,
             IRepository<RecurringPayment> recurringPaymentRepository,
-            IRepository<RecurringPaymentHistory> recurringPaymentHistoryRepository,
             IRepository<Customer> customerRepository, 
             IRepository<ReturnRequest> returnRequestRepository,
             IEventPublisher eventPublisher)
@@ -60,7 +57,6 @@ namespace Nop.Services.Orders
             _orderNoteRepository = orderNoteRepository;
             _pvRepository = pvRepository;
             _recurringPaymentRepository = recurringPaymentRepository;
-            _recurringPaymentHistoryRepository = recurringPaymentHistoryRepository;
             _customerRepository = customerRepository;
             _returnRequestRepository = returnRequestRepository;
             _eventPublisher = eventPublisher;
@@ -83,6 +79,31 @@ namespace Nop.Services.Orders
                 return null;
 
             return _orderRepository.GetById(orderId);
+        }
+
+        /// <summary>
+        /// Get orders by identifiers
+        /// </summary>
+        /// <param name="orderIds">Order identifiers</param>
+        /// <returns>Order</returns>
+        public virtual IList<Order> GetOrdersByIds(int[] orderIds)
+        {
+            if (orderIds == null || orderIds.Length == 0)
+                return new List<Order>();
+
+            var query = from o in _orderRepository.Table
+                        where orderIds.Contains(o.Id)
+                        select o;
+            var orders = query.ToList();
+            //sort by passed identifiers
+            var sortedOrders = new List<Order>();
+            foreach (int id in orderIds)
+            {
+                var order = orders.Find(x => x.Id == id);
+                if (order != null)
+                    sortedOrders.Add(order);
+            }
+            return sortedOrders;
         }
 
         /// <summary>
@@ -254,14 +275,23 @@ namespace Nop.Services.Orders
             _eventPublisher.EntityDeleted(orderNote);
         }
 
+        /// <summary>
+        /// Get an order by authorization transaction ID and payment method system name
+        /// </summary>
+        /// <param name="authorizationTransactionId">Authorization transaction ID</param>
+        /// <param name="paymentMethodSystemName">Payment method system name</param>
+        /// <returns>Order</returns>
         public virtual Order GetOrderByAuthorizationTransactionIdAndPaymentMethod(string authorizationTransactionId, 
             string paymentMethodSystemName)
-        {
-            var query = from o in _orderRepository.Table
-                        orderby o.CreatedOnUtc descending
-                        where o.AuthorizationTransactionId == authorizationTransactionId &&
-                        o.PaymentMethodSystemName == paymentMethodSystemName
-                        select o;
+        { 
+            var query = _orderRepository.Table;
+            if (!String.IsNullOrWhiteSpace(authorizationTransactionId))
+                query = query.Where(o => o.AuthorizationTransactionId == authorizationTransactionId);
+            
+            if (!String.IsNullOrWhiteSpace(paymentMethodSystemName))
+                query = query.Where(o => o.PaymentMethodSystemName == paymentMethodSystemName);
+            
+            query = query.OrderByDescending(o => o.CreatedOnUtc);
             var order = query.FirstOrDefault();
             return order;
         }

@@ -47,7 +47,7 @@
         </tr>
         <tr>
             <td colspan="2">
-                <button type="submit" id="search-best-customers-ordertotal" class="t-button">@T("Admin.Customers.Reports.RunReport")</button>
+                <input type="button" id="search-best-customers-ordertotal" class="t-button" value="@T("Admin.Customers.Reports.RunReport")" />
             </td>
         </tr>
     </table>
@@ -69,7 +69,7 @@
                         .ClientTemplate("<a href=\"" + @Url.Content("~/Admin/Customer/Edit/") + "<#= CustomerId #>\">" + T("Admin.Common.View").Text + "</a>")
                         .Width(50)
                         .Centered()
-                        .Title("View");
+                        .Title(T("Admin.Common.View").Text);
                 })
                 .DataBinding(dataBinding => dataBinding.Ajax().Select("ReportBestCustomersByOrderTotalList", "Customer"))
                 .EnableCustomBinding(true))

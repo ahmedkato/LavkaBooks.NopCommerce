@@ -1,4 +1,5 @@
-﻿@model Nop.Web.Models.Boards.TopicMoveModel
+﻿@model TopicMoveModel
+@using Nop.Web.Models.Boards;
 @using Nop.Services.Seo;
 @{    
     Layout = "~/Views/Shared/_ColumnsOne.cshtml";
@@ -8,15 +9,17 @@
 @using (Html.BeginForm())
 {
     @Html.HiddenFor(model => model.Id)
-    <div class="moveforumtopic">
-        @Html.Partial("_ForumBreadcrumb", @Model.ForumBreadCrumbModel)
+    <div class="page move-forum-topic">
+        @Html.Action("ForumBreadcrumb", new { forumTopicId = Model.Id })
+        <div class="clear">
+        </div>
         <div class="title">
             @T("Forum.MoveTopic")
         </div>
-        <div class="wrapper">
-            <div class="clear">
-            </div>
-            <table class="movetopic">
+        <div class="clear">
+        </div>
+        <div class="page-body">
+            <table class="move-topic">
                 <tr>
                     <td class="fieldname">
                         @T("Forum.SelectTheForumToMoveTopic"):
@@ -27,9 +30,8 @@
                 </tr>
                 <tr>
                     <td colspan="2" class="options">
-                        <input type="submit" value="@T("Forum.Submit")" class="submitforumtopicbutton" />
-                        <input type="button" class="cancelforumtopicbutton" value="@T("Forum.Cancel")" 
-                        onclick="setLocation('@Url.RouteUrl("TopicSlug", new { id = @Model.Id, slug = @Model.ForumBreadCrumbModel.ForumTopicPostsModel.ForumTopic.GetSeName() })')" />
+                        <input type="submit" value="@T("Forum.Submit")" class="button-1 submit-forum-topic-button" />
+                        <input type="button" class="button-2 cancel-forum-topic-button" value="@T("Forum.Cancel")" onclick="setLocation('@Url.RouteUrl("TopicSlug", new { id = @Model.Id, slug = @Model.TopicSeName })')" />
                     </td>
                 </tr>
             </table>

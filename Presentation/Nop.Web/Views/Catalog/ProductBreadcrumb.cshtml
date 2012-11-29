@@ -1,17 +1,21 @@
-﻿@model ProductModel.ProductBreadcrumbModel
-@using Nop.Web.Framework.UI;
+﻿@model ProductDetailsModel.ProductBreadcrumbModel
 @using Nop.Web.Models.Catalog;
-@if (Model.DisplayBreadcrumb)
-{
-    <div class="breadcrumb">
-        <a href="@Url.RouteUrl("HomePage")">@T("Products.Breadcrumb.Top")</a> /
+<div class="breadcrumb">
+    <ul>
+        @Html.Widget("productbreadcrumb_before")
+        <li><a href="@Url.RouteUrl("HomePage")" title="@T("Categories.Breadcrumb.Top")">@T("Products.Breadcrumb.Top")</a>
+            <span class="delimiter">/</span> </li>
         @for (int i = 0; i < Model.CategoryBreadcrumb.Count; i++)
         {
             var catBr = Model.CategoryBreadcrumb[i];
-            <a href="@Url.RouteUrl("Category", new { categoryId = catBr.Id, SeName = catBr.SeName })">@catBr.Name</a>
-            <text>/</text>
+            <li><a href="@Url.RouteUrl("Category", new { categoryId = catBr.Id, SeName = catBr.SeName })" title="@catBr.Name">@catBr.Name</a>
+                <span class="delimiter">/</span></li>
         }
-        <a href="@Url.RouteUrl("Product", new { productId = Model.ProductId, SeName = Model.ProductSeName })">@Model.ProductName</a>
-    </div>
-    <br />
-}
+        @*uncomment to disable clickable link
+        <strong>@Model.ProductName</strong>*@
+        <li>
+            <strong><a href="@Url.RouteUrl("Product", new { productId = Model.ProductId, SeName = Model.ProductSeName })">@Model.ProductName</a></strong>
+            @Html.Widget("productbreadcrumb_after")
+        </li>
+    </ul>
+</div>

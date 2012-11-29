@@ -1,22 +1,24 @@
 ﻿using System;
 using System.Globalization;
 using System.Threading;
-using System.Web;
+using System.Web.Configuration;
 using System.Web.Hosting;
 using System.Web.Mvc;
 using System.Web.Routing;
 using FluentValidation.Mvc;
-using MvcMiniProfiler;
-using MvcMiniProfiler.MVCHelpers;
 using Nop.Core;
 using Nop.Core.Data;
 using Nop.Core.Domain;
 using Nop.Core.Infrastructure;
+using Nop.Services.Logging;
+using Nop.Services.Tasks;
 using Nop.Web.Framework;
 using Nop.Web.Framework.EmbeddedViews;
 using Nop.Web.Framework.Mvc;
 using Nop.Web.Framework.Mvc.Routes;
 using Nop.Web.Framework.Themes;
+using StackExchange.Profiling;
+using StackExchange.Profiling.MVCHelpers;
 
 namespace Nop.Web
 {
@@ -27,11 +29,13 @@ namespace Nop.Web
     {
         public static void RegisterGlobalFilters(GlobalFilterCollection filters)
         {
-            filters.Add(new HandleErrorAttribute());
+            //do not register HandleErrorAttribute. use classic error handling mode
+            //filters.Add(new HandleErrorAttribute());
         }
 
         public static void RegisterRoutes(RouteCollection routes)
         {
+            routes.IgnoreRoute("favicon.ico");
             routes.IgnoreRoute("{resource}.axd/{*pathInfo}");
             
             //register custom routes (plugins, etc)
@@ -49,7 +53,9 @@ namespace Nop.Web
         protected void Application_Start()
         {
             //initialize engine context
-            EngineContext.Initialize(false, DataSettingsHelper.DatabaseIsInstalled());
+            EngineContext.Initialize(false);
+
+            bool databaseInstalled = DataSettingsHelper.DatabaseIsInstalled();
 
             //set dependency resolver
             var dependencyResolver = new NopDependencyResolver();
@@ -58,41 +64,58 @@ namespace Nop.Web
             //model binders
             ModelBinders.Binders.Add(typeof(BaseNopModel), new NopModelBinder());
 
-            if (DataSettingsHelper.DatabaseIsInstalled())
+            if (databaseInstalled)
             {
                 //remove all view engines
                 ViewEngines.Engines.Clear();
                 //except the themeable razor view engine we use
-                ViewEngines.Engines.Add(new ThemableRazorViewEngine());
+                ViewEngines.Engines.Add(new ThemeableRazorViewEngine());
             }
 
-            //Add some functionality on top of the deafult ModelMetadataProvider
+            //Add some functionality on top of the default ModelMetadataProvider
             ModelMetadataProviders.Current = new NopMetadataProvider();
 
             //Registering some regular mvc stuf
-            //ViewEngines.Engines.Add(new ThemableRazorViewEngine());
             AreaRegistration.RegisterAllAreas();
-            if (DataSettingsHelper.DatabaseIsInstalled() &&
+            if (databaseInstalled &&
                 EngineContext.Current.Resolve<StoreInformationSettings>().DisplayMiniProfilerInPublicStore)
             {
                 GlobalFilters.Filters.Add(new ProfilingActionFilter());
             }
             RegisterGlobalFilters(GlobalFilters.Filters);
             RegisterRoutes(RouteTable.Routes);
+            
+            DataAnnotationsModelValidatorProvider.AddImplicitRequiredAttributeForValueTypes = false;
 
-            //For debugging
-            //RouteDebug.RouteDebugger.RewriteRoutesForTesting(RouteTable.Routes);
-
-            DataAnnotationsModelValidatorProvider
-                .AddImplicitRequiredAttributeForValueTypes = false;
-
-            ModelValidatorProviders.Providers.Add(
-                new FluentValidationModelValidatorProvider(new NopValidatorFactory()));
+            ModelValidatorProviders.Providers.Add(new FluentValidationModelValidatorProvider(new NopValidatorFactory()));
 
             //register virtual path provider for embedded views
             var embeddedViewResolver = EngineContext.Current.Resolve<IEmbeddedViewResolver>();
             var embeddedProvider = new EmbeddedViewVirtualPathProvider(embeddedViewResolver.GetEmbeddedViews());
             HostingEnvironment.RegisterVirtualPathProvider(embeddedProvider);
+
+            //mobile device support
+            //if (databaseInstalled)
+            //{
+            //    if (EngineContext.Current.Resolve<StoreInformationSettings>().MobileDevicesSupported)
+            //    {
+            //        //Enable the mobile detection provider (if enabled)
+            //        HttpCapabilitiesBase.BrowserCapabilitiesProvider = new FiftyOne.Foundation.Mobile.Detection.MobileCapabilitiesProvider();
+            //    }
+            //    else
+            //    {
+            //        //set BrowserCapabilitiesProvider to null because 51Degrees assembly always sets it to MobileCapabilitiesProvider
+            //        //which does not support our browserCaps.config file
+            //        HttpCapabilitiesBase.BrowserCapabilitiesProvider = null;
+            //    }
+            //}
+
+            //start scheduled tasks
+            if (databaseInstalled)
+            {
+                TaskManager.Instance.Initialize();
+                TaskManager.Instance.Start();
+            }
         }
 
         protected void Application_BeginRequest(object sender, EventArgs e)
@@ -122,17 +145,13 @@ namespace Nop.Web
             SetWorkingCulture();
         }
 
-        public override string GetVaryByCustomString(HttpContext context, string custom)
+        protected void Application_Error(Object sender, EventArgs e)
         {
-            switch (custom)
-            {
-                case "WorkingLanguage":
-                    return EngineContext.Current.Resolve<IWorkContext>().WorkingLanguage.Id.ToString();
-                default:
-                    return base.GetVaryByCustomString(context, custom);
-            }
+            //disable compression (if enabled). More info - http://stackoverflow.com/questions/3960707/asp-net-mvc-weird-characters-in-error-page
+            //log error
+            LogException(Server.GetLastError());
         }
-
+        
         protected void EnsureDatabaseIsInstalled()
         {
             var webHelper = EngineContext.Current.Resolve<IWebHelper>();
@@ -147,36 +166,63 @@ namespace Nop.Web
 
         protected void SetWorkingCulture()
         {
-            if (DataSettingsHelper.DatabaseIsInstalled())
+            if (!DataSettingsHelper.DatabaseIsInstalled())
+                return;
+
+            var webHelper = EngineContext.Current.Resolve<IWebHelper>();
+            if (webHelper.IsStaticResource(this.Request))
+                return;
+
+            //keep alive page requested (we ignore it to prevnt creating a guest customer records)
+            string keepAliveUrl = string.Format("{0}keepalive", webHelper.GetStoreLocation());
+            if (webHelper.GetThisPageUrl(false).StartsWith(keepAliveUrl, StringComparison.InvariantCultureIgnoreCase))
+                return;
+
+
+            if (webHelper.GetThisPageUrl(false).StartsWith(string.Format("{0}admin", webHelper.GetStoreLocation()),
+                StringComparison.InvariantCultureIgnoreCase))
             {
-                var webHelper = EngineContext.Current.Resolve<IWebHelper>();
-                if (!webHelper.IsStaticResource(this.Request))
+                //admin area
+
+
+                //always set culture to 'en-US'
+                //we set culture of admin area to 'en-US' because current implementation of Telerik grid 
+                //doesn't work well in other cultures
+                //e.g., editing decimal value in russian culture
+                var culture = new CultureInfo("en-US");
+                Thread.CurrentThread.CurrentCulture = culture;
+                Thread.CurrentThread.CurrentUICulture = culture;
+            }
+            else
+            {
+                //public store
+                var workContext = EngineContext.Current.Resolve<IWorkContext>();
+                if (workContext.CurrentCustomer != null && workContext.WorkingLanguage != null)
                 {
-                    if (webHelper.GetThisPageUrl(false).StartsWith(string.Format("{0}admin", webHelper.GetStoreLocation()), StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        //admin area
-
-
-                        //always set culture to 'en-US'
-                        //we set culture of admin area to 'en-US' because current implementation of Telerik grid 
-                        //doesn't work well in other cultures
-                        //e.g., editing decimal value in russian culture
-                        var culture = new CultureInfo("en-US");
-                        Thread.CurrentThread.CurrentCulture = culture;
-                        Thread.CurrentThread.CurrentUICulture = culture;
-                    }
-                    else
-                    {
-                        //public store
-                        var workContext = EngineContext.Current.Resolve<IWorkContext>();
-                        if (workContext.CurrentCustomer != null && workContext.WorkingLanguage != null)
-                        {
-                            var culture = new CultureInfo(workContext.WorkingLanguage.LanguageCulture);
-                            Thread.CurrentThread.CurrentCulture = culture;
-                            Thread.CurrentThread.CurrentUICulture = culture;
-                        }
-                    }
+                    var culture = new CultureInfo(workContext.WorkingLanguage.LanguageCulture);
+                    Thread.CurrentThread.CurrentCulture = culture;
+                    Thread.CurrentThread.CurrentUICulture = culture;
                 }
+            }
+        }
+
+        protected void LogException(Exception exc)
+        {
+            if (exc == null)
+                return;
+            
+            if (!DataSettingsHelper.DatabaseIsInstalled())
+                return;
+            
+            try
+            {
+                var logger = EngineContext.Current.Resolve<ILogger>();
+                var workContext = EngineContext.Current.Resolve<IWorkContext>();
+                logger.Error(exc.Message, exc, workContext.CurrentCustomer);
+            }
+            catch (Exception)
+            {
+                //don't throw new exception if occurs
             }
         }
     }

@@ -4,7 +4,7 @@ using System.Linq;
 using Nop.Core.Caching;
 using Nop.Core.Data;
 using Nop.Core.Domain.Customers;
-using Nop.Core.Events;
+using Nop.Services.Events;
 
 namespace Nop.Services.Customers
 {
@@ -28,7 +28,7 @@ namespace Nop.Services.Customers
         /// </summary>
         /// <param name="cacheManager">Cache manager</param>
         /// <param name="contentRepository">Customer content repository</param>
-        /// <param name="eventPublisher"></param>
+        /// <param name="eventPublisher">Event published</param>
         public CustomerContentService(ICacheManager cacheManager,
             IRepository<CustomerContent> contentRepository,
             IEventPublisher eventPublisher)
@@ -79,15 +79,23 @@ namespace Nop.Services.Customers
         /// </summary>
         /// <typeparam name="T">Type</typeparam>
         /// <param name="customerId">Customer identifier; 0 to load all records</param>
-        /// <param name="approved">A value indicating whether to content is approved; null to load all records</param>
+        /// <param name="approved">A value indicating whether to content is approved; null to load all records</param> 
+        /// <param name="fromUtc">Item creation from; null to load all records</param>
+        /// <param name="toUtc">Item item creation to; null to load all records</param>
         /// <returns>Customer content</returns>
-        public virtual IList<T> GetAllCustomerContent<T>(int customerId, bool? approved) where T: CustomerContent
+        public virtual IList<T> GetAllCustomerContent<T>(int customerId, bool? approved,
+            DateTime? fromUtc = null, DateTime? toUtc = null) where T : CustomerContent
         {
-            var query = from c in _contentRepository.Table
-                        orderby c.CreatedOnUtc
-                        where !approved.HasValue || c.IsApproved == approved &&
-                        (customerId == 0 || c.CustomerId == customerId)
-                        select c;
+            var query = _contentRepository.Table;
+            if (approved.HasValue)
+                query = query.Where(c => c.IsApproved == approved);
+            if (customerId > 0)
+                query = query.Where(c => c.CustomerId == customerId);
+            if (fromUtc.HasValue)
+                query = query.Where(c => fromUtc.Value <= c.CreatedOnUtc);
+            if (toUtc.HasValue)
+                query = query.Where(c => toUtc.Value >= c.CreatedOnUtc);
+            query = query.OrderBy(c => c.CreatedOnUtc);
             var content = query.OfType<T>().ToList();
             return content;
         }

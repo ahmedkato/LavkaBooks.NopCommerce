@@ -6,7 +6,7 @@ using Telerik.Web.Mvc;
 
 namespace Nop.Admin.Models.Catalog
 {
-    public class ProductListModel : BaseNopModel
+    public partial class ProductListModel : BaseNopModel
     {
         public ProductListModel()
         {
@@ -28,8 +28,9 @@ namespace Nop.Admin.Models.Catalog
         [NopResourceDisplayName("Admin.Catalog.Products.List.GoDirectlyToSku")]
         [AllowHtml]
         public string GoDirectlyToSku { get; set; }
-        
+
         public bool DisplayProductPictures { get; set; }
+        public bool DisplayPdfDownloadCatalog { get; set; }
 
 
 

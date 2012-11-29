@@ -6,33 +6,46 @@ using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Forums;
 using Nop.Services.Customers;
 using Nop.Services.Forums;
-using Nop.Services.Localization;
+using Nop.Services.Helpers;
 using Nop.Web.Framework.Controllers;
-using Nop.Web.Models;
+using Nop.Web.Framework.Security;
+using Nop.Web.Models.Common;
 using Nop.Web.Models.PrivateMessages;
 
 namespace Nop.Web.Controllers
 {
-    public class PrivateMessagesController : BaseNopController
+    [NopHttpsRequirement(SslRequirement.Yes)]
+    public partial class PrivateMessagesController : BaseNopController
     {
+        #region Fields
+
         private readonly IForumService _forumService;
         private readonly ICustomerService _customerService;
-        private readonly ILocalizationService _localizationService;
         private readonly IWorkContext _workContext;
+        private readonly IDateTimeHelper _dateTimeHelper;
         private readonly ForumSettings _forumSettings;
+        private readonly CustomerSettings _customerSettings;
+
+        #endregion
+
+        #region Constructors
 
         public PrivateMessagesController(IForumService forumService,
             ICustomerService customerService,
-            ILocalizationService localizationService,
-            IWorkContext workContext,
-            ForumSettings forumSettings)
+            IWorkContext workContext, IDateTimeHelper dateTimeHelper,
+            ForumSettings forumSettings, CustomerSettings customerSettings)
         {
             this._forumService = forumService;
             this._customerService = customerService;
-            this._localizationService = localizationService;
             this._workContext = workContext;
+            this._dateTimeHelper = dateTimeHelper;
             this._forumSettings = forumSettings;
+            this._customerSettings = customerSettings;
         }
+
+        #endregion
+
+        #region Utilities
 
         [NonAction]
         private bool AllowPrivateMessages()
@@ -40,11 +53,15 @@ namespace Nop.Web.Controllers
             return _forumSettings.AllowPrivateMessages;
         }
 
+        #endregion
+
+        #region Methods
+
         public ActionResult Index(int? page, string tab)
         {
             if (!AllowPrivateMessages())
             {
-                return RedirectToAction("index", "home");
+                return RedirectToRoute("HomePage");
             }
 
             if (_workContext.CurrentCustomer.IsGuest())
@@ -104,12 +121,16 @@ namespace Nop.Web.Controllers
             {
                 inbox.Add(new PrivateMessageModel()
                 {
-                    customerFromName = pm.FromCustomer.FormatUserName(),
-                    customerToName = pm.ToCustomer.FormatUserName(),
+                    Id = pm.Id,
+                    FromCustomerId = pm.FromCustomer.Id,
+                    CustomerFromName = pm.FromCustomer.FormatUserName(),
+                    AllowViewingFromProfile = _customerSettings.AllowViewingProfiles && pm.FromCustomer != null && !pm.FromCustomer.IsGuest(),
+                    ToCustomerId = pm.ToCustomer.Id,
+                    CustomerToName = pm.ToCustomer.FormatUserName(),
+                    AllowViewingToProfile = _customerSettings.AllowViewingProfiles && pm.ToCustomer != null && !pm.ToCustomer.IsGuest(),
                     Subject = pm.Subject,
                     Message = pm.Text,
-                    CreatedOnUtc = pm.CreatedOnUtc,
-                    Id = pm.Id,
+                    CreatedOn = _dateTimeHelper.ConvertToUserTime( pm.CreatedOnUtc, DateTimeKind.Utc),
                     IsRead = pm.IsRead,
                 });
             }
@@ -153,12 +174,16 @@ namespace Nop.Web.Controllers
             {
                 sentItems.Add(new PrivateMessageModel()
                 {
-                    customerFromName = pm.FromCustomer.FormatUserName(),
-                    customerToName = pm.ToCustomer.FormatUserName(),
+                    Id = pm.Id,
+                    FromCustomerId = pm.FromCustomer.Id,
+                    CustomerFromName = pm.FromCustomer.FormatUserName(),
+                    AllowViewingFromProfile = _customerSettings.AllowViewingProfiles && pm.FromCustomer != null && !pm.FromCustomer.IsGuest(),
+                    ToCustomerId = pm.ToCustomer.Id,
+                    CustomerToName = pm.ToCustomer.FormatUserName(),
+                    AllowViewingToProfile = _customerSettings.AllowViewingProfiles && pm.ToCustomer != null && !pm.ToCustomer.IsGuest(),
                     Subject = pm.Subject,
                     Message = pm.Text,
-                    CreatedOnUtc = pm.CreatedOnUtc,
-                    Id = pm.Id,
+                    CreatedOn = _dateTimeHelper.ConvertToUserTime(pm.CreatedOnUtc, DateTimeKind.Utc),
                     IsRead = pm.IsRead,
                 });
             }
@@ -183,9 +208,8 @@ namespace Nop.Web.Controllers
             return PartialView(model);
         }
 
-        //updates inbox (deletes or marks PrivateMessages as unread)
-        [HttpPost, FormValueExists("inboxupdate", "delete", "deleteMessages")]
-        public ActionResult InboxUpdate(FormCollection formCollection, bool deleteMessages)
+        [HttpPost, FormValueRequired("delete-inbox"), ActionName("InboxUpdate")]
+        public ActionResult DeleteInboxPM(FormCollection formCollection)
         {
             foreach (var key in formCollection.AllKeys)
             {
@@ -203,63 +227,81 @@ namespace Nop.Web.Controllers
                         {
                             if (pm.ToCustomerId == _workContext.CurrentCustomer.Id)
                             {
-                                if (deleteMessages)
-                                {
-                                    pm.IsDeletedByRecipient = true;
-                                }
-                                else
-                                {
-                                    pm.IsRead = false;
-                                }
-
+                                pm.IsDeletedByRecipient = true;
                                 _forumService.UpdatePrivateMessage(pm);
                             }
                         }
                     }
                 }
             }
-            return RedirectToAction("Index");
+            return RedirectToRoute("PrivateMessages");
         }
 
-        //updates sent items (deletes PrivateMessages)
-        [HttpPost, FormValueExists("sentupdate", "delete", "deleteMessages")]
-        public ActionResult SentUpdate(FormCollection formCollection, bool deleteMessages)
+        [HttpPost, FormValueRequired("mark-unread"), ActionName("InboxUpdate")]
+        public ActionResult MarkUnread(FormCollection formCollection)
         {
-            if (deleteMessages)
+            foreach (var key in formCollection.AllKeys)
             {
-                foreach (var key in formCollection.AllKeys)
+                var value = formCollection[key];
+
+                if (value.Equals("on") && key.StartsWith("pm", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    var value = formCollection[key];
+                    var id = key.Replace("pm", "").Trim();
+                    int privateMessageId = 0;
 
-                    if (value.Equals("on") && key.StartsWith("si", StringComparison.InvariantCultureIgnoreCase))
+                    if (Int32.TryParse(id, out privateMessageId))
                     {
-                        var id = key.Replace("si", "").Trim();
-                        int privateMessageId = 0;
-
-                        if (Int32.TryParse(id, out privateMessageId))
+                        var pm = _forumService.GetPrivateMessageById(privateMessageId);
+                        if (pm != null)
                         {
-                            PrivateMessage pm = _forumService.GetPrivateMessageById(privateMessageId);
-                            if (pm != null)
+                            if (pm.ToCustomerId == _workContext.CurrentCustomer.Id)
                             {
-                                if (pm.FromCustomerId == _workContext.CurrentCustomer.Id)
-                                {
-                                    pm.IsDeletedByAuthor = true;
-                                    _forumService.UpdatePrivateMessage(pm);
-                                }
+                                pm.IsRead = false;
+                                _forumService.UpdatePrivateMessage(pm);
                             }
                         }
                     }
-
                 }
             }
-            return RedirectToAction("Index", new { tab = "sent" });
+            return RedirectToRoute("PrivateMessages");
+        }
+
+        //updates sent items (deletes PrivateMessages)
+        [HttpPost, FormValueRequired("delete-sent"), ActionName("SentUpdate")]
+        public ActionResult DeleteSentPM(FormCollection formCollection)
+        {
+            foreach (var key in formCollection.AllKeys)
+            {
+                var value = formCollection[key];
+
+                if (value.Equals("on") && key.StartsWith("si", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    var id = key.Replace("si", "").Trim();
+                    int privateMessageId = 0;
+
+                    if (Int32.TryParse(id, out privateMessageId))
+                    {
+                        PrivateMessage pm = _forumService.GetPrivateMessageById(privateMessageId);
+                        if (pm != null)
+                        {
+                            if (pm.FromCustomerId == _workContext.CurrentCustomer.Id)
+                            {
+                                pm.IsDeletedByAuthor = true;
+                                _forumService.UpdatePrivateMessage(pm);
+                            }
+                        }
+                    }
+                }
+
+            }
+            return RedirectToRoute("PrivateMessages", new {tab = "sent"});
         }
 
         public ActionResult SendPM(int toCustomerId, int? replyToMessageId)
         {
             if (!AllowPrivateMessages())
             {
-                return RedirectToAction("index", "home");
+                return RedirectToRoute("HomePage");
             }
 
             if (_workContext.CurrentCustomer.IsGuest())
@@ -269,21 +311,22 @@ namespace Nop.Web.Controllers
 
             var customerTo = _customerService.GetCustomerById(toCustomerId);
 
-            if (customerTo == null)
+            if (customerTo == null || customerTo.IsGuest())
             {
-                return RedirectToAction("Index");
+                return RedirectToRoute("PrivateMessages");
             }
 
-            var model = new PrivateMessageModel();
-            model.ToCustomerId = toCustomerId;
-            model.customerToName = customerTo.FormatUserName();
+            var model = new SendPrivateMessageModel();
+            model.ToCustomerId = customerTo.Id;
+            model.CustomerToName = customerTo.FormatUserName();
+            model.AllowViewingToProfile = _customerSettings.AllowViewingProfiles && !customerTo.IsGuest();
 
             if (replyToMessageId.HasValue)
             {
                 var replyToPM = _forumService.GetPrivateMessageById(replyToMessageId.Value);
                 if (replyToPM == null)
                 {
-                    return RedirectToAction("Index");
+                    return RedirectToRoute("PrivateMessages");
                 }
 
                 if (replyToPM.ToCustomerId == _workContext.CurrentCustomer.Id || replyToPM.FromCustomerId == _workContext.CurrentCustomer.Id)
@@ -293,18 +336,18 @@ namespace Nop.Web.Controllers
                 }
                 else
                 {
-                    return RedirectToAction("Index");
+                    return RedirectToRoute("PrivateMessages");
                 }
             }
             return View(model);
         }
 
         [HttpPost]
-        public ActionResult SendPM(PrivateMessageModel model)
+        public ActionResult SendPM(SendPrivateMessageModel model)
         {
             if (!AllowPrivateMessages())
             {
-                return RedirectToAction("index", "home");
+                return RedirectToRoute("HomePage");
             }
 
             if (_workContext.CurrentCustomer.IsGuest())
@@ -322,7 +365,7 @@ namespace Nop.Web.Controllers
                 }
                 else
                 {
-                    return RedirectToAction("Index");
+                    return RedirectToRoute("PrivateMessages");
                 }
             }
             else
@@ -332,66 +375,50 @@ namespace Nop.Web.Controllers
 
             if (toCustomer == null || toCustomer.IsGuest())
             {
-                return RedirectToAction("Index");
+                return RedirectToRoute("PrivateMessages");
             }
+            model.ToCustomerId = toCustomer.Id;
+            model.CustomerToName = toCustomer.FormatUserName();
+            model.AllowViewingToProfile = _customerSettings.AllowViewingProfiles && !toCustomer.IsGuest();
 
-            try
+            if (ModelState.IsValid)
             {
-                string subject = model.Subject;
-                if (subject != null)
+                try
                 {
-                    subject = subject.Trim();
+                    string subject = model.Subject;
+                    if (_forumSettings.PMSubjectMaxLength > 0 && subject.Length > _forumSettings.PMSubjectMaxLength)
+                    {
+                        subject = subject.Substring(0, _forumSettings.PMSubjectMaxLength);
+                    }
+
+                    var text = model.Message;
+                    if (_forumSettings.PMTextMaxLength > 0 && text.Length > _forumSettings.PMTextMaxLength)
+                    {
+                        text = text.Substring(0, _forumSettings.PMTextMaxLength);
+                    }
+
+                    var nowUtc = DateTime.UtcNow;
+
+                    var privateMessage = new PrivateMessage
+                    {
+                        ToCustomerId = toCustomer.Id,
+                        FromCustomerId = _workContext.CurrentCustomer.Id,
+                        Subject = subject,
+                        Text = text,
+                        IsDeletedByAuthor = false,
+                        IsDeletedByRecipient = false,
+                        IsRead = false,
+                        CreatedOnUtc = nowUtc
+                    };
+
+                    _forumService.InsertPrivateMessage(privateMessage);
+
+                    return RedirectToRoute("PrivateMessages", new { tab = "sent" });
                 }
-
-                if (String.IsNullOrEmpty(subject))
+                catch (Exception ex)
                 {
-                    throw new NopException(_localizationService.GetResource("PrivateMessages.SubjectCannotBeEmpty"));
+                    ModelState.AddModelError("", ex.Message);
                 }
-
-                var maxSubjectLength = _forumSettings.PMSubjectMaxLength;
-                if (maxSubjectLength > 0 && subject.Length > maxSubjectLength)
-                {
-                    subject = subject.Substring(0, maxSubjectLength);
-                }
-
-                var text = model.Message;
-                if (text != null)
-                {
-                    text = text.Trim();
-                }
-
-                if (String.IsNullOrEmpty(text))
-                {
-                    throw new NopException(_localizationService.GetResource("PrivateMessages.MessageCannotBeEmpty"));
-                }
-
-                var maxPostLength = _forumSettings.PMTextMaxLength;
-                if (maxPostLength > 0 && text.Length > maxPostLength)
-                {
-                    text = text.Substring(0, maxPostLength);
-                }
-
-                var nowUtc = DateTime.UtcNow;
-
-                var privateMessage = new PrivateMessage
-                {
-                    ToCustomerId = toCustomer.Id,
-                    FromCustomerId = _workContext.CurrentCustomer.Id,
-                    Subject = subject,
-                    Text = text,
-                    IsDeletedByAuthor = false,
-                    IsDeletedByRecipient = false,
-                    IsRead = false,
-                    CreatedOnUtc = nowUtc
-                };
-
-                _forumService.InsertPrivateMessage(privateMessage);
-
-                return RedirectToAction("Index", new { tab = "sent" });
-            }
-            catch (Exception ex)
-            {
-                model.PostError = ex.Message;
             }
 
             return View(model);
@@ -401,7 +428,7 @@ namespace Nop.Web.Controllers
         {
             if (!AllowPrivateMessages())
             {
-                return RedirectToAction("index", "home");
+                return RedirectToRoute("HomePage");
             }
 
             if (_workContext.CurrentCustomer.IsGuest())
@@ -414,7 +441,7 @@ namespace Nop.Web.Controllers
             {
                 if (pm.ToCustomerId != _workContext.CurrentCustomer.Id && pm.FromCustomerId != _workContext.CurrentCustomer.Id)
                 {
-                    return RedirectToAction("Index");
+                    return RedirectToRoute("PrivateMessages");
                 }
 
                 if (!pm.IsRead && pm.ToCustomerId == _workContext.CurrentCustomer.Id)
@@ -425,17 +452,22 @@ namespace Nop.Web.Controllers
             }
             else
             {
-                return RedirectToAction("Index");
+                return RedirectToRoute("PrivateMessages");
             }
 
             var model = new PrivateMessageModel()
             {
-                customerFromName = pm.FromCustomer.FormatUserName(),
-                customerToName = pm.ToCustomer.FormatUserName(),
+                Id = pm.Id,
+                FromCustomerId = pm.FromCustomer.Id,
+                CustomerFromName = pm.FromCustomer.FormatUserName(),
+                AllowViewingFromProfile = _customerSettings.AllowViewingProfiles && pm.FromCustomer != null && !pm.FromCustomer.IsGuest(),
+                ToCustomerId = pm.ToCustomer.Id,
+                CustomerToName = pm.ToCustomer.FormatUserName(),
+                AllowViewingToProfile = _customerSettings.AllowViewingProfiles && pm.ToCustomer != null && !pm.ToCustomer.IsGuest(),
                 Subject = pm.Subject,
                 Message = pm.FormatPrivateMessageText(),
-                ToCustomerId = pm.FromCustomerId,
-                Id = pm.Id,
+                CreatedOn = _dateTimeHelper.ConvertToUserTime(pm.CreatedOnUtc, DateTimeKind.Utc),
+                IsRead = pm.IsRead,
             };
 
             return View(model);
@@ -445,7 +477,7 @@ namespace Nop.Web.Controllers
         {
             if (!AllowPrivateMessages())
             {
-                return RedirectToAction("index", "home");
+                return RedirectToRoute("HomePage");
             }
 
             if (_workContext.CurrentCustomer.IsGuest())
@@ -466,9 +498,11 @@ namespace Nop.Web.Controllers
                 {
                     pm.IsDeletedByRecipient = true;
                     _forumService.UpdatePrivateMessage(pm);
-                }       
+                }
             }
-            return RedirectToAction("Index");
+            return RedirectToRoute("PrivateMessages");
         }
+
+        #endregion
     }
 }

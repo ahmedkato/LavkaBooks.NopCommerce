@@ -12,15 +12,15 @@ using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Messages;
 using Nop.Services.Orders;
+using Nop.Services.Security;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
 
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class GiftCardController : BaseNopController
+    public partial class GiftCardController : BaseNopController
     {
         #region Fields
 
@@ -134,7 +134,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Create(GiftCardModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageGiftCards))
@@ -164,11 +164,12 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var giftCard = _giftCardService.GetGiftCardById(id);
-            if (giftCard == null) 
-                throw new ArgumentException("No gift card found with the specified id", "id");
+            if (giftCard == null)
+                //No gift card found with the specified id
+                return RedirectToAction("List");
 
             var model = giftCard.ToModel();
-            model.PurchasedWithOrderId = giftCard.PurchasedWithOrderProductVariant != null ? (int?)giftCard.PurchasedWithOrderProductVariant.Id : null;
+            model.PurchasedWithOrderId = giftCard.PurchasedWithOrderProductVariant != null ? (int?)giftCard.PurchasedWithOrderProductVariant.OrderId : null;
             model.RemainingAmountStr = _priceFormatter.FormatPrice(giftCard.GetGiftCardRemainingAmount(), true, false);
             model.AmountStr = _priceFormatter.FormatPrice(giftCard.Amount, true, false);
             model.CreatedOn = _dateTimeHelper.ConvertToUserTime(giftCard.CreatedOnUtc, DateTimeKind.Utc);
@@ -177,7 +178,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         [FormValueRequired("save", "save-continue")]
         public ActionResult Edit(GiftCardModel model, bool continueEditing)
         {
@@ -186,7 +187,7 @@ namespace Nop.Admin.Controllers
 
             var giftCard = _giftCardService.GetGiftCardById(model.Id);
 
-            model.PurchasedWithOrderId = giftCard.PurchasedWithOrderProductVariant != null ? (int?)giftCard.PurchasedWithOrderProductVariant.Id : null;
+            model.PurchasedWithOrderId = giftCard.PurchasedWithOrderProductVariant != null ? (int?)giftCard.PurchasedWithOrderProductVariant.OrderId : null;
             model.RemainingAmountStr = _priceFormatter.FormatPrice(giftCard.GetGiftCardRemainingAmount(), true, false);
             model.AmountStr = _priceFormatter.FormatPrice(giftCard.Amount, true, false);
             model.CreatedOn = _dateTimeHelper.ConvertToUserTime(giftCard.CreatedOnUtc, DateTimeKind.Utc);
@@ -224,7 +225,7 @@ namespace Nop.Admin.Controllers
             var giftCard = _giftCardService.GetGiftCardById(model.Id);
 
             model = giftCard.ToModel();
-            model.PurchasedWithOrderId = giftCard.PurchasedWithOrderProductVariant != null ? (int?)giftCard.PurchasedWithOrderProductVariant.Id : null;
+            model.PurchasedWithOrderId = giftCard.PurchasedWithOrderProductVariant != null ? (int?)giftCard.PurchasedWithOrderProductVariant.OrderId : null;
             model.RemainingAmountStr = _priceFormatter.FormatPrice(giftCard.GetGiftCardRemainingAmount(), true, false);
             model.AmountStr = _priceFormatter.FormatPrice(giftCard.Amount, true, false);
             model.CreatedOn = _dateTimeHelper.ConvertToUserTime(giftCard.CreatedOnUtc, DateTimeKind.Utc);
@@ -242,6 +243,7 @@ namespace Nop.Admin.Controllers
                 {
                     giftCard.IsRecipientNotified = true;
                     _giftCardService.UpdateGiftCard(giftCard);
+                    model.IsRecipientNotified = true;
                 }
             }
             catch (Exception exc)
@@ -252,13 +254,17 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
         
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageGiftCards))
                 return AccessDeniedView();
 
             var giftCard = _giftCardService.GetGiftCardById(id);
+            if (giftCard == null)
+                //No gift card found with the specified id
+                return RedirectToAction("List");
+
             _giftCardService.DeleteGiftCard(giftCard);
 
             //activity log

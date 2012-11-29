@@ -2,7 +2,10 @@
 
 @using Nop.Core.Domain.Discounts;
 @using Telerik.Web.Mvc.UI;
-
+@using Nop.Web.Framework.UI;
+@{
+    Html.AddScriptParts(@Url.Content("~/Administration/Scripts/jquery.tmpl.min.js"));
+}
 @Html.ValidationSummary(false)
 @Html.HiddenFor(model => model.Id)
 @Html.Telerik().TabStrip().Name("discount-edit").Items(x =>
@@ -13,6 +16,9 @@
     {
         x.Add().Text(T("Admin.Promotions.Discounts.History").Text).Content(TabHistory().ToHtmlString());
     }
+    
+    //generate an event
+    EngineContext.Current.Resolve<IEventPublisher>().Publish(new AdminTabStripCreated(x, "discount-edit"));
 })
 @helper TabInfo()
     {
@@ -20,19 +26,35 @@
         
     <script type="text/javascript">
             $(document).ready(function () {
+                $("#@Html.FieldIdFor(model => model.DiscountTypeId)").change(toggleDiscountType);
                 $("#@Html.FieldIdFor(model => model.UsePercentage)").click(toggleUsePercentage);
                 $("#@Html.FieldIdFor(model => model.RequiresCouponCode)").click(toggleRequiresCouponCode);
                 $("#@Html.FieldIdFor(model => model.DiscountLimitationId)").change(toggleLimitation);
 
+                toggleDiscountType();
                 toggleLimitation();
                 toggleUsePercentage();
                 toggleRequiresCouponCode();
             });
-
+            
+            function toggleDiscountType() {
+                var selectedDiscountTypeId = $("#@Html.FieldIdFor(model => model.DiscountTypeId)").val();
+                if (selectedDiscountTypeId == @(((int)DiscountType.AssignedToCategories).ToString())) {
+                    $('#pnlAppliedToCategories').show();
+                    $('#pnlAppliedToProductVariants').hide();
+                }
+                else if (selectedDiscountTypeId == @(((int)DiscountType.AssignedToSkus).ToString())) {
+                    $('#pnlAppliedToCategories').hide();
+                    $('#pnlAppliedToProductVariants').show();
+                }
+                else {
+                    $('#pnlAppliedToCategories').hide();
+                    $('#pnlAppliedToProductVariants').hide();
+                }
+            }
 
             function toggleLimitation() {
-                var selectedDiscountLimitation = document.getElementById('@Html.FieldIdFor(model => model.DiscountLimitationId)');
-                var selectedDiscountLimitationId = selectedDiscountLimitation.options[selectedDiscountLimitation.selectedIndex].value;
+                var selectedDiscountLimitationId = $("#@Html.FieldIdFor(model => model.DiscountLimitationId)").val();
                 if (selectedDiscountLimitationId == @(((int)DiscountLimitationType.NTimesOnly).ToString()) || selectedDiscountLimitationId == @(((int)DiscountLimitationType.NTimesPerCustomer).ToString())) {
                     //'N Times Only' or 'N Times Per Customer'
                     $('#pnlLimitationTimes').show();
@@ -44,7 +66,7 @@
             }
 
             function toggleUsePercentage() {
-                if (getE('@Html.FieldIdFor(model => model.UsePercentage)').checked) {
+                if ($('#@Html.FieldIdFor(model => model.UsePercentage)').is(':checked')) {
                     $('#pnlDiscountPercentage').show();
                     $('#pnlDiscountAmount').hide();
                 }
@@ -55,7 +77,7 @@
             }
 
             function toggleRequiresCouponCode() {
-                if (getE('@Html.FieldIdFor(model => model.RequiresCouponCode)').checked) {
+                if ($('#@Html.FieldIdFor(model => model.RequiresCouponCode)').is(':checked')) {
                     $('#pnlCouponCode').show();
                 }
                 else {
@@ -83,6 +105,54 @@
             <td class="adminData">
                 @Html.DropDownListFor(model => model.DiscountTypeId, ((DiscountType)Model.DiscountTypeId).ToSelectList())
                 @Html.ValidationMessageFor(model => model.DiscountTypeId)
+            </td>
+        </tr>
+        <tr id="pnlAppliedToCategories">
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.AppliedToCategoryModels):
+            </td>
+            <td class="adminData">
+                @if (Model.AppliedToCategoryModels.Count > 0)
+                {
+                    for (int i = 0; i < Model.AppliedToCategoryModels.Count; i++)
+                    {
+                        var categoryId = Model.AppliedToCategoryModels[i].CategoryId;
+                        var categoryName = Model.AppliedToCategoryModels[i].Name;
+                        <a href="@Url.Action("Edit", "Category", new { id = categoryId })">@categoryName</a>
+                        if (i != Model.AppliedToCategoryModels.Count - 1)
+                        {
+                            <text>, </text>
+                        }
+                    }
+                }
+                else
+                {
+                    @T("Admin.Promotions.Discounts.Fields.AppliedToCategories.NoRecords")
+                }
+            </td>
+        </tr>
+        <tr id="pnlAppliedToProductVariants">
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.AppliedToProductVariantModels):
+            </td>
+            <td class="adminData">
+                @if (Model.AppliedToProductVariantModels.Count > 0)
+                {
+                    for (int i = 0; i < Model.AppliedToProductVariantModels.Count; i++)
+                    {
+                        var productVariantId = Model.AppliedToProductVariantModels[i].ProductVariantId;
+                        var fullProductName = Model.AppliedToProductVariantModels[i].FullProductName;
+                        <a href="@Url.Action("Edit", "ProductVariant", new { id = productVariantId })">@fullProductName</a>
+                        if (i != Model.AppliedToProductVariantModels.Count - 1)
+                        {
+                            <text>, </text>
+                        }
+                    }
+                }
+                else
+                {
+                    @T("Admin.Promotions.Discounts.Fields.AppliedToProductVariants.NoRecords")
+                }
             </td>
         </tr>
         <tr>
@@ -193,7 +263,7 @@
                         cache:false,
                         type: "POST",
                         url: "@(Url.Action("GetDiscountRequirementMetaInfo", "Discount"))",
-                        data: "discountRequirementId=" + newRequirementId + "&discountId=" + discountId ,
+                        data: { "discountRequirementId": newRequirementId, "discountId": discountId },
                         success: function (result) {                            
                             discountRequirements.push({ discountRequirementId: newRequirementId, ruleName : result.ruleName, url : result.url });
                             loadExistingRequirements();
@@ -225,13 +295,13 @@
             //load HTML for adding requirement
             function loadNewRequirementBox() {
                 //load URL
-                var ruleSystemName = $(this).val();
+                var ruleSystemName = $("#@Html.FieldIdFor(model => model.AddDiscountRequirement)").val();
                 var discountId = @Model.Id;
                 if (ruleSystemName != '') {
                     $.ajax({
                         cache:false,
                         url: "@(Url.Action("GetDiscountRequirementConfigurationUrl", "Discount"))",
-                        data: "systemName=" + ruleSystemName + "&discountId=" + discountId,
+                        data: { "systemName": ruleSystemName, "discountId": discountId },
                         success: function (result) {
                                 var configureRuleUrl = result.url;
                                 //now load the content
@@ -280,18 +350,18 @@
                     cache:false,
                     type: "POST",
                     url: "@(Url.Action("DeleteDiscountRequirement", "Discount"))",
-                    data: "discountId=" + discountId +"&discountRequirementId=" + discountRequirementId,
+                    data: { "discountId": discountId, "discountRequirementId": discountRequirementId },
                     success: function (data) {
-                        removeByElement(discountRequirements, discountRequirementId)
+                        removeRequirementByElement(discountRequirements, discountRequirementId)
                         loadExistingRequirements();
                     },
                     error:function (xhr, ajaxOptions, thrownError){
-                        alert('Failed to delete requirement.')
+                        alert('Failed to delete requirement.');
                     }  
                 });
 
                 
-            function removeByElement(arrayName,discountRequirementId) {
+            function removeRequirementByElement(arrayName,discountRequirementId) {
                 for(var i=0; i<arrayName.length; i++) {
                     if(arrayName[i].discountRequirementId==discountRequirementId) {
                         arrayName.splice(i,1);
@@ -308,10 +378,10 @@
     <!-- Discount requirement template -->
     <script id="discountRequirementTemplate" type="text/html">
             <div id="editrequirement{{= discountRequirementId }}">
-                <div>Discount requirement type: <b>{{= ruleName }}</b></div>
+                <div>@T("Admin.Promotions.Discounts.Requirements.DiscountRequirementType"): <strong>{{= ruleName }}</strong></div>
                 <div id="editrequirementplaceholder{{= discountRequirementId }}" style="float:left;"></div>
                 <div style="float:right;">
-                    <button type="button" name="deleterequirement{{= discountRequirementId }}" id="deleterequirement{{= discountRequirementId }}" onclick="deleteRequirement({{= discountRequirementId }})" class="t-button">Remove requirement</button>
+                    <input type="button" id="deleterequirement{{= discountRequirementId }}" onclick="deleteRequirement({{= discountRequirementId }})" class="t-button" value="@T("Admin.Promotions.Discounts.Requirements.Remove")" />
                 </div>
                 <table class="adminContent">
                     <tr class="adminSeparator">
@@ -326,7 +396,7 @@
     <table class="adminContent">
         <tr>
             <td colspan="2">
-                <b>@T("Admin.Promotions.Discounts.Requirements.AddNew")</b>
+                <strong>@T("Admin.Promotions.Discounts.Requirements.AddNew")</strong>
             </td>
         </tr>
         <tr>

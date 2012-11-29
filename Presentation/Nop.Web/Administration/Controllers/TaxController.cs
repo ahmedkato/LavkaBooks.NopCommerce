@@ -5,16 +5,16 @@ using System.Web.Routing;
 using Nop.Admin.Models.Tax;
 using Nop.Core.Domain.Tax;
 using Nop.Services.Configuration;
+using Nop.Services.Security;
 using Nop.Services.Tax;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
 
 namespace Nop.Admin.Controllers
 {
 	[AdminAuthorize]
-    public class TaxController : BaseNopController
+    public partial class TaxController : BaseNopController
 	{
 		#region Fields
 
@@ -100,7 +100,9 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var taxProvider = _taxService.LoadTaxProviderBySystemName(systemName);
-            if (taxProvider == null) throw new ArgumentException("No tax provider found with the specified system name", "systemName");
+            if (taxProvider == null)
+                //No tax provider found with the specified id
+                return RedirectToAction("Providers");
 
             var model = taxProvider.ToModel();
             string actionName, controllerName;
@@ -162,7 +164,9 @@ namespace Nop.Admin.Controllers
 
             if (!ModelState.IsValid)
             {
-                return RedirectToAction("Categories");
+                //display the first model error
+                var modelStateErrors = this.ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage);
+                return Content(modelStateErrors.FirstOrDefault());
             }
 
             var taxCategory = _taxCategoryService.GetTaxCategoryById(model.Id);
@@ -180,7 +184,9 @@ namespace Nop.Admin.Controllers
 
             if (!ModelState.IsValid)
             {
-                return new JsonResult { Data = "error" };
+                //display the first model error
+                var modelStateErrors = this.ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage);
+                return Content(modelStateErrors.FirstOrDefault());
             }
 
             var taxCategory = new TaxCategory();
@@ -197,6 +203,8 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var taxCategory = _taxCategoryService.GetTaxCategoryById(id);
+            if (taxCategory == null)
+                throw new ArgumentException("No tax category found with the specified id");
             _taxCategoryService.DeleteTaxCategory(taxCategory);
 
             return Categories(command);

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
+using System.Web.Configuration;
 using System.Web.Mvc;
 using Nop.Admin.Models.Common;
 using Nop.Admin.Models.Settings;
@@ -40,7 +42,7 @@ using Telerik.Web.Mvc;
 namespace Nop.Admin.Controllers
 {
 	[AdminAuthorize]
-    public class SettingController : BaseNopController
+    public partial class SettingController : BaseNopController
 	{
 		#region Fields
 
@@ -59,6 +61,8 @@ namespace Nop.Admin.Controllers
         private readonly ICustomerService _customerService;
         private readonly ICustomerActivityService _customerActivityService;
         private readonly IPermissionService _permissionService;
+        private readonly IWebHelper _webHelper;
+	    private readonly IFulltextService _fulltextService;
 
 
         private BlogSettings _blogSettings;
@@ -82,6 +86,7 @@ namespace Nop.Admin.Controllers
         private readonly AdminAreaSettings _adminAreaSettings;
         private readonly CaptchaSettings _captchaSettings;
         private readonly ExternalAuthenticationSettings _externalAuthenticationSettings;
+	    private readonly CommonSettings _commonSettings;
 
 		#endregion
 
@@ -95,6 +100,7 @@ namespace Nop.Admin.Controllers
             IOrderService orderService, IEncryptionService encryptionService,
             IThemeProvider themeProvider, ICustomerService customerService, 
             ICustomerActivityService customerActivityService, IPermissionService permissionService,
+            IWebHelper webHelper, IFulltextService fulltextService,
             BlogSettings blogSettings,
             ForumSettings forumSettings, NewsSettings newsSettings,
             ShippingSettings shippingSettings, TaxSettings taxSettings,
@@ -105,7 +111,8 @@ namespace Nop.Admin.Controllers
             DateTimeSettings dateTimeSettings, StoreInformationSettings storeInformationSettings,
             SeoSettings seoSettings,SecuritySettings securitySettings, PdfSettings pdfSettings,
             LocalizationSettings localizationSettings, AdminAreaSettings adminAreaSettings,
-            CaptchaSettings captchaSettings, ExternalAuthenticationSettings externalAuthenticationSettings)
+            CaptchaSettings captchaSettings, ExternalAuthenticationSettings externalAuthenticationSettings,
+            CommonSettings commonSettings)
         {
             this._settingService = settingService;
             this._countryService = countryService;
@@ -122,6 +129,8 @@ namespace Nop.Admin.Controllers
             this._customerService = customerService;
             this._customerActivityService = customerActivityService;
             this._permissionService = permissionService;
+            this._webHelper = webHelper;
+            this._fulltextService = fulltextService;
 
             this._blogSettings = blogSettings;
             this._forumSettings = forumSettings;
@@ -144,6 +153,7 @@ namespace Nop.Admin.Controllers
             this._adminAreaSettings = adminAreaSettings;
             this._captchaSettings = captchaSettings;
             this._externalAuthenticationSettings = externalAuthenticationSettings;
+            this._commonSettings = commonSettings;
         }
 
 		#endregion 
@@ -646,7 +656,7 @@ namespace Nop.Admin.Controllers
 
 
 
-        public ActionResult GeneralCommon()
+        public ActionResult GeneralCommon(string selectedTab)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageSettings))
                 return AccessDeniedView();
@@ -659,18 +669,41 @@ namespace Nop.Admin.Controllers
             model.StoreInformationSettings.StoreName = _storeInformationSettings.StoreName;
             model.StoreInformationSettings.StoreUrl = _storeInformationSettings.StoreUrl;
             model.StoreInformationSettings.StoreClosed = _storeInformationSettings.StoreClosed;
-            model.StoreInformationSettings.DefaultStoreTheme = _storeInformationSettings.DefaultStoreTheme;
-            model.StoreInformationSettings.AvailableStoreThemes = _themeProvider
-                .GetThemeConfigurations().Select(x =>
+            model.StoreInformationSettings.StoreClosedAllowForAdmins = _storeInformationSettings.StoreClosedAllowForAdmins;
+            //desktop themes
+            model.StoreInformationSettings.DefaultStoreThemeForDesktops = _storeInformationSettings.DefaultStoreThemeForDesktops;
+            model.StoreInformationSettings.AvailableStoreThemesForDesktops = _themeProvider
+                .GetThemeConfigurations()
+                .Where(x => !x.MobileTheme)  //do not display themes for mobile devices
+                .Select(x =>
                 {
                     return new SelectListItem()
                     {
                         Text = x.ThemeTitle,
                         Value = x.ThemeName,
-                        Selected = x.ThemeName.Equals(_storeInformationSettings.DefaultStoreTheme, StringComparison.InvariantCultureIgnoreCase)
+                        Selected = x.ThemeName.Equals(_storeInformationSettings.DefaultStoreThemeForDesktops, StringComparison.InvariantCultureIgnoreCase)
                     };
-                }).ToList();
+                })
+                .ToList();
             model.StoreInformationSettings.AllowCustomerToSelectTheme = _storeInformationSettings.AllowCustomerToSelectTheme;
+            model.StoreInformationSettings.MobileDevicesSupported = _storeInformationSettings.MobileDevicesSupported;
+            //mobile device themes
+            model.StoreInformationSettings.DefaultStoreThemeForMobileDevices = _storeInformationSettings.DefaultStoreThemeForMobileDevices;
+            model.StoreInformationSettings.AvailableStoreThemesForMobileDevices = _themeProvider
+                .GetThemeConfigurations()
+                .Where(x => x.MobileTheme)  //do not display themes for desktops
+                .Select(x =>
+                {
+                    return new SelectListItem()
+                    {
+                        Text = x.ThemeTitle,
+                        Value = x.ThemeName,
+                        Selected = x.ThemeName.Equals(_storeInformationSettings.DefaultStoreThemeForMobileDevices, StringComparison.InvariantCultureIgnoreCase)
+                    };
+                })
+                .ToList();
+            //EU Cookie law
+            model.StoreInformationSettings.DisplayEuCookieLawWarning = _storeInformationSettings.DisplayEuCookieLawWarning;
 
             //seo settings
             model.SeoSettings.PageTitleSeparator = _seoSettings.PageTitleSeparator;
@@ -679,6 +712,7 @@ namespace Nop.Admin.Controllers
             model.SeoSettings.DefaultMetaDescription = _seoSettings.DefaultMetaDescription;
             model.SeoSettings.ConvertNonWesternChars = _seoSettings.ConvertNonWesternChars;
             model.SeoSettings.CanonicalUrlsEnabled = _seoSettings.CanonicalUrlsEnabled;
+            model.SeoSettings.PageTitleSeoAdjustmentValues = _seoSettings.PageTitleSeoAdjustment.ToSelectList();
             
             //security settings
             model.SecuritySettings.EncryptionKey = _securitySettings.EncryptionKey;
@@ -689,19 +723,43 @@ namespace Nop.Admin.Controllers
                     if (i != _securitySettings.AdminAreaAllowedIpAddresses.Count - 1)
                         model.SecuritySettings.AdminAreaAllowedIpAddresses += ",";
                 }
+            model.SecuritySettings.HideAdminMenuItemsBasedOnPermissions = _securitySettings.HideAdminMenuItemsBasedOnPermissions;
             model.SecuritySettings.CaptchaEnabled = _captchaSettings.Enabled;
+            model.SecuritySettings.CaptchaShowOnLoginPage = _captchaSettings.ShowOnLoginPage;
+            model.SecuritySettings.CaptchaShowOnRegistrationPage = _captchaSettings.ShowOnRegistrationPage;
+            model.SecuritySettings.CaptchaShowOnContactUsPage = _captchaSettings.ShowOnContactUsPage;
+            model.SecuritySettings.CaptchaShowOnEmailWishlistToFriendPage = _captchaSettings.ShowOnEmailWishlistToFriendPage;
+            model.SecuritySettings.CaptchaShowOnEmailProductToFriendPage = _captchaSettings.ShowOnEmailProductToFriendPage;
+            model.SecuritySettings.CaptchaShowOnBlogCommentPage = _captchaSettings.ShowOnBlogCommentPage;
+            model.SecuritySettings.CaptchaShowOnNewsCommentPage = _captchaSettings.ShowOnNewsCommentPage;
+            model.SecuritySettings.CaptchaShowOnProductReviewPage = _captchaSettings.ShowOnProductReviewPage;
             model.SecuritySettings.ReCaptchaPublicKey = _captchaSettings.ReCaptchaPublicKey;
             model.SecuritySettings.ReCaptchaPrivateKey = _captchaSettings.ReCaptchaPrivateKey;
-            
+
+            bool useSsl = !String.IsNullOrEmpty(ConfigurationManager.AppSettings["UseSSL"]) &&
+                          Convert.ToBoolean(ConfigurationManager.AppSettings["UseSSL"]);
+            string sharedSslUrl = ConfigurationManager.AppSettings["SharedSSLUrl"];
+            string nonSharedSslUrl = ConfigurationManager.AppSettings["NonSharedSSLUrl"];
+            model.SecuritySettings.UseSsl = useSsl;
+            model.SecuritySettings.SharedSslUrl = sharedSslUrl;
+            model.SecuritySettings.NonSharedSslUrl = nonSharedSslUrl;
 
             //PDF settings
             model.PdfSettings.Enabled = _pdfSettings.Enabled;
+            model.PdfSettings.LetterPageSizeEnabled = _pdfSettings.LetterPageSizeEnabled;
             model.PdfSettings.LogoPictureId = _pdfSettings.LogoPictureId;
 
-            //lcoalization
+            //localization
             model.LocalizationSettings.UseImagesForLanguageSelection = _localizationSettings.UseImagesForLanguageSelection;
             model.LocalizationSettings.SeoFriendlyUrlsForLanguagesEnabled = _localizationSettings.SeoFriendlyUrlsForLanguagesEnabled;
 
+            //full-text support
+            model.FullTextSettings.Supported = _fulltextService.IsFullTextSupported();
+            model.FullTextSettings.Enabled = _commonSettings.UseFullTextSearch;
+            model.FullTextSettings.SearchModeValues = _commonSettings.FullTextMode.ToSelectList();
+
+
+            ViewData["selectedTab"] = selectedTab;
             return View(model);
         }
         [HttpPost]
@@ -720,8 +778,16 @@ namespace Nop.Admin.Controllers
             if (!_storeInformationSettings.StoreUrl.EndsWith("/"))
                 _storeInformationSettings.StoreUrl += "/";
             _storeInformationSettings.StoreClosed = model.StoreInformationSettings.StoreClosed;
-            _storeInformationSettings.DefaultStoreTheme = model.StoreInformationSettings.DefaultStoreTheme;
+            _storeInformationSettings.StoreClosedAllowForAdmins = model.StoreInformationSettings.StoreClosedAllowForAdmins;
+            _storeInformationSettings.DefaultStoreThemeForDesktops = model.StoreInformationSettings.DefaultStoreThemeForDesktops;
             _storeInformationSettings.AllowCustomerToSelectTheme = model.StoreInformationSettings.AllowCustomerToSelectTheme;
+            //store whether MobileDevicesSupported setting has been changed (requires application restart)
+            bool mobileDevicesSupportedChanged = _storeInformationSettings.MobileDevicesSupported !=
+                                                 model.StoreInformationSettings.MobileDevicesSupported;
+            _storeInformationSettings.MobileDevicesSupported = model.StoreInformationSettings.MobileDevicesSupported;
+            _storeInformationSettings.DefaultStoreThemeForMobileDevices = model.StoreInformationSettings.DefaultStoreThemeForMobileDevices;
+            //EU Cookie law
+            _storeInformationSettings.DisplayEuCookieLawWarning = model.StoreInformationSettings.DisplayEuCookieLawWarning;
             _settingService.SaveSetting(_storeInformationSettings);
 
 
@@ -733,6 +799,7 @@ namespace Nop.Admin.Controllers
             _seoSettings.DefaultMetaDescription = model.SeoSettings.DefaultMetaDescription;
             _seoSettings.ConvertNonWesternChars = model.SeoSettings.ConvertNonWesternChars;
             _seoSettings.CanonicalUrlsEnabled = model.SeoSettings.CanonicalUrlsEnabled;
+            _seoSettings.PageTitleSeoAdjustment = model.SeoSettings.PageTitleSeoAdjustment;
             _settingService.SaveSetting(_seoSettings);
 
 
@@ -745,15 +812,79 @@ namespace Nop.Admin.Controllers
                 foreach (string s in model.SecuritySettings.AdminAreaAllowedIpAddresses.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
                     if (!String.IsNullOrWhiteSpace(s))
                         _securitySettings.AdminAreaAllowedIpAddresses.Add(s.Trim());
+            _securitySettings.HideAdminMenuItemsBasedOnPermissions = model.SecuritySettings.HideAdminMenuItemsBasedOnPermissions;
             _settingService.SaveSetting(_securitySettings);
             _captchaSettings.Enabled = model.SecuritySettings.CaptchaEnabled;
+            _captchaSettings.ShowOnLoginPage = model.SecuritySettings.CaptchaShowOnLoginPage;
+            _captchaSettings.ShowOnRegistrationPage = model.SecuritySettings.CaptchaShowOnRegistrationPage;
+            _captchaSettings.ShowOnContactUsPage = model.SecuritySettings.CaptchaShowOnContactUsPage;
+            _captchaSettings.ShowOnEmailWishlistToFriendPage = model.SecuritySettings.CaptchaShowOnEmailWishlistToFriendPage;
+            _captchaSettings.ShowOnEmailProductToFriendPage = model.SecuritySettings.CaptchaShowOnEmailProductToFriendPage;
+            _captchaSettings.ShowOnBlogCommentPage = model.SecuritySettings.CaptchaShowOnBlogCommentPage;
+            _captchaSettings.ShowOnNewsCommentPage = model.SecuritySettings.CaptchaShowOnNewsCommentPage;
+            _captchaSettings.ShowOnProductReviewPage = model.SecuritySettings.CaptchaShowOnProductReviewPage;
             _captchaSettings.ReCaptchaPublicKey = model.SecuritySettings.ReCaptchaPublicKey;
             _captchaSettings.ReCaptchaPrivateKey = model.SecuritySettings.ReCaptchaPrivateKey;
             _settingService.SaveSetting(_captchaSettings);
+            if (_captchaSettings.Enabled &&
+                (String.IsNullOrWhiteSpace(_captchaSettings.ReCaptchaPublicKey) || String.IsNullOrWhiteSpace(_captchaSettings.ReCaptchaPrivateKey)))
+            {
+                //captcha is enabled but the keys are not entered
+                ErrorNotification("Captcha is enabled but the appropriate keys are not entered");
+            }
+            //save SSL settings
+            try
+            {
+                if (AppDomain.CurrentDomain.IsFullyTrusted)
+                {
+                    //full trust
+                    bool useSsl = !String.IsNullOrEmpty(ConfigurationManager.AppSettings["UseSSL"]) &&
+                                  Convert.ToBoolean(ConfigurationManager.AppSettings["UseSSL"]);
+                    string sharedSslUrl = ConfigurationManager.AppSettings["SharedSSLUrl"];
+                    string nonSharedSslUrl = ConfigurationManager.AppSettings["NonSharedSSLUrl"];
+                    //use this field to prevent web.config saving if not changes are done (can cause application restart)
+                    bool sslChanged = false;
+
+                    var config = WebConfigurationManager.OpenWebConfiguration("~");
+                    if (useSsl != model.SecuritySettings.UseSsl)
+                    {
+                        config.AppSettings.Settings["UseSSL"].Value = model.SecuritySettings.UseSsl.ToString();
+                        sslChanged = true;
+                    }
+                    if (model.SecuritySettings.SharedSslUrl == null)
+                        model.SecuritySettings.SharedSslUrl = "";
+                    if (sharedSslUrl != model.SecuritySettings.SharedSslUrl)
+                    {
+                        config.AppSettings.Settings["SharedSSLUrl"].Value = model.SecuritySettings.SharedSslUrl;
+                        sslChanged = true;
+                    }
+
+                    if (model.SecuritySettings.NonSharedSslUrl == null)
+                        model.SecuritySettings.NonSharedSslUrl = "";
+                    if (nonSharedSslUrl != model.SecuritySettings.NonSharedSslUrl)
+                    {
+                        config.AppSettings.Settings["NonSharedSSLUrl"].Value = model.SecuritySettings.NonSharedSslUrl;
+                        sslChanged = true;
+                    }
+                    if (sslChanged)
+                        config.Save(ConfigurationSaveMode.Modified);
+                }
+                else
+                {
+                    //medium trust
+                    ErrorNotification("SSL settings cannot be saved in medium trust. Manually update web.config file.");
+
+                }
+            }
+            catch (Exception exc)
+            {
+                ErrorNotification("SSL settings cannot be saved in medium trust. Manually update web.config file. " + exc.Message);
+            }
 
 
             //PDF settings
             _pdfSettings.Enabled = model.PdfSettings.Enabled;
+            _pdfSettings.LetterPageSizeEnabled = model.PdfSettings.LetterPageSizeEnabled;
             _pdfSettings.LogoPictureId = model.PdfSettings.LogoPictureId;
             _settingService.SaveSetting(_pdfSettings);
 
@@ -768,8 +899,19 @@ namespace Nop.Admin.Controllers
             }
             _settingService.SaveSetting(_localizationSettings);
 
+            //full-text
+            _commonSettings.FullTextMode = model.FullTextSettings.SearchMode;
+            _settingService.SaveSetting(_commonSettings);
+
             //activity log
             _customerActivityService.InsertActivity("EditSettings", _localizationService.GetResource("ActivityLog.EditSettings"));
+
+            if (mobileDevicesSupportedChanged)
+            {
+                //MobileDevicesSupported setting has been changed
+                //restart application
+                _webHelper.RestartAppDomain();
+            }
 
             SuccessNotification(_localizationService.GetResource("Admin.Configuration.Updated"));
             return RedirectToAction("GeneralCommon");
@@ -793,11 +935,11 @@ namespace Nop.Admin.Controllers
 
                 var newEncryptionPrivateKey = model.SecuritySettings.EncryptionKey;
                 if (String.IsNullOrEmpty(newEncryptionPrivateKey) || newEncryptionPrivateKey.Length != 16)
-                    throw new NopException("Encryption private key must be 16 characters long");
+                    throw new NopException(_localizationService.GetResource("Admin.Configuration.Settings.GeneralCommon.EncryptionKey.TooShort"));
 
                 string oldEncryptionPrivateKey = _securitySettings.EncryptionKey;
                 if (oldEncryptionPrivateKey == newEncryptionPrivateKey)
-                    throw new NopException("The new ecryption key is the same as the old one");
+                    throw new NopException(_localizationService.GetResource("Admin.Configuration.Settings.GeneralCommon.EncryptionKey.TheSame"));
 
                 //update encrypted order info
                 var orders = _orderService.LoadAllOrders();
@@ -830,10 +972,8 @@ namespace Nop.Admin.Controllers
                 }
 
                 //update user information
-                //TODO optimization - load only users with PasswordFormat.Encrypted (don't filter them here)
-                var customers = _customerService.GetAllCustomers(null, null, null,
-                    null, null, null, null, false, null, 0, int.MaxValue)
-                    .Where(u => u.PasswordFormat == PasswordFormat.Encrypted);
+                //optimization - load only users with PasswordFormat.Encrypted
+                var customers = _customerService.GetAllCustomersByPasswordFormat(PasswordFormat.Encrypted);
                 foreach (var customer in customers)
                 {
                     string decryptedPassword = _encryptionService.DecryptText(customer.Password, oldEncryptionPrivateKey);
@@ -845,13 +985,50 @@ namespace Nop.Admin.Controllers
 
                 _securitySettings.EncryptionKey = newEncryptionPrivateKey;
                 _settingService.SaveSetting(_securitySettings);
-                SuccessNotification("Encryption key is changed");
+                SuccessNotification(_localizationService.GetResource("Admin.Configuration.Settings.GeneralCommon.EncryptionKey.Changed"));
             }
             catch (Exception exc)
             {
                 ErrorNotification(exc);
             }
-            return RedirectToAction("GeneralCommon");
+            return RedirectToAction("GeneralCommon", new { selectedTab = "security" });
+        }
+        [HttpPost, ActionName("GeneralCommon")]
+        [FormValueRequired("togglefulltext")]
+        public ActionResult ToggleFullText(GeneralCommonSettingsModel model)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageSettings))
+                return AccessDeniedView();
+
+            try
+            {
+                if (! _fulltextService.IsFullTextSupported())
+                    throw new NopException(_localizationService.GetResource("Admin.Configuration.Settings.GeneralCommon.FullTextSettings.NotSupported"));
+
+                if (_commonSettings.UseFullTextSearch)
+                {
+                    _fulltextService.DisableFullText();
+
+                    _commonSettings.UseFullTextSearch = false;
+                    _settingService.SaveSetting(_commonSettings);
+
+                    SuccessNotification(_localizationService.GetResource("Admin.Configuration.Settings.GeneralCommon.FullTextSettings.Disabled"));
+                }
+                else
+                {
+                    _fulltextService.EnableFullText();
+
+                    _commonSettings.UseFullTextSearch = true;
+                    _settingService.SaveSetting(_commonSettings);
+
+                    SuccessNotification(_localizationService.GetResource("Admin.Configuration.Settings.GeneralCommon.FullTextSettings.Enabled"));
+                }
+            }
+            catch (Exception exc)
+            {
+                ErrorNotification(exc);
+            }
+            return RedirectToAction("GeneralCommon", new { selectedTab = "fulltext" });
         }
 
 
@@ -862,17 +1039,20 @@ namespace Nop.Admin.Controllers
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageSettings))
                 return AccessDeniedView();
-
-            var settings = _settingService.GetAllSettings().Select(x => x.Value).OrderBy(x => x.Name).ToList();
+            
+            var settings = _settingService
+                .GetAllSettings()
+                .OrderBy(x => x.Key)
+                .ToList();
             var model = new GridModel<SettingModel>
             {
                 Data = settings.Take(_adminAreaSettings.GridPageSize).Select(x => 
                 {
                     return new SettingModel()
                     {
-                        Id = x.Id,
-                        Name = x.Name,
-                        Value = x.Value
+                        Id = x.Value.Key,
+                        Name = x.Key,
+                        Value = x.Value.Value
                     };
                 }),
                 Total = settings.Count
@@ -885,22 +1065,22 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageSettings))
                 return AccessDeniedView();
 
-            var settings = _settingService.GetAllSettings().Select(x => x.Value).OrderBy(x => x.Name)
-                .Select(x => 
-                {
-                    return new SettingModel()
+            var settings = _settingService
+                .GetAllSettings()
+                .OrderBy(x => x.Key)
+                .Select(x => new SettingModel()
                     {
-                        Id = x.Id,
-                        Name = x.Name,
-                        Value = x.Value
-                    };
-                })
-                .ForCommand(command);
-
+                        Id = x.Value.Key,
+                        Name = x.Key,
+                        Value = x.Value.Value
+                    })
+                .ForCommand(command)
+                .ToList();
+            
             var model = new GridModel<SettingModel>
             {
                 Data = settings.PagedForCommand(command),
-                Total = settings.Count()
+                Total = settings.Count
             };
             return new JsonResult
             {
@@ -920,7 +1100,9 @@ namespace Nop.Admin.Controllers
 
             if (!ModelState.IsValid)
             {
-                return RedirectToAction("AllSettings");
+                //display the first model error
+                var modelStateErrors = this.ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage);
+                return Content(modelStateErrors.FirstOrDefault());
             }
 
             var setting = _settingService.GetSettingById(model.Id);
@@ -947,7 +1129,9 @@ namespace Nop.Admin.Controllers
 
             if (!ModelState.IsValid)
             {
-                return new JsonResult { Data = "error" };
+                //display the first model error
+                var modelStateErrors = this.ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage);
+                return Content(modelStateErrors.FirstOrDefault());
             }
 
             _settingService.SetSetting(model.Name, model.Value);
@@ -964,6 +1148,8 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var setting = _settingService.GetSettingById(id);
+            if (setting == null)
+                throw new ArgumentException("No setting found with the specified id");
             _settingService.DeleteSetting(setting);
 
             //activity log

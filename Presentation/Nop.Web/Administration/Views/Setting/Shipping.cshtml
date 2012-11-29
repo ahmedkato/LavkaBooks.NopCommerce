@@ -1,8 +1,10 @@
 ﻿@model ShippingSettingsModel
-
+@{
+    //page title
+    ViewBag.Title = @T("Admin.Configuration.Settings.Shipping").Text;
+}
 @using (Html.BeginForm())
-{
-    
+{    
 <script type="text/javascript">
     $(document).ready(function () {
         $("#@Html.FieldIdFor(model => model.FreeShippingOverXEnabled)").click(toggleFreeShippingOverX);
@@ -11,11 +13,13 @@
     });
 
     function toggleFreeShippingOverX() {
-        if (getE('@Html.FieldIdFor(model => model.FreeShippingOverXEnabled)').checked) {
+        if ($('#@Html.FieldIdFor(model => model.FreeShippingOverXEnabled)').is(':checked')) {
             $('#pnlValueOfX').show();
+            $('#pnlValueOfXincltax').show();
         }
         else {
             $('#pnlValueOfX').hide();
+            $('#pnlValueOfXincltax').hide();
         }
     }
 
@@ -27,7 +31,7 @@
             @T("Admin.Configuration.Settings.Shipping")
         </div>
         <div class="options">
-            <button type="submit" name="save" value="save" class="t-button">@T("Admin.Common.Save")</button>
+            <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
         </div>
     </div>
 @Html.ValidationSummary(false)
@@ -50,6 +54,15 @@
                 @Html.ValidationMessageFor(model => model.FreeShippingOverXValue)
             </td>
         </tr>
+        <tr id="pnlValueOfXincltax">
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.FreeShippingOverXIncludingTax):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.FreeShippingOverXIncludingTax)
+                @Html.ValidationMessageFor(model => model.FreeShippingOverXIncludingTax)
+            </td>
+        </tr>
         <tr>
             <td class="adminTitle">
                 @Html.NopLabelFor(model => model.EstimateShippingEnabled):
@@ -60,8 +73,17 @@
             </td>
         </tr>
         <tr>
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.DisplayShipmentEventsToCustomers):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.DisplayShipmentEventsToCustomers)
+                @Html.ValidationMessageFor(model => model.DisplayShipmentEventsToCustomers)
+            </td>
+        </tr>
+        <tr>
             <td class="adminTitle" colspan="2">
-                <b>@Html.LabelFor(model => model.ShippingOriginAddress):</b>
+                <strong>@Html.LabelFor(model => model.ShippingOriginAddress):</strong>
             </td>
         </tr>
         <tr>

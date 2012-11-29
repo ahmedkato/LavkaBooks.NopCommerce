@@ -6,14 +6,14 @@ using Nop.Core;
 using Nop.Services.Customers;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
+using Nop.Services.Security;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
 
 namespace Nop.Admin.Controllers
 {
 	[AdminAuthorize]
-    public class CustomerRoleController : BaseNopController
+    public partial class CustomerRoleController : BaseNopController
 	{
 		#region Fields
 
@@ -88,7 +88,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Create(CustomerRoleModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCustomerRoles))
@@ -116,19 +116,23 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
             
             var customerRole = _customerService.GetCustomerRoleById(id);
-            if (customerRole == null) throw new ArgumentException("No customer role found with the specified id", "id");
+            if (customerRole == null)
+                //No customer role found with the specified id
+                return RedirectToAction("List");
+
             return View(customerRole.ToModel());
 		}
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Edit(CustomerRoleModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCustomerRoles))
                 return AccessDeniedView();
             
             var customerRole = _customerService.GetCustomerRoleById(model.Id);
-            if (customerRole == null) 
-                throw new ArgumentException("No customer role found with the specified id");
+            if (customerRole == null)
+                //No customer role found with the specified id
+                return RedirectToAction("List");
 
             try
             {
@@ -161,15 +165,16 @@ namespace Nop.Admin.Controllers
             }
         }
 
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCustomerRoles))
                 return AccessDeniedView();
             
             var customerRole = _customerService.GetCustomerRoleById(id);
             if (customerRole == null)
-                throw new ArgumentException("No customer role found with the specified id");
+                //No customer role found with the specified id
+                return RedirectToAction("List");
 
             try
             {

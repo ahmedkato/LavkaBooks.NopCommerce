@@ -1,14 +1,15 @@
 ﻿
+using System.Collections.Generic;
 using Nop.Core.Configuration;
 
 namespace Nop.Core.Domain.Catalog
 {
     public class CatalogSettings : ISettings
     {
-        /// <summary>
-        /// Gets or sets a value indicating whether to hide prices for non-registered customers
-        /// </summary>
-        public bool HidePricesForNonRegistered { get; set; }
+        public CatalogSettings()
+        {
+            FileUploadAllowedExtensions = new List<string>();
+        }
 
         /// <summary>
         /// Gets or sets a value indicating whether to display product SKU
@@ -21,6 +22,11 @@ namespace Nop.Core.Domain.Catalog
         public bool ShowManufacturerPartNumber { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether to display GTIN of a product
+        /// </summary>
+        public bool ShowGtin { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether product sorting is enabled
         /// </summary>
         public bool AllowProductSorting { get; set; }
@@ -29,6 +35,16 @@ namespace Nop.Core.Domain.Catalog
         /// Gets or sets a value indicating whether customers are allowed to change product view mode
         /// </summary>
         public bool AllowProductViewModeChanging { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether customers are allowed to change product view mode
+        /// </summary>
+        public string DefaultViewMode { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether a category details page should include products from subcategories
+        /// </summary>
+        public bool ShowProductsFromSubcategories { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether number of products should be displayed beside each category
@@ -59,6 +75,11 @@ namespace Nop.Core.Domain.Catalog
         /// Gets or sets a value indicating product reviews must be approved
         /// </summary>
         public bool ProductReviewsMustBeApproved { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating the default rating value of the product reviews
+        /// </summary>
+        public int DefaultProductRatingValue { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether to allow anonymous users write product reviews.
@@ -106,10 +127,24 @@ namespace Nop.Core.Domain.Catalog
         public bool CompareProductsEnabled { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether autocomplete is enabled
+        /// </summary>
+        public bool ProductSearchAutoCompleteEnabled { get; set; }
+
+        /// <summary>
+        /// Gets or sets a number of products to return when using "autocomplete" feature
+        /// </summary>
+        public int ProductSearchAutoCompleteNumberOfProducts { get; set; }
+        /// <summary>
+        /// Gets or sets a value indicating whether to show product images in the auto complete search
+        /// </summary>
+        public bool ShowProductImagesInSearchAutoComplete { get; set; }
+
+        /// <summary>
         /// Gets or sets a minimum search term length
         /// </summary>
         public int ProductSearchTermMinimumLength { get; set; }
-
+        
         /// <summary>
         /// Gets or sets a value indicating whether to show bestsellers on home page
         /// </summary>
@@ -151,15 +186,40 @@ namespace Nop.Core.Domain.Catalog
         public int ProductsByTagPageSize { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether customers can select the page size for 'products by tag'
+        /// </summary>
+        public bool ProductsByTagAllowCustomersToSelectPageSize { get; set; }
+
+        /// <summary>
+        /// Gets or sets the available customer selectable page size options for 'products by tag'
+        /// </summary>
+        public string ProductsByTagPageSizeOptions { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to include "Short description" in compare products
+        /// </summary>
+        public bool IncludeShortDescriptionInCompareProducts { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to include "Full description" in compare products
+        /// </summary>
+        public bool IncludeFullDescriptionInCompareProducts { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether to use small product boxes on home page
         /// </summary>
         public bool UseSmallProductBoxOnHomePage { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether to ignore tier prices (side-wide)
+        /// An option indicating whether products on category and manufacturer pages should include featured products as well
         /// </summary>
-        public bool IgnoreTierPrices { get; set; }
-
+        public bool IncludeFeaturedProductsInNormalLists { get; set; }
+        
+        /// <summary>
+        /// Gets or sets a value indicating whether tier prices should be displayed with applied discounts (if available)
+        /// </summary>
+        public bool DisplayTierPricesWithDiscounts { get; set; }
+        
         /// <summary>
         /// Gets or sets a value indicating whether to ignore discounts (side-wide)
         /// </summary>
@@ -171,9 +231,33 @@ namespace Nop.Core.Domain.Catalog
         public bool IgnoreFeaturedProducts { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether we need to ensure that we have at least one filterable product specification attribute mapping before load 'filter by specs' box on category details page. Set it to 'True' if you don't use them. It can really improve your performance
+        /// Gets or sets the default value to use for Category page size options (for new Categories)
         /// </summary>
-        public bool EnsureWeHaveFilterableSpecAttributes { get; set; }
+        public string DefaultCategoryPageSizeOptions { get; set; }
 
+        /// <summary>
+        /// Gets or sets the default value to use for Manufacturer page size options (for new Manufacturers)
+        /// </summary>
+        public string DefaultManufacturerPageSizeOptions { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating maximum number of 'back in stock' subscription
+        /// </summary>
+        public int MaximumBackInStockSubscriptions { get; set; }
+
+        /// <summary>
+        /// Gets or sets a maximum file upload size in bytes for product attributes ('File Upload' type)
+        /// </summary>
+        public int FileUploadMaximumSizeBytes { get; set; }
+
+        /// <summary>
+        /// Gets or sets a list of allowed file extensions for customer uploaded files
+        /// </summary>
+        public List<string> FileUploadAllowedExtensions { get; set; }
+
+        /// <summary>
+        /// Gets or sets the value indicating how many manufacturers to display in manufacturers block
+        /// </summary>
+        public int ManufacturersBlockItemsToDisplay { get; set; }
     }
 }

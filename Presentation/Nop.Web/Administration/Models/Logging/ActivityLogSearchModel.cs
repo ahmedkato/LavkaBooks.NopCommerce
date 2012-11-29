@@ -7,7 +7,7 @@ using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Models.Logging
 {
-    public class ActivityLogSearchModel : BaseNopModel
+    public partial class ActivityLogSearchModel : BaseNopModel
     {
         public ActivityLogSearchModel()
         {
@@ -20,10 +20,6 @@ namespace Nop.Admin.Models.Logging
         [NopResourceDisplayName("Admin.Configuration.ActivityLog.ActivityLog.Fields.CreatedOnTo")]
         [UIHint("DateNullable")]
         public DateTime? CreatedOnTo { get; set; }
-
-        [NopResourceDisplayName("Admin.Configuration.ActivityLog.ActivityLog.Fields.CustomerEmail")]
-        [AllowHtml]
-        public string CustomerEmail { get; set; }
 
         [NopResourceDisplayName("Admin.Configuration.ActivityLog.ActivityLog.Fields.ActivityLogType")]
         public int ActivityLogTypeId { get; set; }

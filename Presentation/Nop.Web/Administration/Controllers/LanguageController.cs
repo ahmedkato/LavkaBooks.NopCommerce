@@ -4,28 +4,24 @@ using System.Linq;
 using System.Text;
 using System.Web.Mvc;
 using Nop.Admin.Models.Localization;
+using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Localization;
-using Nop.Services.ExportImport;
 using Nop.Services.Localization;
+using Nop.Services.Security;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Nop.Web.Framework.Mvc;
 using Telerik.Web.Mvc;
-using Telerik.Web.Mvc.UI;
-using Nop.Services.Security;
-using Nop.Core.Domain.Common;
 
 namespace Nop.Admin.Controllers
 {
 	[AdminAuthorize]
-    public class LanguageController : BaseNopController
+    public partial class LanguageController : BaseNopController
 	{
 		#region Fields
 
 		private readonly ILanguageService _languageService;
 		private readonly ILocalizationService _localizationService;
-        private readonly IExportManager _exportManager;
-        private readonly IImportManager _importManager;
         private readonly IPermissionService _permissionService;
         private readonly AdminAreaSettings _adminAreaSettings;
 
@@ -33,14 +29,13 @@ namespace Nop.Admin.Controllers
 
 		#region Constructors
 
-		public LanguageController(ILanguageService languageService, ILocalizationService localizationService,
-            IExportManager exportManager, IImportManager importManager, IPermissionService permissionService,
+		public LanguageController(ILanguageService languageService,
+            ILocalizationService localizationService,
+            IPermissionService permissionService,
             AdminAreaSettings adminAreaSettings)
 		{
 			this._localizationService = localizationService;
             this._languageService = languageService;
-            this._exportManager = exportManager;
-            this._importManager = importManager;
             this._permissionService = permissionService;
             this._adminAreaSettings = adminAreaSettings;
 		}
@@ -97,7 +92,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Create(LanguageModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageLanguages))
@@ -122,22 +117,27 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
 			var language = _languageService.GetLanguageById(id);
-			if (language == null) 
-                throw new ArgumentException("No language found with the specified id", "id");
+            if (language == null)
+                //No language found with the specified id
+                return RedirectToAction("List");
 
             //set page timeout to 5 minutes
             this.Server.ScriptTimeout = 300;
             
 			return View(language.ToModel());
 		}
-        
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
 		public ActionResult Edit(LanguageModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageLanguages))
                 return AccessDeniedView();
 
             var language = _languageService.GetLanguageById(model.Id);
+            if (language == null)
+                //No language found with the specified id
+                return RedirectToAction("List");
+
             if (ModelState.IsValid)
             {
                 language = model.ToEntity(language);
@@ -151,13 +151,17 @@ namespace Nop.Admin.Controllers
             return View(model);
 		}
 
-		[HttpPost, ActionName("Delete")]
-		public ActionResult DeleteConfirmed(int id)
+		[HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageLanguages))
                 return AccessDeniedView();
 
 			var language = _languageService.GetLanguageById(id);
+            if (language == null)
+                //No language found with the specified id
+                return RedirectToAction("List");
+
 			_languageService.DeleteLanguage(language);
 
             SuccessNotification(_localizationService.GetResource("Admin.Configuration.Languages.Deleted"));
@@ -174,7 +178,7 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
 			ViewBag.AllLanguages = _languageService.GetAllLanguages(true)
-                .Select(x => new DropDownItem
+                .Select(x => new SelectListItem
                 {
                     Selected = (x.Id.Equals(languageId)),
                     Text = x.Name,
@@ -184,10 +188,22 @@ namespace Nop.Admin.Controllers
 		    ViewBag.LanguageId = languageId;
 		    ViewBag.LanguageName = language.Name;
 
-			var resources = _localizationService.GetAllResourcesByLanguageId(languageId);
+		    var resources = _localizationService
+                .GetAllResourceValues(languageId)
+                .OrderBy(x => x.Key)
+                .ToList();
 			var gridModel = new GridModel<LanguageResourceModel>
 			{
-                Data = resources.Take(_adminAreaSettings.GridPageSize).Select(x => x.Value.ToModel()),
+                Data = resources
+                    .Take(_adminAreaSettings.GridPageSize)
+                    .Select(x => new LanguageResourceModel()
+                    {
+                        LanguageId = languageId,
+                        LanguageName = language.Name,
+                        Id = x.Value.Key,
+                        Name = x.Key,
+                        Value = x.Value.Value,
+                    }),
 				Total = resources.Count
 			};
 			return View(gridModel);
@@ -198,15 +214,27 @@ namespace Nop.Admin.Controllers
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageLanguages))
                 return AccessDeniedView();
+            
+		    var language = _languageService.GetLanguageById(languageId);
 
-		    var resources = _localizationService.GetAllResourcesByLanguageId(languageId).Select(x => x.Value)
-		        .Select(x => x.ToModel())
-		        .ForCommand(command);
-
+            var resources = _localizationService
+                .GetAllResourceValues(languageId)
+                .OrderBy(x => x.Key)
+                .Select(x => new LanguageResourceModel()
+                    {
+                        LanguageId = languageId,
+                        LanguageName = language.Name,
+                        Id = x.Value.Key,
+                        Name = x.Key,
+                        Value = x.Value.Value,
+                    })
+                .ForCommand(command)
+                .ToList();
+            
             var model = new GridModel<LanguageResourceModel>
             {
                 Data = resources.PagedForCommand(command),
-                Total = resources.Count()
+                Total = resources.Count
             };
 		    return new JsonResult
 			{
@@ -227,7 +255,9 @@ namespace Nop.Admin.Controllers
 
             if (!ModelState.IsValid)
             {
-                return new JsonResult { Data = "error" };
+                //display the first model error
+                var modelStateErrors = this.ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage);
+                return Content(modelStateErrors.FirstOrDefault());
             }
 
             var resource = _localizationService.GetLocaleStringResourceById(model.Id);
@@ -241,7 +271,8 @@ namespace Nop.Admin.Controllers
                 }
             }
 
-            resource = model.ToEntity(resource);
+            resource.ResourceName = model.Name;
+            resource.ResourceValue = model.Value;
             _localizationService.UpdateLocaleStringResource(resource);
 
             return Resources(model.LanguageId, command);
@@ -260,19 +291,22 @@ namespace Nop.Admin.Controllers
 
             if (!ModelState.IsValid)
             {
-                return new JsonResult { Data = "error" };
+                //display the first model error
+                var modelStateErrors = this.ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage);
+                return Content(modelStateErrors.FirstOrDefault());
             }
 
             var res = _localizationService.GetLocaleStringResourceByName(model.Name, model.LanguageId, false);
             if (res == null)
             {
                 var resource = new LocaleStringResource { LanguageId = id };
-                resource = model.ToEntity(resource);
+                resource.ResourceName = model.Name;
+                resource.ResourceValue = model.Value;
                 _localizationService.InsertLocaleStringResource(resource);
             }
             else
             {
-                return Content(string.Format(_localizationService.GetResource("Admin.Configuration.Languages.Resources.NameAlreadyExists"), res.ResourceName));
+                return Content(string.Format(_localizationService.GetResource("Admin.Configuration.Languages.Resources.NameAlreadyExists"), model.Name));
             }
             return Resources(id, command);
         }
@@ -284,6 +318,8 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var resource = _localizationService.GetLocaleStringResourceById(id);
+            if (resource == null)
+                throw new ArgumentException("No resource found with the specified id");
             _localizationService.DeleteLocaleStringResource(resource);
             
             return Resources(languageId, command);
@@ -300,12 +336,13 @@ namespace Nop.Admin.Controllers
 
             var language = _languageService.GetLanguageById(id);
             if (language == null)
-                throw new ArgumentException("No language found with the specified id", "id");
+                //No language found with the specified id
+                return RedirectToAction("List");
 
             try
             {
                 var fileName = string.Format("language_{0}.xml", id);
-                var xml = _exportManager.ExportLanguageToXml(language);
+                var xml = _localizationService.ExportResourcesToXml(language);
                 return new XmlDownloadResult(xml, fileName);
             }
             catch (Exception exc)
@@ -323,7 +360,8 @@ namespace Nop.Admin.Controllers
 
             var language = _languageService.GetLanguageById(id);
             if (language == null)
-                throw new ArgumentException("No language found with the specified id", "id");
+                //No language found with the specified id
+                return RedirectToAction("List");
 
             //set page timeout to 5 minutes
             this.Server.ScriptTimeout = 300;
@@ -336,13 +374,13 @@ namespace Nop.Admin.Controllers
                     using (var sr = new StreamReader(file.InputStream, Encoding.UTF8))
                     {
                         string content = sr.ReadToEnd();
-                        _importManager.ImportLanguageFromXml(language, content);
+                        _localizationService.ImportResourcesFromXml(language, content);
                     }
 
                 }
                 else
                 {
-                    ErrorNotification("Please upload a file");
+                    ErrorNotification(_localizationService.GetResource("Admin.Common.UploadFile"));
                     return RedirectToAction("Edit", new { id = language.Id });
                 }
 

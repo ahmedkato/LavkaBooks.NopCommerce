@@ -6,6 +6,9 @@
 {
     x.Add().Text(T("Admin.ContentManagement.Polls.Info").Text).Content(TabInfo().ToHtmlString()).Selected(true);
     x.Add().Text(T("Admin.ContentManagement.Polls.Answers").Text).Content(TabAnswers().ToHtmlString());
+
+    //generate an event
+    EngineContext.Current.Resolve<IEventPublisher>().Publish(new AdminTabStripCreated(x, "poll-edit"));
 })
 @helper TabInfo()
     {
@@ -53,6 +56,15 @@
             <td class="adminData">
                 @Html.EditorFor(model => model.ShowOnHomePage)
                 @Html.ValidationMessageFor(model => model.ShowOnHomePage)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.AllowGuestsToVote):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.AllowGuestsToVote)
+                @Html.ValidationMessageFor(model => model.AllowGuestsToVote)
             </td>
         </tr>
         <tr>
@@ -125,7 +137,14 @@
                             .Delete("PollAnswerDelete", "Poll")
                             .Insert("PollAnswerAdd", "Poll", new { pollId = Model.Id });
                     })
+                    .ClientEvents(x => x.OnError("grid_onError"))
                     .EnableCustomBinding(true))
+                <script type="text/javascript">
+                    function grid_onError(e) {
+                        alert(e.XMLHttpRequest.responseText);
+                        e.preventDefault();
+                    }
+                </script>
             </td>
         </tr>
     </table>

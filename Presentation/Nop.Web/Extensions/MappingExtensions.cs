@@ -76,27 +76,7 @@ namespace Nop.Web.Extensions
             var model = new CurrencyModel()
             {
                 Id = entity.Id,
-                Name = entity.Name,
-            };
-            return model;
-        }
-
-        //product
-        public static ProductModel ToModel(this Product entity)
-        {
-            if (entity == null)
-                return null;
-
-            var model = new ProductModel()
-            {
-                Id = entity.Id,
                 Name = entity.GetLocalized(x => x.Name),
-                ShortDescription = entity.GetLocalized(x => x.ShortDescription),
-                FullDescription = entity.GetLocalized(x => x.FullDescription),
-                MetaKeywords = entity.GetLocalized(x => x.MetaKeywords),
-                MetaDescription = entity.GetLocalized(x => x.MetaDescription),
-                MetaTitle = entity.GetLocalized(x => x.MetaTitle),
-                SeName = entity.GetSeName(),
             };
             return model;
         }
@@ -115,9 +95,9 @@ namespace Nop.Web.Extensions
                 Email = entity.Email,
                 Company = entity.Company,
                 CountryId = entity.CountryId,
-                CountryName = entity.Country != null ? entity.Country.Name : null,
+                CountryName = entity.Country != null ? entity.Country.GetLocalized(x => x.Name) : null,
                 StateProvinceId = entity.StateProvinceId,
-                StateProvinceName = entity.StateProvince != null ? entity.StateProvince.Name : null,
+                StateProvinceName = entity.StateProvince != null ? entity.StateProvince.GetLocalized(x => x.Name) : null,
                 City = entity.City,
                 Address1 = entity.Address1,
                 Address2 = entity.Address2,

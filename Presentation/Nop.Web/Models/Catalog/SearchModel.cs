@@ -5,12 +5,12 @@ using Nop.Web.Framework.Mvc;
 
 namespace Nop.Web.Models.Catalog
 {
-    public class SearchModel : BaseNopModel
+    public partial class SearchModel : BaseNopModel
     {
         public SearchModel()
         {
             PagingFilteringContext = new SearchPagingFilteringModel();
-            Products = new List<ProductModel>();
+            Products = new List<ProductOverviewModel>();
 
             this.AvailableCategories = new List<SelectListItem>();
             this.AvailableManufacturers = new List<SelectListItem>();
@@ -31,6 +31,8 @@ namespace Nop.Web.Models.Catalog
         /// </summary>
         [NopResourceDisplayName("Search.Category")]
         public int Cid { get; set; }
+        [NopResourceDisplayName("Search.IncludeSubCategories")]
+        public bool Isc { get; set; }
         /// <summary>
         /// Manufacturer ID
         /// </summary>
@@ -61,6 +63,6 @@ namespace Nop.Web.Models.Catalog
 
 
         public SearchPagingFilteringModel PagingFilteringContext { get; set; }
-        public IList<ProductModel> Products { get; set; }
+        public IList<ProductOverviewModel> Products { get; set; }
     }
 }

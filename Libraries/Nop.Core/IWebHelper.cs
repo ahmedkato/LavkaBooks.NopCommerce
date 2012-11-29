@@ -90,7 +90,7 @@ namespace Nop.Core
         /// .ashx
         /// </remarks>
         bool IsStaticResource(HttpRequest request);
-
+        
         /// <summary>
         /// Maps a virtual path to a physical disk path.
         /// </summary>
@@ -104,9 +104,9 @@ namespace Nop.Core
         /// </summary>
         /// <param name="url">Url to modify</param>
         /// <param name="queryStringModification">Query string modification</param>
-        /// <param name="targetLocationModification">Target location modification</param>
+        /// <param name="anchor">Anchor</param>
         /// <returns>New url</returns>
-        string ModifyQueryString(string url, string queryStringModification, string targetLocationModification);
+        string ModifyQueryString(string url, string queryStringModification, string anchor);
 
         /// <summary>
         /// Remove query string from url
@@ -123,18 +123,29 @@ namespace Nop.Core
         /// <param name="name">Parameter name</param>
         /// <returns>Query string value</returns>
         T QueryString<T>(string name);
-        
+
         /// <summary>
         /// Restart application domain
         /// </summary>
+        /// <param name="makeRedirect">A value indicating whether </param>
         /// <param name="redirectUrl">Redirect URL; empty string if you want to redirect to the current page URL</param>
-        void RestartAppDomain(string redirectUrl = "");
+        void RestartAppDomain(bool makeRedirect = false, string redirectUrl = "");
         
         /// <summary>
         /// Get a value indicating whether the request is made by search engine (web crawler)
         /// </summary>
-        /// <param name="request">HTTP Request</param>
+        /// <param name="context">HTTP context</param>
         /// <returns>Result</returns>
-        bool IsSearchEngine(HttpRequestBase request);
+        bool IsSearchEngine(HttpContextBase context);
+
+        /// <summary>
+        /// Gets a value that indicates whether the client is being redirected to a new location
+        /// </summary>
+        bool IsRequestBeingRedirected { get; }
+
+        /// <summary>
+        /// Gets or sets a value that indicates whether the client is being redirected to a new location using POST
+        /// </summary>
+        bool IsPostBeingDone { get; set; }
     }
 }

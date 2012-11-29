@@ -1,24 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Web.Routing;
 using System.Xml;
 using System.Xml.Linq;
 using Nop.Core;
-using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Shipping;
 using Nop.Core.Plugins;
 using Nop.Plugin.Shipping.CanadaPost.Domain;
 using Nop.Services.Configuration;
 using Nop.Services.Directory;
+using Nop.Services.Localization;
 using Nop.Services.Shipping;
-using System.Globalization;
+using Nop.Services.Shipping.Tracking;
 
 namespace Nop.Plugin.Shipping.CanadaPost
 {
@@ -379,6 +377,7 @@ namespace Nop.Plugin.Shipping.CanadaPost
         /// </summary>
         public override void Install()
         {
+            //settings
             var settings = new CanadaPostSettings()
             {
                 Url = "sellonline.canadapost.ca",
@@ -388,7 +387,34 @@ namespace Nop.Plugin.Shipping.CanadaPost
             };
             _settingService.SaveSetting(settings);
 
+            //locales
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.CanadaPost.Fields.Url", "Canada Post URL");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.CanadaPost.Fields.Url.Hint", "Specify Canada Post URL.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.CanadaPost.Fields.Port", "Canada Post Port");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.CanadaPost.Fields.Port.Hint", "Specify Canada Post port.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.CanadaPost.Fields.CustomerId", "Canada Post Customer ID");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.CanadaPost.Fields.CustomerId.Hint", "Specify Canada Post customer identifier.");
+            
             base.Install();
+        }
+        
+        /// <summary>
+        /// Uninstall plugin
+        /// </summary>
+        public override void Uninstall()
+        {
+            //settings
+            _settingService.DeleteSetting<CanadaPostSettings>();
+
+            //locales
+            this.DeletePluginLocaleResource("Plugins.Shipping.CanadaPost.Fields.Url");
+            this.DeletePluginLocaleResource("Plugins.Shipping.CanadaPost.Fields.Url.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.CanadaPost.Fields.Port");
+            this.DeletePluginLocaleResource("Plugins.Shipping.CanadaPost.Fields.Port.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.CanadaPost.Fields.CustomerId");
+            this.DeletePluginLocaleResource("Plugins.Shipping.CanadaPost.Fields.CustomerId.Hint");
+            
+            base.Uninstall();
         }
 
         #endregion
@@ -404,6 +430,14 @@ namespace Nop.Plugin.Shipping.CanadaPost
             {
                 return ShippingRateComputationMethodType.Realtime;
             }
+        }
+        
+        /// <summary>
+        /// Gets a shipment tracker
+        /// </summary>
+        public IShipmentTracker ShipmentTracker
+        {
+            get { return null; }
         }
 
         #endregion

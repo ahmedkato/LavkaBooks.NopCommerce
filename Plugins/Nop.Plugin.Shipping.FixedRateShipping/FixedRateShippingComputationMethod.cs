@@ -4,7 +4,9 @@ using System.Web.Routing;
 using Nop.Core.Domain.Shipping;
 using Nop.Core.Plugins;
 using Nop.Services.Configuration;
+using Nop.Services.Localization;
 using Nop.Services.Shipping;
+using Nop.Services.Shipping.Tracking;
 
 namespace Nop.Plugin.Shipping.FixedRateShipping
 {
@@ -64,8 +66,8 @@ namespace Nop.Plugin.Shipping.FixedRateShipping
             foreach (var shippingMethod in shippingMethods)
             {
                 var shippingOption = new ShippingOption();
-                shippingOption.Name = shippingMethod.Name;
-                shippingOption.Description = shippingMethod.Description;
+                shippingOption.Name = shippingMethod.GetLocalized(x => x.Name);
+                shippingOption.Description = shippingMethod.GetLocalized(x => x.Description);
                 shippingOption.Rate = GetRate(shippingMethod.Id);
                 response.ShippingOptions.Add(shippingOption);
             }
@@ -114,6 +116,31 @@ namespace Nop.Plugin.Shipping.FixedRateShipping
             routeValues = new RouteValueDictionary() { { "Namespaces", "Nop.Plugin.Shipping.FixedRateShipping.Controllers" }, { "area", null } };
         }
 
+        /// <summary>
+        /// Install plugin
+        /// </summary>
+        public override void Install()
+        {
+            //locales
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.FixedRateShipping.Fields.ShippingMethodName", "Shipping method");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.FixedRateShipping.Fields.Rate", "Rate");
+
+            base.Install();
+        }
+
+
+        /// <summary>
+        /// Uninstall plugin
+        /// </summary>
+        public override void Uninstall()
+        {
+            //locales
+            this.DeletePluginLocaleResource("Plugins.Shipping.FixedRateShipping.Fields.ShippingMethodName");
+            this.DeletePluginLocaleResource("Plugins.Shipping.FixedRateShipping.Fields.Rate");
+
+            base.Uninstall();
+        }
+
         #endregion
 
         #region Properties
@@ -126,6 +153,19 @@ namespace Nop.Plugin.Shipping.FixedRateShipping
             get
             {
                 return ShippingRateComputationMethodType.Offline;
+            }
+        }
+        
+        /// <summary>
+        /// Gets a shipment tracker
+        /// </summary>
+        public IShipmentTracker ShipmentTracker
+        {
+            get
+            {
+                //uncomment a line below to return a general shipment tracker (finds an appropriate tracker by tracking number)
+                //return new GeneralShipmentTracker(EngineContext.Current.Resolve<ITypeFinder>());
+                return null;
             }
         }
 

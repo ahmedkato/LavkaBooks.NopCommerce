@@ -5,8 +5,10 @@ using System.Web.Mvc;
 using Nop.Admin.Models.Catalog;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
+using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Discounts;
+using Nop.Core.Domain.Media;
 using Nop.Core.Domain.Orders;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
@@ -14,19 +16,18 @@ using Nop.Services.Directory;
 using Nop.Services.Discounts;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
+using Nop.Services.Media;
 using Nop.Services.Orders;
+using Nop.Services.Security;
 using Nop.Services.Tax;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
-using Nop.Core.Domain.Common;
-using Nop.Services.Media;
 
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class ProductVariantController : BaseNopController
+    public partial class ProductVariantController : BaseNopController
     {
         #region Fields
 
@@ -45,8 +46,13 @@ namespace Nop.Admin.Controllers
         private readonly IProductAttributeParser _productAttributeParser;
         private readonly ICustomerActivityService _customerActivityService;
         private readonly IPermissionService _permissionService;
-
+        private readonly ICategoryService _categoryService;
+        private readonly IManufacturerService _manufacturerService;
+        private readonly IBackInStockSubscriptionService _backInStockSubscriptionService;
         private readonly ICurrencyService _currencyService;
+        private readonly IDownloadService _downloadService;
+
+        private readonly CatalogSettings _catalogSettings;
         private readonly CurrencySettings _currencySettings;
         private readonly IMeasureService _measureService;
         private readonly MeasureSettings _measureSettings;
@@ -62,8 +68,11 @@ namespace Nop.Admin.Controllers
             ITaxCategoryService taxCategoryService, IWorkContext workContext,
             IProductAttributeFormatter productAttributeFormatter, IShoppingCartService shoppingCartService,
             IProductAttributeParser productAttributeParser, ICustomerActivityService customerActivityService,
-            IPermissionService permissionService,
-            ICurrencyService currencyService, CurrencySettings currencySettings,
+            IPermissionService permissionService, 
+            ICategoryService categoryService, IManufacturerService manufacturerService,
+            IBackInStockSubscriptionService backInStockSubscriptionService,
+            ICurrencyService currencyService, IDownloadService downloadService, 
+            CatalogSettings catalogSettings, CurrencySettings currencySettings,
             IMeasureService measureService, MeasureSettings measureSettings,
             AdminAreaSettings adminAreaSettings)
         {
@@ -82,8 +91,13 @@ namespace Nop.Admin.Controllers
             this._productAttributeParser = productAttributeParser;
             this._customerActivityService = customerActivityService;
             this._permissionService = permissionService;
-
+            this._categoryService = categoryService;
+            this._manufacturerService = manufacturerService;
+            this._backInStockSubscriptionService = backInStockSubscriptionService;
             this._currencyService = currencyService;
+            this._downloadService = downloadService;
+
+            this._catalogSettings = catalogSettings;
             this._currencySettings = currencySettings;
             this._measureService = measureService;
             this._measureSettings = measureSettings;
@@ -95,7 +109,7 @@ namespace Nop.Admin.Controllers
         #region Utilities
 
         [NonAction]
-        private void UpdateLocales(ProductVariant variant, ProductVariantModel model)
+        protected void UpdateLocales(ProductVariant variant, ProductVariantModel model)
         {
             foreach (var localized in model.Locales)
             {
@@ -111,7 +125,7 @@ namespace Nop.Admin.Controllers
         }
 
         [NonAction]
-        private void UpdatePictureSeoNames(ProductVariant variant)
+        protected void UpdatePictureSeoNames(ProductVariant variant)
         {
             var picture = _pictureService.GetPictureById(variant.PictureId);
             if (picture != null)
@@ -119,7 +133,7 @@ namespace Nop.Admin.Controllers
         }
 
         [NonAction]
-        private void UpdateAttributeValueLocales(ProductVariantAttributeValue pvav, ProductVariantModel.ProductVariantAttributeValueModel model)
+        protected void UpdateAttributeValueLocales(ProductVariantAttributeValue pvav, ProductVariantModel.ProductVariantAttributeValueModel model)
         {
             foreach (var localized in model.Locales)
             {
@@ -131,7 +145,7 @@ namespace Nop.Admin.Controllers
         }
 
         [NonAction]
-        private void PrepareProductModel(ProductVariantModel model, Product product)
+        protected void PrepareProductModel(ProductVariantModel model, Product product)
         {
             if (model == null)
                 throw new ArgumentNullException("model");
@@ -140,7 +154,7 @@ namespace Nop.Admin.Controllers
         }
 
         [NonAction]
-        private void PrepareProductVariantModel(ProductVariantModel model, ProductVariant variant, bool setPredefinedValues)
+        protected void PrepareProductVariantModel(ProductVariantModel model, ProductVariant variant, bool setPredefinedValues)
         {
             if (model == null)
                 throw new ArgumentNullException("model");
@@ -174,7 +188,7 @@ namespace Nop.Admin.Controllers
         }
 
         [NonAction]
-        private void PrepareDiscountModel(ProductVariantModel model, ProductVariant variant, bool excludeProperties)
+        protected void PrepareDiscountModel(ProductVariantModel model, ProductVariant variant, bool excludeProperties)
         {
             if (model == null)
                 throw new ArgumentNullException("model");
@@ -189,7 +203,7 @@ namespace Nop.Admin.Controllers
         }
 
         [NonAction]
-        private void PrepareProductAttributesMapping(ProductVariantModel model, ProductVariant variant)
+        protected void PrepareProductAttributesMapping(ProductVariantModel model, ProductVariant variant)
         {
             if (model == null)
                 throw new ArgumentNullException("model");
@@ -198,46 +212,46 @@ namespace Nop.Admin.Controllers
         }
 
         [NonAction]
-        private void PrepareAddProductAttributeCombinationModel(AddProductVariantAttributeCombinationModel model, ProductVariant variant)
+        protected void PrepareAddProductAttributeCombinationModel(AddProductVariantAttributeCombinationModel model, ProductVariant variant)
         {
             if (model == null)
                 throw new ArgumentNullException("model");
+            if (variant == null)
+                throw new ArgumentNullException("variant");
 
+            model.ProductVariantId = variant.Id;
             model.StockQuantity = 10000;
 
-            if (variant != null)
+            var productVariantAttributes = _productAttributeService.GetProductVariantAttributesByProductVariantId(variant.Id);
+            foreach (var attribute in productVariantAttributes)
             {
-                var productVariantAttributes = _productAttributeService.GetProductVariantAttributesByProductVariantId(variant.Id);
-                foreach (var attribute in productVariantAttributes)
+                var pvaModel = new AddProductVariantAttributeCombinationModel.ProductVariantAttributeModel()
                 {
-                    var pvaModel = new AddProductVariantAttributeCombinationModel.ProductVariantAttributeModel()
-                    {
-                        Id = attribute.Id,
-                        ProductAttributeId = attribute.ProductAttributeId,
-                        Name = attribute.ProductAttribute.Name,
-                        TextPrompt = attribute.TextPrompt,
-                        IsRequired = attribute.IsRequired,
-                        AttributeControlType = attribute.AttributeControlType
-                    };
+                    Id = attribute.Id,
+                    ProductAttributeId = attribute.ProductAttributeId,
+                    Name = attribute.ProductAttribute.Name,
+                    TextPrompt = attribute.TextPrompt,
+                    IsRequired = attribute.IsRequired,
+                    AttributeControlType = attribute.AttributeControlType
+                };
 
-                    if (attribute.ShouldHaveValues())
+                if (attribute.ShouldHaveValues())
+                {
+                    //values
+                    var pvaValues = _productAttributeService.GetProductVariantAttributeValues(attribute.Id);
+                    foreach (var pvaValue in pvaValues)
                     {
-                        //values
-                        var pvaValues = _productAttributeService.GetProductVariantAttributeValues(attribute.Id);
-                        foreach (var pvaValue in pvaValues)
+                        var pvaValueModel = new AddProductVariantAttributeCombinationModel.ProductVariantAttributeValueModel()
                         {
-                            var pvaValueModel = new AddProductVariantAttributeCombinationModel.ProductVariantAttributeValueModel()
-                            {
-                                Id = pvaValue.Id,
-                                Name = pvaValue.Name,
-                                IsPreSelected = pvaValue.IsPreSelected
-                            };
-                            pvaModel.Values.Add(pvaValueModel);
-                        }
+                            Id = pvaValue.Id,
+                            Name = pvaValue.Name,
+                            IsPreSelected = pvaValue.IsPreSelected
+                        };
+                        pvaModel.Values.Add(pvaValueModel);
                     }
-
-                    model.ProductVariantAttributes.Add(pvaModel);
                 }
+
+                model.ProductVariantAttributes.Add(pvaModel);
             }
         }
         
@@ -252,7 +266,9 @@ namespace Nop.Admin.Controllers
 
             var product = _productService.GetProductById(productId);
             if (product == null)
-                throw new ArgumentException("No product found with the specified id", "productId");
+                //No product review found with the specified id
+                return RedirectToAction("Edit", "Product", new { id = productId });
+
             var model = new ProductVariantModel()
             {
                 ProductId = productId,
@@ -269,7 +285,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Create(ProductVariantModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
@@ -292,6 +308,8 @@ namespace Nop.Admin.Controllers
                         variant.AppliedDiscounts.Add(discount);
                 }
                 _productService.UpdateProductVariant(variant);
+                //update "HasDiscountsApplied" property
+                _productService.UpdateHasDiscountsApplied(variant);
                 //update picture seo file name
                 UpdatePictureSeoNames(variant);
 
@@ -324,7 +342,9 @@ namespace Nop.Admin.Controllers
 
             var variant = _productService.GetProductVariantById(id);
             if (variant == null || variant.Deleted)
-                throw new ArgumentException("No product variant found with the specified id", "id");
+                //No product variant found with the specified id
+                return RedirectToAction("List", "Product");
+
             var model = variant.ToModel();
             //locales
             AddLocales(_languageService, model.Locales, (locale, languageId) =>
@@ -342,7 +362,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Edit(ProductVariantModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
@@ -350,9 +370,13 @@ namespace Nop.Admin.Controllers
 
             var variant = _productService.GetProductVariantById(model.Id);
             if (variant == null || variant.Deleted)
-                throw new ArgumentException("No product variant found with the specified id");
+                //No product variant found with the specified id
+                return RedirectToAction("List", "Product");
+
             if (ModelState.IsValid)
             {
+                int prevPictureId = variant.PictureId;
+                var prevStockQuantity = variant.StockQuantity;
                 variant = model.ToEntity(variant);
                 variant.UpdatedOnUtc = DateTime.UtcNow;
                 //save variant
@@ -377,11 +401,30 @@ namespace Nop.Admin.Controllers
                     }
                 }
                 _productService.UpdateProductVariant(variant);
+                //update "HasDiscountsApplied" property
+                _productService.UpdateHasDiscountsApplied(variant);
+                //delete an old picture (if deleted or updated)
+                if (prevPictureId > 0 && prevPictureId != variant.PictureId)
+                {
+                    var prevPicture = _pictureService.GetPictureById(prevPictureId);
+                    if (prevPicture != null)
+                        _pictureService.DeletePicture(prevPicture);
+                }
                 //update picture seo file name
                 UpdatePictureSeoNames(variant);
-
+                //back in stock notifications
+                if (variant.ManageInventoryMethod == ManageInventoryMethod.ManageStock &&
+                    variant.BackorderMode == BackorderMode.NoBackorders &&
+                    variant.AllowBackInStockSubscriptions &&
+                    variant.StockQuantity > 0 &&
+                    prevStockQuantity <= 0 &&
+                    variant.Published &&
+                    !variant.Deleted)
+                {
+                    _backInStockSubscriptionService.SendNotificationsToSubscribers(variant);
+                }
                 //activity log
-                _customerActivityService.InsertActivity("EditProductVariant", _localizationService.GetResource("ActivityLog.EditProductVariant"), variant.Name);
+                _customerActivityService.InsertActivity("EditProductVariant", _localizationService.GetResource("ActivityLog.EditProductVariant"), variant.FullProductName);
 
                 SuccessNotification(_localizationService.GetResource("Admin.Catalog.Products.Variants.Updated"));
                 return continueEditing ? RedirectToAction("Edit", model.Id) : RedirectToAction("Edit", "Product", new { id = variant.ProductId });
@@ -398,15 +441,17 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
         
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
 
             var variant = _productService.GetProductVariantById(id);
             if (variant == null)
-                throw new ArgumentException("No product variant found with the specified id");
+                //No product variant found with the specified id
+                return RedirectToAction("List", "Product");
+
             var productId = variant.ProductId;
             _productService.DeleteProductVariant(variant);
 
@@ -471,16 +516,28 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
 
-            return View();
+            var model = new BulkEditListModel();
+            //categories
+            model.AvailableCategories.Add(new SelectListItem() { Text = _localizationService.GetResource("Admin.Common.All"), Value = "0" });
+            foreach (var c in _categoryService.GetAllCategories(true))
+                model.AvailableCategories.Add(new SelectListItem() { Text = c.GetCategoryNameWithPrefix(_categoryService), Value = c.Id.ToString() });
+
+            //manufacturers
+            model.AvailableManufacturers.Add(new SelectListItem() { Text = _localizationService.GetResource("Admin.Common.All"), Value = "0" });
+            foreach (var m in _manufacturerService.GetAllManufacturers(true))
+                model.AvailableManufacturers.Add(new SelectListItem() { Text = m.Name, Value = m.Id.ToString() });
+
+            return View(model);
         }
         [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult BulkEditSelect(GridCommand command)
+        public ActionResult BulkEditSelect(GridCommand command, BulkEditListModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
 
             var gridModel = new GridModel();
-            var productVariants = _productService.SearchProductVariants(0, 0, null, false,
+            var productVariants = _productService.SearchProductVariants(model.SearchCategoryId,
+                model.SearchManufacturerId, model.SearchProductName, false,
                 command.Page - 1, command.PageSize, true);
             gridModel.Data = productVariants.Select(x =>
             {
@@ -491,6 +548,8 @@ namespace Nop.Admin.Controllers
                     Sku = x.Sku,
                     OldPrice = x.OldPrice,
                     Price = x.Price,
+                    ManageInventoryMethod = x.ManageInventoryMethod.GetLocalizedEnum(_localizationService, _workContext.WorkingLanguage.Id),
+                    StockQuantity = x.StockQuantity,
                     Published = x.Published
                 };
 
@@ -506,7 +565,8 @@ namespace Nop.Admin.Controllers
         [HttpPost, GridAction(EnableCustomBinding = true)]
         public ActionResult BulkEditSave(GridCommand command, 
             [Bind(Prefix = "updated")]IEnumerable<BulkEditProductVariantModel> updatedProductVariants,
-            [Bind(Prefix = "deleted")]IEnumerable<BulkEditProductVariantModel> deletedProductVariants)
+            [Bind(Prefix = "deleted")]IEnumerable<BulkEditProductVariantModel> deletedProductVariants,
+            BulkEditListModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
@@ -522,6 +582,7 @@ namespace Nop.Admin.Controllers
                         pv.Sku = pvModel.Sku;
                         pv.Price = pvModel.Price;
                         pv.OldPrice = pvModel.OldPrice;
+                        pv.StockQuantity = pvModel.StockQuantity;
                         pv.Published = pvModel.Published;
                         _productService.UpdateProductVariant(pv);
                     }
@@ -537,7 +598,7 @@ namespace Nop.Admin.Controllers
                         _productService.DeleteProductVariant(pv);
                 }
             }
-            return BulkEditSelect(command);
+            return BulkEditSelect(command, model);
         }
         #endregion
 
@@ -549,7 +610,11 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
 
-            var tierPrices = _productService.GetTierPricesByProductVariantId(productVariantId);
+            var productVariant = _productService.GetProductVariantById(productVariantId);
+            if (productVariant == null)
+                throw new ArgumentException("No product variant found with the specified id");
+
+            var tierPrices = productVariant.TierPrices;
             var tierPricesModel = tierPrices
                 .Select(x =>
                 {
@@ -592,6 +657,10 @@ namespace Nop.Admin.Controllers
             };
             _productService.InsertTierPrice(tierPrice);
 
+            //update "HasTierPrices" property
+            var productVariant = _productService.GetProductVariantById(model.ProductVariantId);
+            _productService.UpdateHasTierPricesProperty(productVariant);
+
             return TierPriceList(command, model.ProductVariantId);
         }
 
@@ -625,7 +694,11 @@ namespace Nop.Admin.Controllers
                 throw new ArgumentException("No tier price found with the specified id");
 
             var productVariantId = tierPrice.ProductVariantId;
+            var productVariant = _productService.GetProductVariantById(productVariantId);
             _productService.DeleteTierPrice(tierPrice);
+
+            //update "HasTierPrices" property
+            _productService.UpdateHasTierPricesProperty(productVariant);
 
             return TierPriceList(command, productVariantId);
         }
@@ -798,6 +871,9 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var pvav = _productAttributeService.GetProductVariantAttributeValueById(pvavId);
+            if (pvav == null)
+                throw new ArgumentException("No product variant attribute value found with the specified id");
+
             _productAttributeService.DeleteProductVariantAttributeValue(pvav);
 
             return ProductAttributeValueList(productVariantAttributeId, command);
@@ -825,7 +901,8 @@ namespace Nop.Admin.Controllers
 
             var pva = _productAttributeService.GetProductVariantAttributeById(model.ProductVariantAttributeId);
             if (pva == null)
-                throw new ArgumentException("No product variant attribute found with the specified id");
+                //No product variant attribute found with the specified id
+                return RedirectToAction("List", "Product");
 
             if (ModelState.IsValid)
             {
@@ -860,7 +937,9 @@ namespace Nop.Admin.Controllers
 
             var pvav = _productAttributeService.GetProductVariantAttributeValueById(id);
             if (pvav == null)
-                throw new ArgumentException("No attribute value found with the specified id", "id");
+                //No attribute value found with the specified id
+                return RedirectToAction("List", "Product");
+
             var model = new ProductVariantModel.ProductVariantAttributeValueModel()
             {
                 ProductVariantAttributeId = pvav.ProductVariantAttributeId,
@@ -887,7 +966,9 @@ namespace Nop.Admin.Controllers
 
             var pvav = _productAttributeService.GetProductVariantAttributeValueById(model.Id);
             if (pvav == null)
-                throw new ArgumentException("No attribute value found with the specified id");
+                //No attribute value found with the specified id
+                return RedirectToAction("List", "Product");
+
             if (ModelState.IsValid)
             {
                 pvav.Name = model.Name;
@@ -995,15 +1076,18 @@ namespace Nop.Admin.Controllers
         
         
         //edit
-        public ActionResult AddAttributeCombinationPopup(int productVariantId)
+        public ActionResult AddAttributeCombinationPopup(string btnId, string formId, int productVariantId)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
 
             var variant = _productService.GetProductVariantById(productVariantId);
             if (variant == null)
-                throw new ArgumentException("No product variant found with the specified id", "productVariantId");
+                //No product variant found with the specified id
+                return RedirectToAction("List", "Product");
 
+            ViewBag.btnId = btnId;
+            ViewBag.formId = formId;
             var model = new AddProductVariantAttributeCombinationModel();
             PrepareAddProductAttributeCombinationModel(model, variant);
             return View(model);
@@ -1019,12 +1103,18 @@ namespace Nop.Admin.Controllers
 
             var variant = _productService.GetProductVariantById(productVariantId);
             if (variant == null)
-                throw new ArgumentException("No product variant found with the specified id", "productVariantId");
+                //No product variant found with the specified id
+                return RedirectToAction("List", "Product");
 
+            ViewBag.btnId = btnId;
+            ViewBag.formId = formId;
 
             int stockQuantity = model.StockQuantity;
             bool allowOutOfStockOrders = model.AllowOutOfStockOrders;
+
+            //attributes
             string attributes = "";
+            var warnings = new List<string>();
 
             #region Product attributes
             string selectedAttributes = string.Empty;
@@ -1113,6 +1203,38 @@ namespace Nop.Admin.Controllers
                             }
                         }
                         break;
+                    case AttributeControlType.FileUpload:
+                        {
+                            var httpPostedFile = this.Request.Files[controlId];
+                            if ((httpPostedFile != null) && (!String.IsNullOrEmpty(httpPostedFile.FileName)))
+                            {
+                                int fileMaxSize = _catalogSettings.FileUploadMaximumSizeBytes;
+                                if (httpPostedFile.ContentLength > fileMaxSize)
+                                {
+                                    warnings.Add(string.Format(_localizationService.GetResource("ShoppingCart.MaximumUploadedFileSize"), (int)(fileMaxSize / 1024)));
+                                }
+                                else
+                                {
+                                    //save an uploaded file
+                                    var download = new Download()
+                                    {
+                                        DownloadGuid = Guid.NewGuid(),
+                                        UseDownloadUrl = false,
+                                        DownloadUrl = "",
+                                        DownloadBinary = httpPostedFile.GetDownloadBits(),
+                                        ContentType = httpPostedFile.ContentType,
+                                        Filename = System.IO.Path.GetFileNameWithoutExtension(httpPostedFile.FileName),
+                                        Extension = System.IO.Path.GetExtension(httpPostedFile.FileName),
+                                        IsNew = true
+                                    };
+                                    _downloadService.InsertDownload(download);
+                                    //save attribute
+                                    selectedAttributes = _productAttributeParser.AddProductAttribute(selectedAttributes,
+                                        attribute, download.DownloadGuid.ToString());
+                                }
+                            }
+                        }
+                        break;
                     default:
                         break;
                 }
@@ -1121,8 +1243,8 @@ namespace Nop.Admin.Controllers
 
             #endregion
 
-            var warnings = _shoppingCartService.GetShoppingCartItemAttributeWarnings(ShoppingCartType.ShoppingCart,
-                variant, attributes);
+            warnings.AddRange(_shoppingCartService.GetShoppingCartItemAttributeWarnings(ShoppingCartType.ShoppingCart,
+                variant, attributes));
             if (warnings.Count == 0)
             {
                 //save combination
@@ -1136,8 +1258,6 @@ namespace Nop.Admin.Controllers
                 _productAttributeService.InsertProductVariantAttributeCombination(combination);
 
                 ViewBag.RefreshPage = true;
-                ViewBag.btnId = btnId;
-                ViewBag.formId = formId;
                 return View(model);
             }
             else

@@ -5,20 +5,22 @@ using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Models.Common
 {
-    public class MaintenanceModel : BaseNopModel
+    public partial class MaintenanceModel : BaseNopModel
     {
         public MaintenanceModel()
         {
             DeleteGuests = new DeleteGuestsModel();
+            DeleteAbandonedCarts = new DeleteAbandonedCartsModel();
             DeleteExportedFiles = new DeleteExportedFilesModel();
         }
 
         public DeleteGuestsModel DeleteGuests { get; set; }
+        public DeleteAbandonedCartsModel DeleteAbandonedCarts { get; set; }
         public DeleteExportedFilesModel DeleteExportedFiles { get; set; }
 
         #region Nested classes
 
-        public class DeleteGuestsModel : BaseNopModel
+        public partial class DeleteGuestsModel : BaseNopModel
         {
             [NopResourceDisplayName("Admin.System.Maintenance.DeleteGuests.StartDate")]
             [UIHint("DateNullable")]
@@ -34,7 +36,16 @@ namespace Nop.Admin.Models.Common
             public int? NumberOfDeletedCustomers { get; set; }
         }
 
-        public class DeleteExportedFilesModel : BaseNopModel
+        public partial class DeleteAbandonedCartsModel : BaseNopModel
+        {
+            [NopResourceDisplayName("Admin.System.Maintenance.DeleteAbandonedCarts.OlderThan")]
+            [UIHint("Date")]
+            public DateTime OlderThan { get; set; }
+
+            public int? NumberOfDeletedItems { get; set; }
+        }
+
+        public partial class DeleteExportedFilesModel : BaseNopModel
         {
             [NopResourceDisplayName("Admin.System.Maintenance.DeleteExportedFiles.StartDate")]
             [UIHint("DateNullable")]
@@ -46,6 +57,7 @@ namespace Nop.Admin.Models.Common
 
             public int? NumberOfDeletedFiles { get; set; }
         }
+
         #endregion
     }
 }

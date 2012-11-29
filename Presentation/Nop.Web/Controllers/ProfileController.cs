@@ -4,6 +4,7 @@ using System.Web.Mvc;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Forums;
 using Nop.Core.Domain.Media;
+using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Directory;
 using Nop.Services.Forums;
@@ -13,12 +14,13 @@ using Nop.Services.Media;
 using Nop.Services.Seo;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Security;
-using Nop.Web.Models;
+using Nop.Web.Models.Common;
 using Nop.Web.Models.Profile;
 
 namespace Nop.Web.Controllers
 {
-    public class ProfileController : BaseNopController
+    [NopHttpsRequirement(SslRequirement.No)]
+    public partial class ProfileController : BaseNopController
     {
         private readonly IForumService _forumService;
         private readonly ILocalizationService _localizationService;
@@ -51,7 +53,6 @@ namespace Nop.Web.Controllers
             this._mediaSettings = mediaSettings;
         }
 
-        [NopHttpsRequirement(SslRequirement.Yes)]
         public ActionResult Index(int? id, int? page)
         {
             var customerId = 0;
@@ -63,7 +64,7 @@ namespace Nop.Web.Controllers
             var customer = _customerService.GetCustomerById(customerId);
             if (!_customerSettings.AllowViewingProfiles || (customer == null || customer.IsGuest()))
             {
-                return RedirectToAction("index", "home");
+                return RedirectToRoute("HomePage");
             }
 
             bool pagingPosts = false;
@@ -97,7 +98,7 @@ namespace Nop.Web.Controllers
             var customer = _customerService.GetCustomerById(customerProfileId);
             if (customer == null)
             {
-                return RedirectToAction("index", "home");
+                return RedirectToRoute("HomePage");
             }
 
             //avatar
@@ -133,7 +134,7 @@ namespace Nop.Web.Controllers
                 var country = _countryService.GetCountryById(countryId);
                 if (country != null)
                 {
-                    location = country.Name;
+                    location = country.GetLocalized(x => x.Name);
                 }
                 else
                 {
@@ -142,14 +143,7 @@ namespace Nop.Web.Controllers
             }
 
             //private message
-            bool pmEnabled = false;
-            if (_forumSettings.AllowPrivateMessages)
-            {
-                if (!customer.IsGuest())
-                {
-                    pmEnabled = true;
-                }
-            }
+            bool pmEnabled = _forumSettings.AllowPrivateMessages && !customer.IsGuest();
 
             //total forum posts
             bool totalPostsEnabled = false;
@@ -175,7 +169,7 @@ namespace Nop.Web.Controllers
             string dateOfBirth = string.Empty;
             if (_customerSettings.DateOfBirthEnabled)
             {
-                DateTime? dob = customer.GetAttribute<DateTime?>(SystemCustomerAttributeNames.DateOfBirth);
+                var dob = customer.GetAttribute<DateTime?>(SystemCustomerAttributeNames.DateOfBirth);
                 if (dob.HasValue)
                 {
                     dateOfBirthEnabled = true;
@@ -209,7 +203,7 @@ namespace Nop.Web.Controllers
             var customer = _customerService.GetCustomerById(customerProfileId);
             if (customer == null)
             {
-                return RedirectToAction("index", "home");
+                return RedirectToRoute("HomePage");
             }
 
             if (page > 0)

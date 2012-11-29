@@ -1,9 +1,6 @@
-﻿using System;
-using System.Linq;
-using System.Web;
+﻿using System.Linq;
 using System.Web.Mvc;
 using Nop.Admin.Models.Topics;
-using Nop.Core;
 using Nop.Core.Domain.Topics;
 using Nop.Services.Localization;
 using Nop.Services.Security;
@@ -14,7 +11,7 @@ using Telerik.Web.Mvc;
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class TopicController : BaseNopController
+    public partial class TopicController : BaseNopController
     {
         #region Fields
 
@@ -44,7 +41,7 @@ namespace Nop.Admin.Controllers
         #region Utilities
 
         [NonAction]
-        public void UpdateLocales(Topic topic, TopicModel model)
+        protected void UpdateLocales(Topic topic, TopicModel model)
         {
             foreach (var localized in model.Locales)
             {
@@ -131,16 +128,11 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Create(TopicModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageTopics))
                 return AccessDeniedView();
-
-            //decode description
-            model.Body = HttpUtility.HtmlDecode(model.Body);
-            foreach (var localized in model.Locales)
-                localized.Body = HttpUtility.HtmlDecode(localized.Body);
 
             if (ModelState.IsValid)
             {
@@ -169,7 +161,9 @@ namespace Nop.Admin.Controllers
 
             var topic = _topicService.GetTopicById(id);
             if (topic == null)
-                throw new ArgumentException("No topic found with the specified id", "id");
+                //No topic found with the specified id
+                return RedirectToAction("List");
+
             var model = topic.ToModel();
             model.Url = Url.RouteUrl("Topic", new { SystemName = topic.SystemName }, "http");
             //locales
@@ -185,7 +179,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Edit(TopicModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageTopics))
@@ -193,12 +187,8 @@ namespace Nop.Admin.Controllers
 
             var topic = _topicService.GetTopicById(model.Id);
             if (topic == null)
-                throw new ArgumentException("No topic found with the specified id");
-
-            //decode description
-            model.Body = HttpUtility.HtmlDecode(model.Body);
-            foreach (var localized in model.Locales)
-                localized.Body = HttpUtility.HtmlDecode(localized.Body);
+                //No topic found with the specified id
+                return RedirectToAction("List");
 
             model.Url = Url.RouteUrl("Topic", new { SystemName = topic.SystemName }, "http");
 
@@ -223,13 +213,17 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageTopics))
                 return AccessDeniedView();
 
             var topic = _topicService.GetTopicById(id);
+            if (topic == null)
+                //No topic found with the specified id
+                return RedirectToAction("List");
+
             _topicService.DeleteTopic(topic);
 
             SuccessNotification(_localizationService.GetResource("Admin.ContentManagement.Topics.Deleted"));

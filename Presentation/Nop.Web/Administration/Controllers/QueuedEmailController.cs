@@ -1,21 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web;
 using System.Web.Mvc;
 using Nop.Admin.Models.Messages;
 using Nop.Core.Domain.Messages;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Messages;
+using Nop.Services.Security;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
 
 namespace Nop.Admin.Controllers
 {
 	[AdminAuthorize]
-	public class QueuedEmailController : BaseNopController
+	public partial class QueuedEmailController : BaseNopController
 	{
 		private readonly IQueuedEmailService _queuedEmailService;
         private readonly IDateTimeHelper _dateTimeHelper;
@@ -60,7 +59,7 @@ namespace Nop.Admin.Controllers
 
             var queuedEmails = _queuedEmailService.SearchEmails(model.SearchFromEmail, model.SearchToEmail, 
                 startDateValue, endDateValue, 
-                model.SearchLoadNotSent, model.SearchMaxSentTries, 
+                model.SearchLoadNotSent, model.SearchMaxSentTries, true,
                 command.Page - 1, command.PageSize);
             var gridModel = new GridModel<QueuedEmailModel>
             {
@@ -96,8 +95,10 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
 			var email = _queuedEmailService.GetQueuedEmailById(id);
-			if (email == null) 
-                throw new ArgumentException("No email found with the specified id", "id");
+            if (email == null)
+                //No email found with the specified id
+                return RedirectToAction("List");
+
             var model = email.ToModel();
             model.CreatedOn = _dateTimeHelper.ConvertToUserTime(email.CreatedOnUtc, DateTimeKind.Utc);
             if (email.SentOnUtc.HasValue)
@@ -106,7 +107,7 @@ namespace Nop.Admin.Controllers
 		}
 
         [HttpPost, ActionName("Edit")]
-        [FormValueExists("save", "save-continue", "continueEditing")]
+        [ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         [FormValueRequired("save", "save-continue")]
         public ActionResult Edit(QueuedEmailModel model, bool continueEditing)
         {
@@ -115,10 +116,8 @@ namespace Nop.Admin.Controllers
 
             var email = _queuedEmailService.GetQueuedEmailById(model.Id);
             if (email == null)
-                throw new ArgumentException("No email found with the specified id");
-
-            //decode body
-            model.Body = HttpUtility.HtmlDecode(model.Body);
+                //No email found with the specified id
+                return RedirectToAction("List");
 
             if (ModelState.IsValid)
             {
@@ -135,7 +134,7 @@ namespace Nop.Admin.Controllers
                 model.SentOn = _dateTimeHelper.ConvertToUserTime(email.SentOnUtc.Value, DateTimeKind.Utc);
             return View(model);
 		}
-        
+
         [HttpPost, ActionName("Edit"), FormValueRequired("requeue")]
         public ActionResult Requeue(QueuedEmailModel queuedEmailModel)
         {
@@ -143,65 +142,61 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var queuedEmail = _queuedEmailService.GetQueuedEmailById(queuedEmailModel.Id);
-            if (queuedEmail != null)
-            {
-                var requeuedEmail = new QueuedEmail()
-                {
-                    Priority = queuedEmail.Priority,
-                    From = queuedEmail.From,
-                    FromName = queuedEmail.FromName,
-                    To = queuedEmail.To,
-                    ToName = queuedEmail.ToName,
-                    CC = queuedEmail.CC,
-                    Bcc = queuedEmail.Bcc,
-                    Subject = queuedEmail.Subject,
-                    Body = queuedEmail.Body,
-                    CreatedOnUtc = DateTime.UtcNow,
-                    EmailAccountId = queuedEmail.EmailAccountId
-                };
-                _queuedEmailService.InsertQueuedEmail(requeuedEmail);
-
-                SuccessNotification(_localizationService.GetResource("Admin.System.QueuedEmails.Requeued"));
-                return RedirectToAction("Edit", requeuedEmail.Id);
-            }
-            else
+            if (queuedEmail == null)
+                //No email found with the specified id
                 return RedirectToAction("List");
+
+            var requeuedEmail = new QueuedEmail()
+            {
+                Priority = queuedEmail.Priority,
+                From = queuedEmail.From,
+                FromName = queuedEmail.FromName,
+                To = queuedEmail.To,
+                ToName = queuedEmail.ToName,
+                CC = queuedEmail.CC,
+                Bcc = queuedEmail.Bcc,
+                Subject = queuedEmail.Subject,
+                Body = queuedEmail.Body,
+                CreatedOnUtc = DateTime.UtcNow,
+                EmailAccountId = queuedEmail.EmailAccountId
+            };
+            _queuedEmailService.InsertQueuedEmail(requeuedEmail);
+
+            SuccessNotification(_localizationService.GetResource("Admin.System.QueuedEmails.Requeued"));
+            return RedirectToAction("Edit", requeuedEmail.Id);
         }
 
-		[HttpPost, ActionName("Delete")]
-		public ActionResult DeleteConfirmed(int id)
+	    [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMessageQueue))
                 return AccessDeniedView();
 
 			var email = _queuedEmailService.GetQueuedEmailById(id);
+            if (email == null)
+                //No email found with the specified id
+                return RedirectToAction("List");
+
             _queuedEmailService.DeleteQueuedEmail(email);
 
             SuccessNotification(_localizationService.GetResource("Admin.System.QueuedEmails.Deleted"));
 			return RedirectToAction("List");
 		}
 
-        //TODO: currently, only records within current page are passed, 
-        //need to somehow pass all of the records
-        [HttpPost, ActionName("List")]
-        [FormValueRequired("delete-selected")]
-        public ActionResult DeleteSelected(QueuedEmailListModel model, ICollection<int> checkedRecords)
+        [HttpPost]
+        public ActionResult DeleteSelected(ICollection<int> selectedIds)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMessageQueue))
                 return AccessDeniedView();
 
-            if (checkedRecords != null)
+            if (selectedIds != null)
             {
-                foreach (var queuedEmailId in checkedRecords)
-                {
-                    var queuedEmail = _queuedEmailService.GetQueuedEmailById(queuedEmailId);
+                var queuedEmails = _queuedEmailService.GetQueuedEmailsByIds(selectedIds.ToArray());
+                foreach (var queuedEmail in queuedEmails)
                     _queuedEmailService.DeleteQueuedEmail(queuedEmail);
-                }
             }
 
-            //return View(model);
-            //refresh page 
-            return List();
+            return Json(new { Result = true });
         }
 	}
 }

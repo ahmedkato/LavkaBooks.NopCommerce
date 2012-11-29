@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Web;
+using Nop.Core;
 using Nop.Core.Domain.Blogs;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Common;
@@ -30,11 +31,23 @@ namespace Nop.Services.Seo
         /// <returns>Category SE (search engine) name</returns>
         public static string GetSeName(this Category category)
         {
+            var workContext = EngineContext.Current.Resolve<IWorkContext>();
+            return GetSeName(category, workContext.WorkingLanguage.Id);
+        }
+
+        /// <summary>
+        /// Gets category SE (search engine) name
+        /// </summary>
+        /// <param name="category">Category</param>
+        /// <param name="languageId">Language identifier</param>
+        /// <returns>Category SE (search engine) name</returns>
+        public static string GetSeName(this Category category, int languageId)
+        {
             if (category == null)
                 throw new ArgumentNullException("category");
-            string seName = GetSeName(category.GetLocalized(x => x.SeName));
+            string seName = GetSeName(category.GetLocalized(x => x.SeName, languageId));
             if (String.IsNullOrEmpty(seName))
-                seName = GetSeName(category.GetLocalized(x => x.Name));
+                seName = GetSeName(category.GetLocalized(x => x.Name, languageId));
             return seName;
         }
 
@@ -49,11 +62,23 @@ namespace Nop.Services.Seo
         /// <returns>Manufacturer SE (search engine) name</returns>
         public static string GetSeName(this Manufacturer manufacturer)
         {
+            var workContext = EngineContext.Current.Resolve<IWorkContext>();
+            return GetSeName(manufacturer, workContext.WorkingLanguage.Id);
+        }
+
+        /// <summary>
+        /// Gets manufacturer SE (search engine) name
+        /// </summary>
+        /// <param name="manufacturer">Manufacturer</param>
+        /// <param name="languageId">Language identifier</param>
+        /// <returns>Manufacturer SE (search engine) name</returns>
+        public static string GetSeName(this Manufacturer manufacturer, int languageId)
+        {
             if (manufacturer == null)
                 throw new ArgumentNullException("manufacturer");
-            string seName = GetSeName(manufacturer.GetLocalized(x => x.SeName));
+            string seName = GetSeName(manufacturer.GetLocalized(x => x.SeName, languageId));
             if (String.IsNullOrEmpty(seName))
-                seName = GetSeName(manufacturer.GetLocalized(x => x.Name));
+                seName = GetSeName(manufacturer.GetLocalized(x => x.Name, languageId));
             return seName;
         }
 
@@ -68,11 +93,52 @@ namespace Nop.Services.Seo
         /// <returns>Product SE (search engine) name</returns>
         public static string GetSeName(this Product product)
         {
+            var workContext = EngineContext.Current.Resolve<IWorkContext>();
+            return GetSeName(product, workContext.WorkingLanguage.Id);
+        }
+
+        /// <summary>
+        /// Gets product SE (search engine) name
+        /// </summary>
+        /// <param name="product">Product</param>
+        /// <param name="languageId">Language identifier</param>
+        /// <returns>Product SE (search engine) name</returns>
+        public static string GetSeName(this Product product, int languageId)
+        {
             if (product == null)
                 throw new ArgumentNullException("product");
-            string seName = GetSeName(product.GetLocalized(x => x.SeName));
+            string seName = GetSeName(product.GetLocalized(x => x.SeName, languageId));
             if (String.IsNullOrEmpty(seName))
-                seName = GetSeName(product.GetLocalized(x => x.Name));
+                seName = GetSeName(product.GetLocalized(x => x.Name, languageId));
+            return seName;
+        }
+
+        #endregion
+        
+        #region Product tag
+
+        /// <summary>
+        /// Gets product tag SE (search engine) name
+        /// </summary>
+        /// <param name="productTag">Product tag</param>
+        /// <returns>Product tag SE (search engine) name</returns>
+        public static string GetSeName(this ProductTag productTag)
+        {
+            var workContext = EngineContext.Current.Resolve<IWorkContext>();
+            return GetSeName(productTag, workContext.WorkingLanguage.Id);
+        }
+
+        /// <summary>
+        /// Gets product tag SE (search engine) name
+        /// </summary>
+        /// <param name="productTag">Product tag</param>
+        /// <param name="languageId">Language identifier</param>
+        /// <returns>Product tag SE (search engine) name</returns>
+        public static string GetSeName(this ProductTag productTag, int languageId)
+        {
+            if (productTag == null)
+                throw new ArgumentNullException("productTag");
+            string seName = GetSeName(productTag.GetLocalized(x => x.Name, languageId));
             return seName;
         }
 
@@ -118,7 +184,7 @@ namespace Nop.Services.Seo
         public static string GetSeName(this ForumGroup forumGroup)
         {
             if (forumGroup == null)
-                throw new ArgumentNullException("newsItem");
+                throw new ArgumentNullException("forumGroup");
             string seName = GetSeName(forumGroup.Name);
             return seName;
         }
@@ -131,7 +197,7 @@ namespace Nop.Services.Seo
         public static string GetSeName(this Forum forum)
         {
             if (forum == null)
-                throw new ArgumentNullException("newsItem");
+                throw new ArgumentNullException("forum");
             string seName = GetSeName(forum.Name);
             return seName;
         }
@@ -144,7 +210,7 @@ namespace Nop.Services.Seo
         public static string GetSeName(this ForumTopic forumTopic)
         {
             if (forumTopic == null)
-                throw new ArgumentNullException("newsItem");
+                throw new ArgumentNullException("forumTopic");
             string seName = GetSeName(forumTopic.Subject);
 
             // Trim SE name to avoid URLs that are too long
@@ -167,15 +233,30 @@ namespace Nop.Services.Seo
         /// <param name="name">Name</param>
         /// <param name="urlEncode">A value indicating whether encode URL</param>
         /// <returns>Result</returns>
-        private static string GetSeName(string name, bool urlEncode = false)
+        public static string GetSeName(string name, bool urlEncode = false)
+        {
+            var seoSettings = EngineContext.Current.Resolve<SeoSettings>();
+            return GetSeName(name, seoSettings.ConvertNonWesternChars,
+                             seoSettings.AllowUnicodeCharsInUrls, urlEncode);
+        }
+
+        /// <summary>
+        /// Get SE name
+        /// </summary>
+        /// <param name="name">Name</param>
+        /// <param name="convertNonWesternChars">A value indicating whether non western chars should be converted</param>
+        /// <param name="allowUnicodeCharsInUrls">A value indicating whether Unicode chars are allowed</param>
+        /// <param name="urlEncode">A value indicating whether encode URL</param>
+        /// <returns>Result</returns>
+        public static string GetSeName(string name, bool convertNonWesternChars, 
+            bool allowUnicodeCharsInUrls, bool urlEncode = false)
         {
             if (String.IsNullOrEmpty(name))
-                return string.Empty;
+                return name;
             string okChars = "abcdefghijklmnopqrstuvwxyz1234567890 _-";
             name = name.Trim().ToLowerInvariant();
 
-            var seoSettings = EngineContext.Current.Resolve<SeoSettings>();
-            if (seoSettings.ConvertNonWesternChars)
+            if (convertNonWesternChars)
             {
                 if (_seoCharacterTable == null)
                     InitializeSeoCharacterTable();
@@ -185,13 +266,13 @@ namespace Nop.Services.Seo
             foreach (char c in name.ToCharArray())
             {
                 string c2 = c.ToString();
-                if (seoSettings.ConvertNonWesternChars)
+                if (convertNonWesternChars)
                 {
                     if (_seoCharacterTable.ContainsKey(c2))
                         c2 = _seoCharacterTable[c2];
                 }
 
-                if (seoSettings.AllowUnicodeCharsInUrls)
+                if (allowUnicodeCharsInUrls)
                 {
                     if (char.IsLetterOrDigit(c) || okChars.Contains(c2))
                         sb.Append(c2);
@@ -208,7 +289,9 @@ namespace Nop.Services.Seo
             while (name2.Contains("__"))
                 name2 = name2.Replace("__", "_");
             if (urlEncode)
-                name2 = HttpContext.Current.Server.UrlEncode(name2);
+            {
+                name2 = HttpUtility.UrlEncode(name2);
+            }
             return name2;
         }
 

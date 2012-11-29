@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Web.Mvc;
@@ -8,14 +9,14 @@ using Nop.Core.Domain.Messages;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Messages;
+using Nop.Services.Security;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
 
 namespace Nop.Admin.Controllers
 {
 	[AdminAuthorize]
-	public class CampaignController : BaseNopController
+	public partial class CampaignController : BaseNopController
 	{
         private readonly ICampaignService _campaignService;
         private readonly IDateTimeHelper _dateTimeHelper;
@@ -114,7 +115,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Create(CampaignModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCampaigns))
@@ -142,7 +143,8 @@ namespace Nop.Admin.Controllers
 
             var campaign = _campaignService.GetCampaignById(id);
             if (campaign == null)
-                throw new ArgumentException("No campaign found with the specified id", "id");
+                //No campaign found with the specified id
+                return RedirectToAction("List");
 
             var model = campaign.ToModel();
             model.AllowedTokens = FormatTokens(_messageTokenProvider.GetListOfCampaignAllowedTokens());
@@ -150,7 +152,7 @@ namespace Nop.Admin.Controllers
 		}
 
         [HttpPost]
-        [FormValueExists("save", "save-continue", "continueEditing")]
+        [ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         [FormValueRequired("save", "save-continue")]
         public ActionResult Edit(CampaignModel model, bool continueEditing)
         {
@@ -159,7 +161,8 @@ namespace Nop.Admin.Controllers
 
             var campaign = _campaignService.GetCampaignById(model.Id);
             if (campaign == null)
-                throw new ArgumentException("No campaign found with the specified id");
+                //No campaign found with the specified id
+                return RedirectToAction("List");
 
             if (ModelState.IsValid)
             {
@@ -184,7 +187,8 @@ namespace Nop.Admin.Controllers
 
             var campaign = _campaignService.GetCampaignById(model.Id);
             if (campaign == null)
-                throw new ArgumentException("No campaign found with the specified id");
+                //No campaign found with the specified id
+                return RedirectToAction("List");
 
 
             model.AllowedTokens = FormatTokens(_messageTokenProvider.GetListOfCampaignAllowedTokens());
@@ -194,7 +198,22 @@ namespace Nop.Admin.Controllers
                 var emailAccount = _emailAccountService.GetEmailAccountById(_emailAccountSettings.DefaultEmailAccountId);
                 if (emailAccount == null)
                     throw new NopException("Email account could not be loaded");
-                _campaignService.SendCampaign(campaign, emailAccount, model.TestEmail);
+
+
+                var subscription = _newsLetterSubscriptionService.GetNewsLetterSubscriptionByEmail(model.TestEmail);
+                if (subscription != null)
+                {
+                    //there's a subscription. let's use it
+                    var subscriptions = new List<NewsLetterSubscription>();
+                    subscriptions.Add(subscription);
+                    _campaignService.SendCampaign(campaign, emailAccount, subscriptions);
+                }
+                else
+                {
+                    //no subscription found
+                    _campaignService.SendCampaign(campaign, emailAccount, model.TestEmail);
+                }
+
                 SuccessNotification(_localizationService.GetResource("Admin.Promotions.Campaigns.TestEmailSentToCustomers"), false);
                 return View(model);
             }
@@ -216,7 +235,8 @@ namespace Nop.Admin.Controllers
 
             var campaign = _campaignService.GetCampaignById(model.Id);
             if (campaign == null)
-                throw new ArgumentException("No campaign found with the specified id");
+                //No campaign found with the specified id
+                return RedirectToAction("List");
 
 
             model.AllowedTokens = FormatTokens(_messageTokenProvider.GetListOfCampaignAllowedTokens());
@@ -241,15 +261,17 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-		[HttpPost, ActionName("Delete")]
-		public ActionResult DeleteConfirmed(int id)
+		[HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCampaigns))
                 return AccessDeniedView();
 
             var campaign = _campaignService.GetCampaignById(id);
             if (campaign == null)
-                throw new ArgumentException("No campaign found with the specified id", "id");
+                //No campaign found with the specified id
+                return RedirectToAction("List");
+
             _campaignService.DeleteCampaign(campaign);
 
             SuccessNotification(_localizationService.GetResource("Admin.Promotions.Campaigns.Deleted"));

@@ -1,7 +1,10 @@
 ﻿@model GridModel<ActivityLogTypeModel>
 @using Telerik.Web.Mvc;
 @using Telerik.Web.Mvc.UI;
-
+@{  
+    //page title
+    ViewBag.Title = @T("Admin.Configuration.ActivityLog.ActivityLogType").Text;
+}
 @using (Html.BeginForm("SaveTypes", "ActivityLog"))
 {
     <div class="section-header">
@@ -10,7 +13,7 @@
             @T("Admin.Configuration.ActivityLog.ActivityLogType")
         </div>
         <div class="options">
-            <button type="submit" name="save" value="save" class="t-button">@T("Admin.Common.Save")</button>
+            <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
         </div>
     </div>
     <p>
@@ -40,33 +43,17 @@
         </tr>
     </table>
     <script type="text/javascript">
-        var selectedIds = [];
 
         $(document).ready(function () {
 
+            updateMasterCheckbox();
+
             $('#mastercheckbox').click(function () {
-                $('.checkboxGroups').attr('checked', $(this).is(':checked') ? 'checked' : '').change();
+                $('.checkboxGroups').attr('checked', $(this).is(':checked')).change();
             });
 
             //wire up checkboxes. 
             $('#activityLogType-grid input[type=checkbox][id!=mastercheckbox]').live('change', function (e) {
-                var $check = $(this);
-                if ($check.attr("checked") == true) {
-                    var checked = jQuery.inArray($check.val(), selectedIds);
-                    if (checked == -1) {
-                        //add id to selectedIds.  
-                        selectedIds.push($check.val());
-                    }
-                }
-                else {
-                    var checked = jQuery.inArray($check.val(), selectedIds);
-                    if (checked > -1) {
-                        //remove id from selectedIds.  
-                        selectedIds = $.grep(selectedIds, function (item, index) {
-                            return item != $check.val();
-                        });
-                    }
-                }
                 updateMasterCheckbox();
             });
         });
@@ -74,13 +61,7 @@
         function updateMasterCheckbox() {
             var numChkBoxes = $('#activityLogType-grid input[type=checkbox][id!=mastercheckbox]').length;
             var numChkBoxesChecked = $('#activityLogType-grid input[type=checkbox][checked][id!=mastercheckbox]').length;
-            if (numChkBoxes == numChkBoxesChecked && numChkBoxes > 0) {
-                $('#mastercheckbox').attr('checked', 'checked');
-            }
-            else {
-                $('#mastercheckbox').attr('checked', '');
-            }
-
+            $('#mastercheckbox').attr('checked', numChkBoxes == numChkBoxesChecked && numChkBoxes > 0);
         }
    </script>    
 }

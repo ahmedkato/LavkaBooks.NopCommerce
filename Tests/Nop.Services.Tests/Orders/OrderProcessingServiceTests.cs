@@ -6,12 +6,12 @@ using Nop.Core.Data;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
+using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Localization;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
 using Nop.Core.Domain.Shipping;
 using Nop.Core.Domain.Tax;
-using Nop.Core.Events;
 using Nop.Core.Infrastructure;
 using Nop.Core.Plugins;
 using Nop.Services.Catalog;
@@ -19,6 +19,7 @@ using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Directory;
 using Nop.Services.Discounts;
+using Nop.Services.Events;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Messages;
@@ -39,10 +40,12 @@ namespace Nop.Services.Tests.Orders
         IWorkContext _workContext;
         ITaxService _taxService;
         IShippingService _shippingService;
+        IShipmentService _shipmentService;
         IPaymentService _paymentService;
         ICheckoutAttributeParser _checkoutAttributeParser;
         IDiscountService _discountService;
         IGiftCardService _giftCardService;
+        IGenericAttributeService _genericAttributeService;
         TaxSettings _taxSettings;
         RewardPointsSettings _rewardPointsSettings;
         ICategoryService _categoryService;
@@ -65,7 +68,6 @@ namespace Nop.Services.Tests.Orders
         ICustomerService _customerService;
         IEncryptionService _encryptionService;
         IWorkflowMessageService _workflowMessageService;
-        ISmsService _smsService;
         ICustomerActivityService _customerActivityService;
         ICurrencyService _currencyService;
         PaymentSettings _paymentSettings;
@@ -75,13 +77,14 @@ namespace Nop.Services.Tests.Orders
         CatalogSettings _catalogSettings;
         IOrderProcessingService _orderProcessingService;
         IEventPublisher _eventPublisher;
+        CurrencySettings _currencySettings;
 
         [SetUp]
         public new void SetUp()
         {
             _workContext = null;
 
-            var pluginFinder = new PluginFinder(new AppDomainTypeFinder());
+            var pluginFinder = new PluginFinder();
             var cacheManager = new NopNullCache();
 
             _shoppingCartSettings = new ShoppingCartSettings();
@@ -97,6 +100,8 @@ namespace Nop.Services.Tests.Orders
             _eventPublisher = MockRepository.GenerateMock<IEventPublisher>();
             _eventPublisher.Expect(x => x.Publish(Arg<object>.Is.Anything));
 
+            _localizationService = MockRepository.GenerateMock<ILocalizationService>();
+
             //shipping
             _shippingSettings = new ShippingSettings();
             _shippingSettings.ActiveShippingRateComputationMethodSystemNames = new List<string>();
@@ -108,16 +113,17 @@ namespace Nop.Services.Tests.Orders
                 _logger,
                 _productAttributeParser,
                 _checkoutAttributeParser,
-                _shippingSettings, pluginFinder, _eventPublisher);
+                _localizationService,
+                _shippingSettings, pluginFinder, 
+                _eventPublisher, _shoppingCartSettings);
+            _shipmentService = MockRepository.GenerateMock<IShipmentService>();
             
 
             _paymentService = MockRepository.GenerateMock<IPaymentService>();
             _checkoutAttributeParser = MockRepository.GenerateMock<ICheckoutAttributeParser>();
             _giftCardService = MockRepository.GenerateMock<IGiftCardService>();
-
-            _eventPublisher = MockRepository.GenerateMock<IEventPublisher>();
-            _eventPublisher.Expect(x => x.Publish(Arg<object>.Is.Anything));
-
+            _genericAttributeService = MockRepository.GenerateMock<IGenericAttributeService>();
+            
             //tax
             _taxSettings = new TaxSettings();
             _taxSettings.ShippingIsTaxable = true;
@@ -125,18 +131,18 @@ namespace Nop.Services.Tests.Orders
             _taxSettings.DefaultTaxAddressId = 10;
             _addressService = MockRepository.GenerateMock<IAddressService>();
             _addressService.Expect(x => x.GetAddressById(_taxSettings.DefaultTaxAddressId)).Return(new Address() { Id = _taxSettings.DefaultTaxAddressId });
-            _taxService = new TaxService(_addressService, _workContext, _taxSettings, pluginFinder, _eventPublisher);
+            _taxService = new TaxService(_addressService, _workContext, _taxSettings, pluginFinder);
 
             _rewardPointsSettings = new RewardPointsSettings();
 
             _orderTotalCalcService = new OrderTotalCalculationService(_workContext,
                 _priceCalcService, _taxService, _shippingService, _paymentService,
                 _checkoutAttributeParser, _discountService, _giftCardService,
+                _genericAttributeService, 
                 _taxSettings, _rewardPointsSettings, _shippingSettings, _shoppingCartSettings, _catalogSettings);
 
             _orderService = MockRepository.GenerateMock<IOrderService>();
             _webHelper = MockRepository.GenerateMock<IWebHelper>();
-            _localizationService= MockRepository.GenerateMock<ILocalizationService>();
             _languageService = MockRepository.GenerateMock<ILanguageService>();
             _productService = MockRepository.GenerateMock<IProductService>();
             _priceFormatter= MockRepository.GenerateMock<IPriceFormatter>();
@@ -146,7 +152,6 @@ namespace Nop.Services.Tests.Orders
             _customerService= MockRepository.GenerateMock<ICustomerService>();
             _encryptionService = MockRepository.GenerateMock<IEncryptionService>();
             _workflowMessageService = MockRepository.GenerateMock<IWorkflowMessageService>();
-            _smsService = MockRepository.GenerateMock<ISmsService>();
             _customerActivityService = MockRepository.GenerateMock<ICustomerActivityService>();
             _currencyService = MockRepository.GenerateMock<ICurrencyService>();
 
@@ -161,56 +166,26 @@ namespace Nop.Services.Tests.Orders
 
             _localizationSettings = new LocalizationSettings();
 
+            _eventPublisher = MockRepository.GenerateMock<IEventPublisher>();
+            _eventPublisher.Expect(x => x.Publish(Arg<object>.Is.Anything));
+
+            _currencySettings = new CurrencySettings();
+
             _orderProcessingService = new OrderProcessingService(_orderService, _webHelper,
                 _localizationService, _languageService,
                 _productService, _paymentService, _logger,
                 _orderTotalCalcService, _priceCalcService, _priceFormatter,
                 _productAttributeParser, _productAttributeFormatter,
                 _giftCardService, _shoppingCartService, _checkoutAttributeFormatter,
-                _shippingService, _taxService,
+                _shippingService, _shipmentService, _taxService,
                 _customerService, _discountService,
                 _encryptionService, _workContext, _workflowMessageService,
-                _smsService, _customerActivityService, _currencyService,
-                _paymentSettings, _rewardPointsSettings,
-                _orderSettings, _taxSettings, _localizationSettings);
+                _customerActivityService, _currencyService,
+                _eventPublisher, _paymentSettings, _rewardPointsSettings,
+                _orderSettings, _taxSettings, _localizationSettings,
+                _currencySettings);
         }
-
-        [Test]
-        public void Ensure_order_can_only_be_shipped_when_orderStatus_is_not_cancelled_and_its_not_shipped_yet()
-        {
-            var order = new Order();
-            foreach (OrderStatus os in Enum.GetValues(typeof(OrderStatus)))
-                foreach (PaymentStatus ps in Enum.GetValues(typeof(PaymentStatus)))
-                    foreach (ShippingStatus ss in Enum.GetValues(typeof(ShippingStatus)))
-                    {
-                        order.OrderStatus = os;
-                        order.PaymentStatus = ps;
-                        order.ShippingStatus = ss;
-                        if (os != OrderStatus.Cancelled && ss == ShippingStatus.NotYetShipped)
-                            _orderProcessingService.CanShip(order).ShouldBeTrue();
-                        else
-                            _orderProcessingService.CanShip(order).ShouldBeFalse();
-                    }
-        }
-
-        [Test]
-        public void Ensure_order_can_only_be_delivered_when_orderStatus_is_not_cancelled_and_its_already_shipped()
-        {
-            var order = new Order();
-            foreach (OrderStatus os in Enum.GetValues(typeof(OrderStatus)))
-                foreach (PaymentStatus ps in Enum.GetValues(typeof(PaymentStatus)))
-                    foreach (ShippingStatus ss in Enum.GetValues(typeof(ShippingStatus)))
-                    {
-                        order.OrderStatus = os;
-                        order.PaymentStatus = ps;
-                        order.ShippingStatus = ss;
-                        if (os != OrderStatus.Cancelled && ss == ShippingStatus.Shipped)
-                            _orderProcessingService.CanDeliver(order).ShouldBeTrue();
-                        else
-                            _orderProcessingService.CanDeliver(order).ShouldBeFalse();
-                    }
-        }
-
+        
         [Test]
         public void Ensure_order_can_only_be_cancelled_when_orderStatus_is_not_cancelled_yet()
         {
@@ -251,7 +226,7 @@ namespace Nop.Services.Tests.Orders
         public void Ensure_order_can_only_be_captured_when_orderStatus_is_not_cancelled_or_pending_and_paymentstatus_is_authorized_and_paymentModule_supports_capture()
         {
             _paymentService.Expect(ps => ps.SupportCapture("paymentMethodSystemName_that_supports_capture")).Return(true);
-            _paymentService.Expect(ps => ps.SupportCapture("paymentMethodSystemName_that_don't_support_capture")).Return(false);
+            _paymentService.Expect(ps => ps.SupportCapture("paymentMethodSystemName_that_doesn't_support_capture")).Return(false);
             var order = new Order();
 
 
@@ -272,7 +247,7 @@ namespace Nop.Services.Tests.Orders
                     }
 
 
-            order.PaymentMethodSystemName = "paymentMethodSystemName_that_don't_support_capture";
+            order.PaymentMethodSystemName = "paymentMethodSystemName_that_doesn't_support_capture";
             foreach (OrderStatus os in Enum.GetValues(typeof(OrderStatus)))
                 foreach (PaymentStatus ps in Enum.GetValues(typeof(PaymentStatus)))
                     foreach (ShippingStatus ss in Enum.GetValues(typeof(ShippingStatus)))
@@ -305,10 +280,10 @@ namespace Nop.Services.Tests.Orders
         }
 
         [Test]
-        public void Ensure_order_can_only_be_refunded_when_orderStatus_is_not_cancelled_and_paymentstatus_is_paid_and_paymentModule_supports_refund()
+        public void Ensure_order_can_only_be_refunded_when_paymentstatus_is_paid_and_paymentModule_supports_refund()
         {
             _paymentService.Expect(ps => ps.SupportRefund("paymentMethodSystemName_that_supports_refund")).Return(true);
-            _paymentService.Expect(ps => ps.SupportRefund("paymentMethodSystemName_that_don't_support_refund")).Return(false);
+            _paymentService.Expect(ps => ps.SupportRefund("paymentMethodSystemName_that_doesn't_support_refund")).Return(false);
             var order = new Order();
             order.OrderTotal = 1;
             order.PaymentMethodSystemName = "paymentMethodSystemName_that_supports_refund";
@@ -321,8 +296,7 @@ namespace Nop.Services.Tests.Orders
                         order.PaymentStatus = ps;
                         order.ShippingStatus = ss;
 
-                        if ((os != OrderStatus.Cancelled)
-                            && (ps == PaymentStatus.Paid))
+                        if (ps == PaymentStatus.Paid)
                             _orderProcessingService.CanRefund(order).ShouldBeTrue();
                         else
                             _orderProcessingService.CanRefund(order).ShouldBeFalse();
@@ -330,7 +304,7 @@ namespace Nop.Services.Tests.Orders
 
 
 
-            order.PaymentMethodSystemName = "paymentMethodSystemName_that_don't_support_refund";
+            order.PaymentMethodSystemName = "paymentMethodSystemName_that_doesn't_support_refund";
             foreach (OrderStatus os in Enum.GetValues(typeof(OrderStatus)))
                 foreach (PaymentStatus ps in Enum.GetValues(typeof(PaymentStatus)))
                     foreach (ShippingStatus ss in Enum.GetValues(typeof(ShippingStatus)))
@@ -363,7 +337,7 @@ namespace Nop.Services.Tests.Orders
         }
         
         [Test]
-        public void Ensure_order_can_only_be_refunded_offline_when_orderStatus_is_not_cancelled_and_paymentstatus_is_paid()
+        public void Ensure_order_can_only_be_refunded_offline_when_paymentstatus_is_paid()
         {
             var order = new Order()
             {
@@ -377,8 +351,7 @@ namespace Nop.Services.Tests.Orders
                         order.PaymentStatus = ps;
                         order.ShippingStatus = ss;
 
-                        if ((os != OrderStatus.Cancelled)
-                            && (ps == PaymentStatus.Paid))
+                        if (ps == PaymentStatus.Paid)
                             _orderProcessingService.CanRefundOffline(order).ShouldBeTrue();
                         else
                             _orderProcessingService.CanRefundOffline(order).ShouldBeFalse();
@@ -403,10 +376,10 @@ namespace Nop.Services.Tests.Orders
         }
 
         [Test]
-        public void Ensure_order_can_only_be_voided_when_orderStatus_is_not_cancelled_and_paymentstatus_is_authorized_and_paymentModule_supports_void()
+        public void Ensure_order_can_only_be_voided_when_paymentstatus_is_authorized_and_paymentModule_supports_void()
         {
             _paymentService.Expect(ps => ps.SupportVoid("paymentMethodSystemName_that_supports_void")).Return(true);
-            _paymentService.Expect(ps => ps.SupportVoid("paymentMethodSystemName_that_don't_support_void")).Return(false);
+            _paymentService.Expect(ps => ps.SupportVoid("paymentMethodSystemName_that_doesn't_support_void")).Return(false);
             var order = new Order();
             order.OrderTotal = 1;
             order.PaymentMethodSystemName = "paymentMethodSystemName_that_supports_void";
@@ -419,8 +392,7 @@ namespace Nop.Services.Tests.Orders
                         order.PaymentStatus = ps;
                         order.ShippingStatus = ss;
 
-                        if ((os != OrderStatus.Cancelled)
-                            && (ps == PaymentStatus.Authorized))
+                        if (ps == PaymentStatus.Authorized)
                             _orderProcessingService.CanVoid(order).ShouldBeTrue();
                         else
                             _orderProcessingService.CanVoid(order).ShouldBeFalse();
@@ -428,7 +400,7 @@ namespace Nop.Services.Tests.Orders
 
 
 
-            order.PaymentMethodSystemName = "paymentMethodSystemName_that_don't_support_void";
+            order.PaymentMethodSystemName = "paymentMethodSystemName_that_doesn't_support_void";
             foreach (OrderStatus os in Enum.GetValues(typeof(OrderStatus)))
                 foreach (PaymentStatus ps in Enum.GetValues(typeof(PaymentStatus)))
                     foreach (ShippingStatus ss in Enum.GetValues(typeof(ShippingStatus)))
@@ -461,7 +433,7 @@ namespace Nop.Services.Tests.Orders
         }
 
         [Test]
-        public void Ensure_order_can_only_be_voided_offline_when_orderStatus_is_not_cancelled_and_paymentstatus_is_authorized()
+        public void Ensure_order_can_only_be_voided_offline_when_paymentstatus_is_authorized()
         {
             var order = new Order()
             {
@@ -475,8 +447,7 @@ namespace Nop.Services.Tests.Orders
                         order.PaymentStatus = ps;
                         order.ShippingStatus = ss;
 
-                        if ((os != OrderStatus.Cancelled)
-                            && (ps == PaymentStatus.Authorized))
+                        if (ps == PaymentStatus.Authorized)
                             _orderProcessingService.CanVoidOffline(order).ShouldBeTrue();
                         else
                             _orderProcessingService.CanVoidOffline(order).ShouldBeFalse();
@@ -501,10 +472,10 @@ namespace Nop.Services.Tests.Orders
         }
 
         [Test]
-        public void Ensure_order_can_only_be_partially_refunded_when_orderStatus_is_not_cancelled_and_paymentstatus_is_paid_or_partiallyRefunded_and_paymentModule_supports_partialRefund()
+        public void Ensure_order_can_only_be_partially_refunded_when_paymentstatus_is_paid_or_partiallyRefunded_and_paymentModule_supports_partialRefund()
         {
             _paymentService.Expect(ps => ps.SupportPartiallyRefund("paymentMethodSystemName_that_supports_partialrefund")).Return(true);
-            _paymentService.Expect(ps => ps.SupportPartiallyRefund("paymentMethodSystemName_that_don't_support_partialrefund")).Return(false);
+            _paymentService.Expect(ps => ps.SupportPartiallyRefund("paymentMethodSystemName_that_doesn't_support_partialrefund")).Return(false);
             var order = new Order();
             order.OrderTotal = 100;
             order.PaymentMethodSystemName = "paymentMethodSystemName_that_supports_partialrefund";
@@ -517,8 +488,7 @@ namespace Nop.Services.Tests.Orders
                         order.PaymentStatus = ps;
                         order.ShippingStatus = ss;
 
-                        if ((os != OrderStatus.Cancelled)
-                            && (ps == PaymentStatus.Paid || order.PaymentStatus == PaymentStatus.PartiallyRefunded))
+                        if (ps == PaymentStatus.Paid || order.PaymentStatus == PaymentStatus.PartiallyRefunded)
                             _orderProcessingService.CanPartiallyRefund(order, 10).ShouldBeTrue();
                         else
                             _orderProcessingService.CanPartiallyRefund(order, 10).ShouldBeFalse();
@@ -526,7 +496,7 @@ namespace Nop.Services.Tests.Orders
 
 
 
-            order.PaymentMethodSystemName = "paymentMethodSystemName_that_don't_support_partialrefund";
+            order.PaymentMethodSystemName = "paymentMethodSystemName_that_doesn't_support_partialrefund";
             foreach (OrderStatus os in Enum.GetValues(typeof(OrderStatus)))
                 foreach (PaymentStatus ps in Enum.GetValues(typeof(PaymentStatus)))
                     foreach (ShippingStatus ss in Enum.GetValues(typeof(ShippingStatus)))
@@ -563,7 +533,7 @@ namespace Nop.Services.Tests.Orders
         }
 
         [Test]
-        public void Ensure_order_can_only_be_partially_refunded_offline_when_orderStatus_is_not_cancelled_and_paymentstatus_is_paid_or_partiallyRefunded()
+        public void Ensure_order_can_only_be_partially_refunded_offline_when_paymentstatus_is_paid_or_partiallyRefunded()
         {
             var order = new Order();
             order.OrderTotal = 100;
@@ -581,8 +551,7 @@ namespace Nop.Services.Tests.Orders
                             order.PaymentStatus = ps;
                             order.ShippingStatus = ss;
 
-                            if ((os != OrderStatus.Cancelled)
-                                && (ps == PaymentStatus.Paid || order.PaymentStatus == PaymentStatus.PartiallyRefunded))
+                            if (ps == PaymentStatus.Paid || order.PaymentStatus == PaymentStatus.PartiallyRefunded)
                                 _orderProcessingService.CanPartiallyRefundOffline(order, 10).ShouldBeTrue();
                             else
                                 _orderProcessingService.CanPartiallyRefundOffline(order, 10).ShouldBeFalse();

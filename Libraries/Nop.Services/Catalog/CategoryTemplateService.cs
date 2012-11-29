@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Nop.Core;
 using Nop.Core.Caching;
 using Nop.Core.Data;
-using Nop.Core.Domain.Blogs;
 using Nop.Core.Domain.Catalog;
-using Nop.Core.Events;
+using Nop.Services.Events;
 
 namespace Nop.Services.Catalog
 {
@@ -37,7 +35,7 @@ namespace Nop.Services.Catalog
         /// </summary>
         /// <param name="cacheManager">Cache manager</param>
         /// <param name="categoryTemplateRepository">Category template repository</param>
-        /// <param name="eventPublisher"></param>
+        /// <param name="eventPublisher">Event published</param>
         public CategoryTemplateService(ICacheManager cacheManager,
             IRepository<CategoryTemplate> categoryTemplateRepository, IEventPublisher eventPublisher)
         {

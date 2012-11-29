@@ -4,8 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Web;
-using System.Web.Hosting;
 using System.Xml;
 using Nop.Core;
 using Nop.Core.Configuration;
@@ -28,14 +26,16 @@ using Nop.Core.Domain.Payments;
 using Nop.Core.Domain.Polls;
 using Nop.Core.Domain.Security;
 using Nop.Core.Domain.Shipping;
+using Nop.Core.Domain.Tasks;
 using Nop.Core.Domain.Tax;
 using Nop.Core.Domain.Topics;
 using Nop.Core.Infrastructure;
 using Nop.Core.IO;
+using Nop.Services.Common;
+using Nop.Services.Customers;
 using Nop.Services.Helpers;
 using Nop.Services.Media;
-using Nop.Services.Customers;
-using Nop.Services.Security;
+using Nop.Services.Localization;
 
 namespace Nop.Services.Installation
 {
@@ -73,7 +73,9 @@ namespace Nop.Services.Installation
         private readonly IRepository<ProductTemplate> _productTemplateRepository;
         private readonly IRepository<CategoryTemplate> _categoryTemplateRepository;
         private readonly IRepository<ManufacturerTemplate> _manufacturerTemplateRepository;
-        private readonly ICustomerService _customerService;
+        private readonly IRepository<ScheduleTask> _scheduleTaskRepository;
+        private readonly IGenericAttributeService _genericAttributeService;
+        private readonly IWebHelper _webHelper;
 
         #endregion
 
@@ -109,7 +111,9 @@ namespace Nop.Services.Installation
             IRepository<ProductTemplate> productTemplateRepository,
             IRepository<CategoryTemplate> categoryTemplateRepository,
             IRepository<ManufacturerTemplate> manufacturerTemplateRepository,
-            ICustomerService customerService)
+            IRepository<ScheduleTask> scheduleTaskRepository,
+            IGenericAttributeService genericAttributeService,
+            IWebHelper webHelper)
         {
             this._measureDimensionRepository = measureDimensionRepository;
             this._measureWeightRepository = measureWeightRepository;
@@ -141,7 +145,9 @@ namespace Nop.Services.Installation
             this._productTemplateRepository = productTemplateRepository;
             this._categoryTemplateRepository = categoryTemplateRepository;
             this._manufacturerTemplateRepository = manufacturerTemplateRepository;
-            this._customerService = customerService;
+            this._scheduleTaskRepository = scheduleTaskRepository;
+            this._genericAttributeService = genericAttributeService;
+            this._webHelper = webHelper;
         }
 
         #endregion
@@ -261,79 +267,6 @@ namespace Nop.Services.Installation
 
         }
 
-        private void AddLocaleResources(Language language)
-        {
-            //insert default sting resources (temporary solution). Requires some performance optimization
-            foreach (var filePath in System.IO.Directory.EnumerateFiles(HostingEnvironment.MapPath("~/App_Data/"), "*.nopres.xml"))
-            {
-                //read and parse original file with resources (with <Children> elements)
-
-                var originalXmlDocument = new XmlDocument();
-                originalXmlDocument.Load(filePath);
-
-                var resources = new List<LocaleStringResourceParent>();
-
-                foreach (XmlNode resNode in originalXmlDocument.SelectNodes(@"//Language/LocaleResource"))
-                    resources.Add(new LocaleStringResourceParent(resNode));
-
-                resources.Sort((x1, x2) => x1.ResourceName.CompareTo(x2.ResourceName));
-
-                foreach (var resource in resources)
-                    RecursivelySortChildrenResource(resource);
-
-                var sb = new StringBuilder();
-                var writer = XmlWriter.Create(sb);
-                writer.WriteStartDocument();
-                writer.WriteStartElement("Language", "");
-
-                writer.WriteStartAttribute("Name", "");
-                writer.WriteString(originalXmlDocument.SelectSingleNode(@"//Language").Attributes["Name"].InnerText.Trim());
-                writer.WriteEndAttribute();
-
-                foreach (var resource in resources)
-                    RecursivelyWriteResource(resource, writer);
-
-                writer.WriteEndElement();
-                writer.WriteEndDocument();
-                writer.Flush();
-
-
-
-                //read and parse resources (without <Children> elements)
-                var resXml = new XmlDocument();
-                var sr = new StringReader(sb.ToString());
-                resXml.Load(sr);
-                var resNodeList = resXml.SelectNodes(@"//Language/LocaleResource");
-                foreach (XmlNode resNode in resNodeList)
-                    if (resNode.Attributes != null && resNode.Attributes["Name"] != null)
-                    {
-                        string resName = resNode.Attributes["Name"].InnerText.Trim();
-                        string resValue = resNode.SelectSingleNode("Value").InnerText;
-                        if (!String.IsNullOrEmpty(resName))
-                        {
-                            //ensure it's not duplicate
-                            bool duplicate = false;
-                            foreach (var res1 in language.LocaleStringResources)
-                                if (resName.Equals(res1.ResourceName, StringComparison.InvariantCultureIgnoreCase))
-                                {
-                                    duplicate = true;
-                                    break;
-                                }
-                            if (duplicate)
-                                continue;
-
-                            //insert resource
-                            var lsr = new LocaleStringResource
-                            {
-                                ResourceName = resName,
-                                ResourceValue = resValue
-                            };
-                            language.LocaleStringResources.Add(lsr);
-                        }
-                    }
-            }
-        }
-
         protected virtual void InstallMeasures()
         {
             var measureDimensions = new List<MeasureDimension>()
@@ -439,9 +372,9 @@ namespace Nop.Services.Installation
 
         }
 
-        protected virtual void InstallLanguagesAndResources()
+        protected virtual void InstallLanguages()
         {
-            var languageEng = new Language
+            var language = new Language
             {
                 Name = "English",
                 LanguageCulture = "en-US",
@@ -450,8 +383,57 @@ namespace Nop.Services.Installation
                 Published = true,
                 DisplayOrder = 1
             };
-            AddLocaleResources(languageEng);
-            _languageRepository.Insert(languageEng);
+            _languageRepository.Insert(language);
+        }
+
+        protected virtual void InstallLocaleResources()
+        {
+            //'English' language
+            var language = _languageRepository.Table.Where(l => l.Name == "English").Single();
+
+            //save resoureces
+            foreach (var filePath in System.IO.Directory.EnumerateFiles(_webHelper.MapPath("~/App_Data/Localization/"), "*.nopres.xml", SearchOption.TopDirectoryOnly))
+            {
+                #region Parse resource files (with <Children> elements)
+                //read and parse original file with resources (with <Children> elements)
+
+                var originalXmlDocument = new XmlDocument();
+                originalXmlDocument.Load(filePath);
+
+                var resources = new List<LocaleStringResourceParent>();
+
+                foreach (XmlNode resNode in originalXmlDocument.SelectNodes(@"//Language/LocaleResource"))
+                    resources.Add(new LocaleStringResourceParent(resNode));
+
+                resources.Sort((x1, x2) => x1.ResourceName.CompareTo(x2.ResourceName));
+
+                foreach (var resource in resources)
+                    RecursivelySortChildrenResource(resource);
+
+                var sb = new StringBuilder();
+                var writer = XmlWriter.Create(sb);
+                writer.WriteStartDocument();
+                writer.WriteStartElement("Language", "");
+
+                writer.WriteStartAttribute("Name", "");
+                writer.WriteString(originalXmlDocument.SelectSingleNode(@"//Language").Attributes["Name"].InnerText.Trim());
+                writer.WriteEndAttribute();
+
+                foreach (var resource in resources)
+                    RecursivelyWriteResource(resource, writer);
+
+                writer.WriteEndElement();
+                writer.WriteEndDocument();
+                writer.Flush();
+
+                var parsedXml = sb.ToString();
+                #endregion
+
+                //now we have a parsed XML file (the same structure as exported language packs)
+                //let's save resources
+                var localizationService = EngineContext.Current.Resolve<ILocalizationService>();
+                localizationService.ImportResourcesFromXml(language, parsedXml);
+            }
 
         }
 
@@ -523,11 +505,11 @@ namespace Nop.Services.Installation
                 {
                     Name = "Euro",
                     CurrencyCode = "EUR",
-                    Rate = 0.68M,
+                    Rate = 0.79M,
                     DisplayLocale = "",
                     //CustomFormatting = "ˆ0.00",
                     CustomFormatting = string.Format("{0}0.00", "\u20ac"),
-                    Published = false,
+                    Published = true,
                     DisplayOrder = 6,
                     CreatedOnUtc = DateTime.UtcNow,
                     UpdatedOnUtc = DateTime.UtcNow,
@@ -4059,16 +4041,16 @@ namespace Nop.Services.Installation
                 ZipPostalCode = "10021",
                 CreatedOnUtc = DateTime.UtcNow,
             };
-            adminUser.AddAddress(defaultAdminUserAddress);
-            adminUser.SetBillingAddress(defaultAdminUserAddress);
-            adminUser.SetShippingAddress(defaultAdminUserAddress);
+            adminUser.Addresses.Add(defaultAdminUserAddress);
+            adminUser.BillingAddress = defaultAdminUserAddress;
+            adminUser.ShippingAddress = defaultAdminUserAddress;
             adminUser.CustomerRoles.Add(crAdministrators);
             adminUser.CustomerRoles.Add(crForumModerators);
             adminUser.CustomerRoles.Add(crRegistered);
             _customerRepository.Insert(adminUser);
             //set default customer name
-            _customerService.SaveCustomerAttribute<string>(adminUser, SystemCustomerAttributeNames.FirstName, "John");
-            _customerService.SaveCustomerAttribute<string>(adminUser, SystemCustomerAttributeNames.LastName, "Smith");
+            _genericAttributeService.SaveAttribute(adminUser, SystemCustomerAttributeNames.FirstName, "John");
+            _genericAttributeService.SaveAttribute(adminUser, SystemCustomerAttributeNames.LastName, "Smith");
 
 
             //search engine (crawler) built-in user
@@ -4090,8 +4072,8 @@ namespace Nop.Services.Installation
 
         protected virtual void HashDefaultCustomerPassword(string defaultUserEmail, string defaultUserPassword)
         {
-            var customerService = EngineContext.Current.Resolve<ICustomerService>();
-            customerService.ChangePassword(new ChangePasswordRequest(defaultUserEmail, false,
+            var customerRegistrationService = EngineContext.Current.Resolve<ICustomerRegistrationService>();
+            customerRegistrationService.ChangePassword(new ChangePasswordRequest(defaultUserEmail, false,
                  PasswordFormat.Hashed, defaultUserPassword));
         }
 
@@ -4149,6 +4131,14 @@ namespace Nop.Services.Installation
                                            Name = "Blog.BlogComment",
                                            Subject = "%Store.Name%. New blog comment.",
                                            Body = "<p><a href=\"%Store.URL%\">%Store.Name%</a> <br /><br />A new blog comment has been created for blog post \"%BlogComment.BlogPostTitle%\".</p>",
+                                           IsActive = true,
+                                           EmailAccountId = eaGeneral.Id,
+                                       },
+                                   new MessageTemplate
+                                       {
+                                           Name = "Customer.BackInStock",
+                                           Subject = "%Store.Name%. Back in stock notification",
+                                           Body = "<p><a href=\"%Store.URL%\">%Store.Name%</a> <br /><br />Hello %Customer.FullName%, <br />Product \"%BackInStockSubscription.ProductName%\" is in stock.</p>",
                                            IsActive = true,
                                            EmailAccountId = eaGeneral.Id,
                                        },
@@ -4274,9 +4264,9 @@ namespace Nop.Services.Installation
                                        },
                                    new MessageTemplate
                                        {
-                                           Name = "OrderDelivered.CustomerNotification",
+                                           Name = "ShipmentDelivered.CustomerNotification",
                                            Subject = "Your order from %Store.Name% has been delivered.",
-                                           Body = "<p><a href=\"%Store.URL%\"> %Store.Name%</a> <br /> <br /> Hello %Order.CustomerFullName%, <br /> Good news! You order has been delivered. <br /> Order Number: %Order.OrderNumber%<br /> Order Details: <a href=\"%Order.OrderURLForCustomer%\" target=\"_blank\">%Order.OrderURLForCustomer%</a><br /> Date Ordered: %Order.CreatedOn%<br /> <br /> <br /> <br /> Billing Address<br /> %Order.BillingFirstName% %Order.BillingLastName%<br /> %Order.BillingAddress1%<br /> %Order.BillingCity% %Order.BillingZipPostalCode%<br /> %Order.BillingStateProvince% %Order.BillingCountry%<br /> <br /> <br /> <br /> Shipping Address<br /> %Order.ShippingFirstName% %Order.ShippingLastName%<br /> %Order.ShippingAddress1%<br /> %Order.ShippingCity% %Order.ShippingZipPostalCode%<br /> %Order.ShippingStateProvince% %Order.ShippingCountry%<br /> <br /> Shipping Method: %Order.ShippingMethod% <br /> <br /> %Order.Product(s)% </p>",
+                                           Body = "<p><a href=\"%Store.URL%\"> %Store.Name%</a> <br /> <br /> Hello %Order.CustomerFullName%, <br /> Good news! You order has been delivered. <br /> Order Number: %Order.OrderNumber%<br /> Order Details: <a href=\"%Order.OrderURLForCustomer%\" target=\"_blank\">%Order.OrderURLForCustomer%</a><br /> Date Ordered: %Order.CreatedOn%<br /> <br /> <br /> <br /> Billing Address<br /> %Order.BillingFirstName% %Order.BillingLastName%<br /> %Order.BillingAddress1%<br /> %Order.BillingCity% %Order.BillingZipPostalCode%<br /> %Order.BillingStateProvince% %Order.BillingCountry%<br /> <br /> <br /> <br /> Shipping Address<br /> %Order.ShippingFirstName% %Order.ShippingLastName%<br /> %Order.ShippingAddress1%<br /> %Order.ShippingCity% %Order.ShippingZipPostalCode%<br /> %Order.ShippingStateProvince% %Order.ShippingCountry%<br /> <br /> Shipping Method: %Order.ShippingMethod% <br /> <br /> Delivered Products: <br /> <br /> %Shipment.Product(s)%</p>",
                                            IsActive = true,
                                            EmailAccountId = eaGeneral.Id,
                                        },
@@ -4298,9 +4288,9 @@ namespace Nop.Services.Installation
                                        },
                                    new MessageTemplate
                                        {
-                                           Name = "OrderShipped.CustomerNotification",
+                                           Name = "ShipmentSent.CustomerNotification",
                                            Subject = "Your order from %Store.Name% has been shipped.",
-                                           Body = "<p><a href=\"%Store.URL%\"> %Store.Name%</a> <br /><br />Hello %Order.CustomerFullName%!, <br />Good news! You order has been shipped. <br />Order Number: %Order.OrderNumber%<br />Order Details: <a href=\"%Order.OrderURLForCustomer%\" target=\"_blank\">%Order.OrderURLForCustomer%</a><br />Date Ordered: %Order.CreatedOn%<br /><br /><br /><br />Billing Address<br />%Order.BillingFirstName% %Order.BillingLastName%<br />%Order.BillingAddress1%<br />%Order.BillingCity% %Order.BillingZipPostalCode%<br />%Order.BillingStateProvince% %Order.BillingCountry%<br /><br /><br /><br />Shipping Address<br />%Order.ShippingFirstName% %Order.ShippingLastName%<br />%Order.ShippingAddress1%<br />%Order.ShippingCity% %Order.ShippingZipPostalCode%<br />%Order.ShippingStateProvince% %Order.ShippingCountry%<br /><br />Shipping Method: %Order.ShippingMethod%<br /><br />%Order.Product(s)%</p>",
+                                           Body = "<p><a href=\"%Store.URL%\"> %Store.Name%</a> <br /><br />Hello %Order.CustomerFullName%!, <br />Good news! You order has been shipped. <br />Order Number: %Order.OrderNumber%<br />Order Details: <a href=\"%Order.OrderURLForCustomer%\" target=\"_blank\">%Order.OrderURLForCustomer%</a><br />Date Ordered: %Order.CreatedOn%<br /><br /><br /><br />Billing Address<br />%Order.BillingFirstName% %Order.BillingLastName%<br />%Order.BillingAddress1%<br />%Order.BillingCity% %Order.BillingZipPostalCode%<br />%Order.BillingStateProvince% %Order.BillingCountry%<br /><br /><br /><br />Shipping Address<br />%Order.ShippingFirstName% %Order.ShippingLastName%<br />%Order.ShippingAddress1%<br />%Order.ShippingCity% %Order.ShippingZipPostalCode%<br />%Order.ShippingStateProvince% %Order.ShippingCountry%<br /><br />Shipping Method: %Order.ShippingMethod% <br /> <br /> Shipped Products: <br /> <br /> %Shipment.Product(s)%</p>",
                                            IsActive = true,
                                            EmailAccountId = eaGeneral.Id,
                                        },
@@ -4341,6 +4331,22 @@ namespace Nop.Services.Installation
                                            Name = "Wishlist.EmailAFriend",
                                            Subject = "%Store.Name%. Wishlist",
                                            Body = "<p><a href=\"%Store.URL%\"> %Store.Name%</a> <br /><br />%Wishlist.Email% was shopping on %Store.Name% and wanted to share a wishlist with you. <br /><br /><br />For more info click <a target=\"_blank\" href=\"%Wishlist.URLForCustomer%\">here</a> <br /><br /><br />%Wishlist.PersonalMessage%<br /><br />%Store.Name%</p>",
+                                           IsActive = true,
+                                           EmailAccountId = eaGeneral.Id,
+                                       },
+                                   new MessageTemplate
+                                       {
+                                           Name = "Customer.NewOrderNote",
+                                           Subject = "%Store.Name%. New order note has been added",
+                                           Body = "<p><a href=\"%Store.URL%\">%Store.Name%</a> <br /><br />Hello %Customer.FullName%, <br />New order note has been added to your account:<br />\"%Order.NewNoteText%\".<br /><a target=\"_blank\" href=\"%Order.OrderURLForCustomer%\">%Order.OrderURLForCustomer%</a></p>",
+                                           IsActive = true,
+                                           EmailAccountId = eaGeneral.Id,
+                                       },
+                                   new MessageTemplate
+                                       {
+                                           Name = "RecurringPaymentCancelled.StoreOwnerNotification",
+                                           Subject = "%Store.Name%. Recurring payment cancelled",
+                                           Body = "<p><a href=\"%Store.URL%\">%Store.Name%</a> <br /><br />%Customer.FullName% (%Customer.Email%) has just cancelled a recurring payment ID=%RecurringPayment.ID%.</p>",
                                            IsActive = true,
                                            EmailAccountId = eaGeneral.Id,
                                        },
@@ -4436,7 +4442,9 @@ namespace Nop.Services.Installation
                 .SaveSettings(new PdfSettings()
                 {
                     Enabled = true,
+                    LetterPageSizeEnabled = false,
                     RenderOrderNotes = true,
+                    FontFileName = "FreeSerif.ttf",
                 });
 
             EngineContext.Current.Resolve<IConfigurationProvider<CommonSettings>>()
@@ -4449,12 +4457,16 @@ namespace Nop.Services.Installation
                     SitemapIncludeManufacturers = true,
                     SitemapIncludeProducts = false,
                     SitemapIncludeTopics = true,
+                    DisplayJavaScriptDisabledWarning = false,
+                    UseFullTextSearch = false,
+                    FullTextMode = FulltextSearchMode.ExactMatch,
                 });
 
             EngineContext.Current.Resolve<IConfigurationProvider<SeoSettings>>()
                 .SaveSettings(new SeoSettings()
                 {
                     PageTitleSeparator = ". ",
+                    PageTitleSeoAdjustment = PageTitleSeoAdjustment.PagenameAfterStorename,
                     DefaultTitle = "Your store",
                     DefaultMetaKeywords = "",
                     DefaultMetaDescription = "",
@@ -4472,17 +4484,19 @@ namespace Nop.Services.Installation
             EngineContext.Current.Resolve<IConfigurationProvider<CatalogSettings>>()
                 .SaveSettings(new CatalogSettings()
                 {
-                    HidePricesForNonRegistered = false,
                     ShowProductSku = false,
                     ShowManufacturerPartNumber = false,
                     AllowProductSorting = true,
                     AllowProductViewModeChanging = true,
+                    DefaultViewMode = "grid",
+                    ShowProductsFromSubcategories = false,
                     ShowCategoryProductNumber = false,
                     ShowCategoryProductNumberIncludingSubcategories = false,
                     CategoryBreadcrumbEnabled = true,
                     ShowShareButton = true,
-                    PageShareCode = "<!-- AddThis Button BEGIN --> <a class=\"addthis_button\" href=\"http://www.addthis.com/bookmark.php?v=250&amp;username=nopsolutions\"><img src=\"http://s7.addthis.com/static/btn/v2/lg-share-en.gif\" width=\"125\" height=\"16\" alt=\"Bookmark and Share\" style=\"border:0\"/></a><script type=\"text/javascript\" src=\"http://s7.addthis.com/js/250/addthis_widget.js#username=nopsolutions\"></script> <!-- AddThis Button END -->",
+                    PageShareCode = "<!-- AddThis Button BEGIN --><div class=\"addthis_toolbox addthis_default_style \"><a class=\"addthis_button_preferred_1\"></a><a class=\"addthis_button_preferred_2\"></a><a class=\"addthis_button_preferred_3\"></a><a class=\"addthis_button_preferred_4\"></a><a class=\"addthis_button_compact\"></a><a class=\"addthis_counter addthis_bubble_style\"></a></div><script type=\"text/javascript\" src=\"http://s7.addthis.com/js/250/addthis_widget.js#pubid=nopsolutions\"></script><!-- AddThis Button END -->",
                     ProductReviewsMustBeApproved = true,
+                    DefaultProductRatingValue = 5,
                     AllowAnonymousUsersToReviewProduct = false,
                     NotifyStoreOwnerAboutNewProductReviews = false,
                     EmailAFriendEnabled = true,
@@ -4492,7 +4506,10 @@ namespace Nop.Services.Installation
                     RecentlyAddedProductsNumber = 4,
                     RecentlyAddedProductsEnabled = true,
                     CompareProductsEnabled = true,
+                    ProductSearchAutoCompleteEnabled = true,
+                    ProductSearchAutoCompleteNumberOfProducts = 10,
                     ProductSearchTermMinimumLength = 3,
+                    ShowProductImagesInSearchAutoComplete = false,
                     ShowBestsellersOnHomepage = false,
                     NumberOfBestsellersOnHomepage = 3,
                     SearchPageProductsPerPage = 6,
@@ -4501,10 +4518,20 @@ namespace Nop.Services.Installation
                     EnableDynamicPriceUpdate = false,
                     NumberOfProductTags = 15,
                     ProductsByTagPageSize = 4,
+                    IncludeShortDescriptionInCompareProducts = false,
+                    IncludeFullDescriptionInCompareProducts = false,
                     UseSmallProductBoxOnHomePage =  true,
-                    IgnoreTierPrices = false,
+                    IncludeFeaturedProductsInNormalLists = false,
+                    DisplayTierPricesWithDiscounts = true,
                     IgnoreDiscounts = false,
                     IgnoreFeaturedProducts = false,
+                    DefaultCategoryPageSizeOptions = "4, 2, 8, 12",
+                    DefaultManufacturerPageSizeOptions = "4, 2, 8, 12",
+                    ProductsByTagAllowCustomersToSelectPageSize = true,
+                    ProductsByTagPageSizeOptions = "4, 2, 8, 12",
+                    MaximumBackInStockSubscriptions = 200,
+                    FileUploadMaximumSizeBytes = 1024 * 200, //200KB
+                    ManufacturersBlockItemsToDisplay = 5,
                 });
 
             EngineContext.Current.Resolve<IConfigurationProvider<LocalizationSettings>>()
@@ -4518,8 +4545,11 @@ namespace Nop.Services.Installation
                 .SaveSettings(new CustomerSettings()
                 {
                     UsernamesEnabled = false,
+                    CheckUsernameAvailabilityEnabled = false,
                     AllowUsersToChangeUsernames = false,
+                    DefaultPasswordFormat = PasswordFormat.Hashed,
                     HashedPasswordFormat = "SHA1",
+                    PasswordMinLength = 6,
                     UserRegistrationType = UserRegistrationType.Standard,
                     AllowCustomersToUploadAvatars = false,
                     AvatarMaximumSizeBytes = 20000,
@@ -4529,6 +4559,7 @@ namespace Nop.Services.Installation
                     AllowViewingProfiles = false,
                     NotifyNewCustomerRegistration = false,
                     HideDownloadableProductsTab = false,
+                    HideBackInStockSubscriptionsTab = false,
                     DownloadableProductsValidateUser = false,
                     CustomerNameFormat = CustomerNameFormat.ShowEmails,
                     GenderEnabled = true,
@@ -4545,6 +4576,7 @@ namespace Nop.Services.Installation
                     NewsletterEnabled = true,
                     HideNewsletterBlock = false,
                     OnlineCustomerMinutes = 20,
+                    StoreLastVisitedPage = true,
                 });
 
             EngineContext.Current.Resolve<IConfigurationProvider<MediaSettings>>()
@@ -4553,12 +4585,16 @@ namespace Nop.Services.Installation
                     AvatarPictureSize = 85,
                     ProductThumbPictureSize = 125,
                     ProductDetailsPictureSize = 300,
+                    ProductThumbPictureSizeOnProductDetailsPage = 70,
                     ProductVariantPictureSize = 125,
                     CategoryThumbPictureSize = 125,
                     ManufacturerThumbPictureSize = 125,
                     CartThumbPictureSize = 80,
+                    MiniCartThumbPictureSize = 47,
+                    AutoCompleteSearchThumbPictureSize = 20,
                     MaximumImageSize = 1280,
                     DefaultPictureZoomEnabled = false,
+                    DefaultImageQuality = 100,
                 });
 
             EngineContext.Current.Resolve<IConfigurationProvider<StoreInformationSettings>>()
@@ -4567,9 +4603,14 @@ namespace Nop.Services.Installation
                     StoreName = "Your store name",
                     StoreUrl = "http://www.yourStore.com/",
                     StoreClosed = false,
-                    DefaultStoreTheme = "DarkOrange",
-                    AllowCustomerToSelectTheme = false,
+                    StoreClosedAllowForAdmins = false,
+                    DefaultStoreThemeForDesktops = "DarkOrange",
+                    AllowCustomerToSelectTheme = true,
+                    MobileDevicesSupported = false,
+                    DefaultStoreThemeForMobileDevices = "Mobile",
+                    EmulateMobileDevice = false,
                     DisplayMiniProfilerInPublicStore = false,
+                    DisplayEuCookieLawWarning = false,
                 });
 
             EngineContext.Current.Resolve<IConfigurationProvider<RewardPointsSettings>>()
@@ -4610,26 +4651,24 @@ namespace Nop.Services.Installation
                     Color3 = "#dde2e6",
                 });
 
-            EngineContext.Current.Resolve<IConfigurationProvider<SmsSettings>>()
-                .SaveSettings(new SmsSettings()
-                {
-                    ActiveSmsProviderSystemNames = new List<string>()
-                });
-
             EngineContext.Current.Resolve<IConfigurationProvider<ShoppingCartSettings>>()
                 .SaveSettings(new ShoppingCartSettings()
                 {
+                    DisplayCartAfterAddingProduct = false,
+                    DisplayWishlistAfterAddingProduct = false,
                     MaximumShoppingCartItems = 1000,
                     MaximumWishlistItems = 1000,
+                    AllowOutOfStockItemsToBeAddedToWishlist = false,
                     ShowProductImagesOnShoppingCart = true,
                     ShowProductImagesOnWishList = true,
                     ShowDiscountBox = true,
                     ShowGiftCardBox = true,
                     CrossSellsNumber = 2,
-                    WishlistEnabled = true,
                     EmailWishlistEnabled = true,
+                    AllowAnonymousUsersToEmailWishlist = false,
                     MiniShoppingCartEnabled = true,
-                    MiniShoppingCartDisplayProducts = false,
+                    ShowProductImagesInMiniShoppingCart = true,
+                    MiniShoppingCartProductNumber = 5,
                     RoundPricesDuringCalculation = true,
                 });
 
@@ -4639,18 +4678,20 @@ namespace Nop.Services.Installation
                     IsReOrderAllowed = true,
                     MinOrderSubtotalAmount = 0,
                     MinOrderTotalAmount = 0,
-                    AnonymousCheckoutAllowed = false,
+                    AnonymousCheckoutAllowed = true,
                     TermsOfServiceEnabled = false,
-                    OnePageCheckoutEnabled = false,
+                    OnePageCheckoutEnabled = true,
                     ReturnRequestsEnabled = true,
                     ReturnRequestActions = new List<string>() { "Repair", "Replacement", "Store Credit" },
                     ReturnRequestReasons = new List<string>() { "Received Wrong Product", "Wrong Product Ordered", "There Was A Problem With The Product" },
                     NumberOfDaysReturnRequestAvailable = 365,
+                    MinimumOrderPlacementInterval = 30,
                 });
 
             EngineContext.Current.Resolve<IConfigurationProvider<SecuritySettings>>()
                 .SaveSettings(new SecuritySettings()
                 {
+                    ForceSslForAllPages = false,
                     EncryptionKey = "273ece6f97dd844d",
                     AdminAreaAllowedIpAddresses = null
                 });
@@ -4659,7 +4700,12 @@ namespace Nop.Services.Installation
                 .SaveSettings(new ShippingSettings()
                 {
                     ActiveShippingRateComputationMethodSystemNames = new List<string>() { "Shipping.FixedRate" },
+                    FreeShippingOverXEnabled = false,
+                    FreeShippingOverXValue = decimal.Zero,
+                    FreeShippingOverXIncludingTax = false,
                     EstimateShippingEnabled = true,
+                    DisplayShipmentEventsToCustomers = false,
+                    ReturnValidOptionsIfThereAreAny = true,
                 });
 
             EngineContext.Current.Resolve<IConfigurationProvider<PaymentSettings>>()
@@ -4674,6 +4720,7 @@ namespace Nop.Services.Installation
                         "Payments.PurchaseOrder",
                     },
                     AllowRePostingPayments = true,
+                    BypassPaymentMethodSelectionIfOnlyOne = true,
                 });
 
             EngineContext.Current.Resolve<IConfigurationProvider<TaxSettings>>()
@@ -4911,7 +4958,7 @@ namespace Nop.Services.Installation
         {
             //pictures
             var pictureService = EngineContext.Current.Resolve<IPictureService>();
-            var sampleImagesPath = string.Format("{0}content\\samples\\", HttpContext.Current.Request.PhysicalApplicationPath);
+            var sampleImagesPath = _webHelper.MapPath("~/content/samples/");
 
 
 
@@ -4928,6 +4975,8 @@ namespace Nop.Services.Installation
                 MetaKeywords = "Books, Dictionary, Textbooks",
                 MetaDescription = "Books category description",
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 PictureId = pictureService.InsertPicture(File.ReadAllBytes(sampleImagesPath + "category_book.jpeg"), "image/jpeg", pictureService.GetPictureSeName("Book"), true).Id,
                 PriceRanges = "-25;25-50;50-;",
                 Published = true,
@@ -4943,6 +4992,8 @@ namespace Nop.Services.Installation
                 Name = "Computers",
                 CategoryTemplateId = categoryTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 PictureId = pictureService.InsertPicture(File.ReadAllBytes(sampleImagesPath + "category_computers.jpeg"), "image/jpeg", pictureService.GetPictureSeName("Computers"), true).Id,
                 Published = true,
                 DisplayOrder = 2,
@@ -4957,6 +5008,8 @@ namespace Nop.Services.Installation
                 Name = "Desktops",
                 CategoryTemplateId = categoryTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 ParentCategoryId = categoryComputers.Id,
                 PictureId = pictureService.InsertPicture(File.ReadAllBytes(sampleImagesPath + "category_desktops.jpg"), "image/pjpeg", pictureService.GetPictureSeName("Desktops"), true).Id,
                 PriceRanges = "-1000;1000-1200;1200-;",
@@ -4973,6 +5026,8 @@ namespace Nop.Services.Installation
                 Name = "Notebooks",
                 CategoryTemplateId = categoryTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 ParentCategoryId = categoryComputers.Id,
                 PictureId = pictureService.InsertPicture(File.ReadAllBytes(sampleImagesPath + "category_notebooks.jpg"), "image/pjpeg", pictureService.GetPictureSeName("Notebooks"), true).Id,
                 Published = true,
@@ -4988,6 +5043,8 @@ namespace Nop.Services.Installation
                 Name = "Accessories",
                 CategoryTemplateId = categoryTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 ParentCategoryId = categoryComputers.Id,
                 PictureId = pictureService.InsertPicture(File.ReadAllBytes(sampleImagesPath + "category_accessories.jpg"), "image/pjpeg", pictureService.GetPictureSeName("Accessories"), true).Id,
                 PriceRanges = "-100;100-;",
@@ -5004,6 +5061,8 @@ namespace Nop.Services.Installation
                 Name = "Software",
                 CategoryTemplateId = categoryTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 ParentCategoryId = categoryComputers.Id,
                 PictureId = pictureService.InsertPicture(File.ReadAllBytes(sampleImagesPath + "category_software.jpg"), "image/pjpeg", pictureService.GetPictureSeName("Software"), true).Id,
                 Published = true,
@@ -5019,6 +5078,8 @@ namespace Nop.Services.Installation
                 Name = "Games",
                 CategoryTemplateId = categoryTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 ParentCategoryId = categoryComputers.Id,
                 PictureId = pictureService.InsertPicture(File.ReadAllBytes(sampleImagesPath + "category_games.jpg"), "image/pjpeg", pictureService.GetPictureSeName("Games"), true).Id,
                 Published = true,
@@ -5035,6 +5096,8 @@ namespace Nop.Services.Installation
                 Name = "Electronics",
                 CategoryTemplateId = categoryTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 PictureId = pictureService.InsertPicture(File.ReadAllBytes(sampleImagesPath + "category_electronics.jpeg"), "image/jpeg", pictureService.GetPictureSeName("Electronics"), true).Id,
                 Published = true,
                 DisplayOrder = 3,
@@ -5049,6 +5112,8 @@ namespace Nop.Services.Installation
                 Name = "Camera, photo",
                 CategoryTemplateId = categoryTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 ParentCategoryId = categoryElectronics.Id,
                 PictureId = pictureService.InsertPicture(File.ReadAllBytes(sampleImagesPath + "category_camera_photo.jpeg"), "image/jpeg", pictureService.GetPictureSeName("Camera, photo"), true).Id,
                 PriceRanges = "-500;500-;",
@@ -5065,6 +5130,8 @@ namespace Nop.Services.Installation
                 Name = "Cell phones",
                 CategoryTemplateId = categoryTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 ParentCategoryId = categoryElectronics.Id,
                 PictureId = pictureService.InsertPicture(File.ReadAllBytes(sampleImagesPath + "category_cell_phones.jpeg"), "image/jpeg", pictureService.GetPictureSeName("Cell phones"), true).Id,
                 Published = true,
@@ -5080,6 +5147,8 @@ namespace Nop.Services.Installation
                 Name = "Apparel & Shoes",
                 CategoryTemplateId = categoryTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 PictureId = pictureService.InsertPicture(File.ReadAllBytes(sampleImagesPath + "category_apparel_shoes.jpeg"), "image/jpeg", pictureService.GetPictureSeName("Apparel & Shoes"), true).Id,
                 Published = true,
                 DisplayOrder = 5,
@@ -5094,6 +5163,8 @@ namespace Nop.Services.Installation
                 Name = "Shirts",
                 CategoryTemplateId = categoryTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 ParentCategoryId = categoryApparelShoes.Id,
                 PictureId = pictureService.InsertPicture(File.ReadAllBytes(sampleImagesPath + "category_shirts.jpg"), "image/pjpeg", pictureService.GetPictureSeName("Shirts"), true).Id,
                 PriceRanges = "-20;20-;",
@@ -5110,6 +5181,8 @@ namespace Nop.Services.Installation
                 Name = "Jeans",
                 CategoryTemplateId = categoryTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 ParentCategoryId = categoryApparelShoes.Id,
                 PictureId = pictureService.InsertPicture(File.ReadAllBytes(sampleImagesPath + "category_jeans.jpg"), "image/pjpeg", pictureService.GetPictureSeName("Jeans"), true).Id,
                 PriceRanges = "-20;20-;",
@@ -5126,6 +5199,8 @@ namespace Nop.Services.Installation
                 Name = "Shoes",
                 CategoryTemplateId = categoryTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 ParentCategoryId = categoryApparelShoes.Id,
                 PictureId = pictureService.InsertPicture(File.ReadAllBytes(sampleImagesPath + "category_shoes.jpg"), "image/pjpeg", pictureService.GetPictureSeName("Shoes"), true).Id,
                 PriceRanges = "-20;20-;",
@@ -5142,6 +5217,8 @@ namespace Nop.Services.Installation
                 Name = "Apparel accessories",
                 CategoryTemplateId = categoryTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 ParentCategoryId = categoryApparelShoes.Id,
                 PictureId = pictureService.InsertPicture(File.ReadAllBytes(sampleImagesPath + "category_accessories_apparel.jpg"), "image/pjpeg", pictureService.GetPictureSeName("Apparel accessories"), true).Id,
                 PriceRanges = "-30;30-;",
@@ -5158,6 +5235,8 @@ namespace Nop.Services.Installation
                 Name = "Digital downloads",
                 CategoryTemplateId = categoryTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 PictureId = pictureService.InsertPicture(File.ReadAllBytes(sampleImagesPath + "category_digital_downloads.jpeg"), "image/jpeg", pictureService.GetPictureSeName("Digital downloads"), true).Id,
                 Published = true,
                 DisplayOrder = 6,
@@ -5172,6 +5251,8 @@ namespace Nop.Services.Installation
                 Name = "Jewelry",
                 CategoryTemplateId = categoryTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 PictureId = pictureService.InsertPicture(File.ReadAllBytes(sampleImagesPath + "category_jewelry.jpeg"), "image/jpeg", pictureService.GetPictureSeName("Jewelry"), true).Id,
                 PriceRanges = "0-500;500-700;700-3000;",
                 Published = true,
@@ -5186,6 +5267,8 @@ namespace Nop.Services.Installation
                 Name = "Gift Cards",
                 CategoryTemplateId = categoryTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 PictureId = pictureService.InsertPicture(File.ReadAllBytes(sampleImagesPath + "category_gift_cards.jpeg"), "image/jpeg", pictureService.GetPictureSeName("Gift Cards"), true).Id,
                 Published = true,
                 DisplayOrder = 10,
@@ -5206,6 +5289,8 @@ namespace Nop.Services.Installation
                 Name = "ASUS",
                 ManufacturerTemplateId = manufacturerTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 Published = true,
                 DisplayOrder = 2,
                 CreatedOnUtc = DateTime.UtcNow,
@@ -5218,6 +5303,8 @@ namespace Nop.Services.Installation
                 Name = "HP",
                 ManufacturerTemplateId = manufacturerTemplateInGridAndLines.Id,
                 PageSize = 4,
+                AllowCustomersToSelectPageSize = true,
+                PageSizeOptions = "4, 2, 8, 12",
                 Published = true,
                 DisplayOrder = 5,
                 CreatedOnUtc = DateTime.UtcNow,
@@ -5235,11 +5322,11 @@ namespace Nop.Services.Installation
             
             //pictures
             var pictureService = EngineContext.Current.Resolve<IPictureService>();
-            var sampleImagesPath = string.Format("{0}content\\samples\\", HttpContext.Current.Request.PhysicalApplicationPath);
+            var sampleImagesPath = _webHelper.MapPath("~/content/samples/");
 
             //downloads
             var downloadService = EngineContext.Current.Resolve<IDownloadService>();
-            var sampleDownloadsPath = string.Format("{0}content\\samples\\", HttpContext.Current.Request.PhysicalApplicationPath);
+            var sampleDownloadsPath = _webHelper.MapPath("~/content/samples/");
 
 
             //products
@@ -5264,6 +5351,7 @@ namespace Nop.Services.Installation
                 OrderMaximumQuantity = 10000,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 Published = true,
                 DisplayOrder = 1,
                 CreatedOnUtc = DateTime.UtcNow,
@@ -5306,6 +5394,7 @@ namespace Nop.Services.Installation
                 OrderMaximumQuantity = 10000,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 Published = true,
                 DisplayOrder = 1,
                 CreatedOnUtc = DateTime.UtcNow,
@@ -5353,6 +5442,7 @@ namespace Nop.Services.Installation
                 OrderMaximumQuantity = 10000,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 Published = true,
                 DisplayOrder = 1,
                 CreatedOnUtc = DateTime.UtcNow,
@@ -5400,6 +5490,7 @@ namespace Nop.Services.Installation
                 OrderMaximumQuantity = 10000,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 Published = true,
                 DisplayOrder = 1,
                 CreatedOnUtc = DateTime.UtcNow,
@@ -5444,6 +5535,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -5530,6 +5622,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -5555,6 +5648,8 @@ namespace Nop.Services.Installation
                 Quantity = 10,
                 Price = 15
             });
+            productAcerAspireOne.ProductVariants.FirstOrDefault().HasTierPrices = true;
+
             productAcerAspireOne.ProductCategories.Add(new ProductCategory()
             {
                 Category = _categoryRepository.Table.Where(c => c.Name == "Accessories").Single(),
@@ -5599,6 +5694,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -5697,6 +5793,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -5746,6 +5843,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -5795,6 +5893,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -5820,6 +5919,8 @@ namespace Nop.Services.Installation
                 Quantity = 10,
                 Price = 16
             });
+            productArrow.ProductVariants.FirstOrDefault().HasTierPrices = true;
+
             productArrow.ProductCategories.Add(new ProductCategory()
             {
                 Category = _categoryRepository.Table.Where(c => c.Name == "Shirts").Single(),
@@ -5859,6 +5960,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -5941,6 +6043,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -6017,6 +6120,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -6066,6 +6170,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -6115,6 +6220,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -6164,6 +6270,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -6331,6 +6438,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -6355,6 +6463,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -6409,6 +6518,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -6458,6 +6568,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -6508,6 +6619,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -6557,6 +6669,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -6606,6 +6719,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -6663,6 +6777,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -6712,6 +6827,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -6756,8 +6872,8 @@ namespace Nop.Services.Installation
             };
             productEatingWell.ProductVariants.Add(new ProductVariant()
             {
-                Price = 24M,
-                OldPrice = 37M,
+                Price = 51M,
+                OldPrice = 67M,
                 IsShipEnabled = true,
                 Weight = 2,
                 Length = 2,
@@ -6767,6 +6883,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -6792,7 +6909,6 @@ namespace Nop.Services.Installation
 
 
 
-            //TODO add attribute combinations for 'etnies Men's Digit Sneaker' and set 'ManageInventoryMethod.ManageStockByAttributes' (as it was in 1.X versions)
             var productEtnies = new Product()
             {
                 Name = "etnies Men's Digit Sneaker",
@@ -6817,6 +6933,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -6910,6 +7027,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -6964,6 +7082,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -7018,6 +7137,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -7100,6 +7220,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -7159,6 +7280,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -7241,6 +7363,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -7317,6 +7440,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -7367,6 +7491,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -7392,6 +7517,8 @@ namespace Nop.Services.Installation
                 Quantity = 10,
                 Price = 35
             });
+            productLeviJeans.ProductVariants.FirstOrDefault().HasTierPrices = true;
+
             productLeviJeans.ProductCategories.Add(new ProductCategory()
             {
                 Category = _categoryRepository.Table.Where(c => c.Name == "Jeans").Single(),
@@ -7436,6 +7563,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -7485,6 +7613,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -7534,6 +7663,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -7583,6 +7713,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -7632,6 +7763,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -7681,6 +7813,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -7730,6 +7863,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -7784,6 +7918,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -7834,6 +7969,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -7883,6 +8019,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -7960,6 +8097,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -8009,6 +8147,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -8063,6 +8202,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -8112,6 +8252,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.ManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -8151,6 +8292,7 @@ namespace Nop.Services.Installation
             };
             var downloadPokerFace1 = new Download()
             {
+                DownloadGuid = Guid.NewGuid(),
                 ContentType = "application/x-zip-co",
                 DownloadBinary = File.ReadAllBytes(sampleDownloadsPath + "product_PokerFace_1.zip"),
                 Extension = ".zip",
@@ -8160,6 +8302,7 @@ namespace Nop.Services.Installation
             downloadService.InsertDownload(downloadPokerFace1);
             var downloadPokerFace2 = new Download()
             {
+                DownloadGuid = Guid.NewGuid(),
                 ContentType = "text/plain",
                 DownloadBinary = File.ReadAllBytes(sampleDownloadsPath + "product_PokerFace_2.txt"),
                 Extension = ".txt",
@@ -8174,6 +8317,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.DontManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -8221,6 +8365,7 @@ namespace Nop.Services.Installation
             };
             var downloadSingleLadies1 = new Download()
             {
+                DownloadGuid = Guid.NewGuid(),
                 ContentType = "application/x-zip-co",
                 DownloadBinary = File.ReadAllBytes(sampleDownloadsPath + "product_SingleLadies_1.zip"),
                 Extension = ".zip",
@@ -8230,6 +8375,7 @@ namespace Nop.Services.Installation
             downloadService.InsertDownload(downloadSingleLadies1);
             var downloadSingleLadies2 = new Download()
             {
+                DownloadGuid = Guid.NewGuid(),
                 ContentType = "text/plain",
                 DownloadBinary = File.ReadAllBytes(sampleDownloadsPath + "product_SingleLadies_2.txt"),
                 Extension = ".txt",
@@ -8244,6 +8390,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.DontManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -8291,6 +8438,7 @@ namespace Nop.Services.Installation
             };
             var downloadBattleOfLa = new Download()
             {
+                DownloadGuid = Guid.NewGuid(),
                 ContentType = "application/x-zip-co",
                 DownloadBinary = File.ReadAllBytes(sampleDownloadsPath + "product_BattleOfLa_1.zip"),
                 Extension = ".zip",
@@ -8305,6 +8453,7 @@ namespace Nop.Services.Installation
                 ManageInventoryMethod = ManageInventoryMethod.DontManageStock,
                 StockQuantity = 10000,
                 NotifyAdminForQuantityBelow = 1,
+                AllowBackInStockSubscriptions = false,
                 DisplayStockAvailability = true,
                 LowStockActivity = LowStockActivity.DisableBuyButton,
                 BackorderMode = BackorderMode.NoBackorders,
@@ -8885,6 +9034,7 @@ namespace Nop.Services.Installation
         {
             var activityLogTypes = new List<ActivityLogType>()
                                       {
+                                          //admin area activities
                                           new ActivityLogType
                                               {
                                                   SystemKeyword = "AddNewCategory",
@@ -9137,6 +9287,31 @@ namespace Nop.Services.Installation
                                                   Enabled = true,
                                                   Name = "Edit a widget"
                                               },
+                                              //public store activities
+                                          new ActivityLogType
+                                              {
+                                                  SystemKeyword = "PublicStore.ViewCategory",
+                                                  Enabled = false,
+                                                  Name = "Public store. View a category"
+                                              },
+                                          new ActivityLogType
+                                              {
+                                                  SystemKeyword = "PublicStore.ViewManufacturer",
+                                                  Enabled = false,
+                                                  Name = "Public store. View a manufacturer"
+                                              },
+                                          new ActivityLogType
+                                              {
+                                                  SystemKeyword = "PublicStore.ViewProduct",
+                                                  Enabled = false,
+                                                  Name = "Public store. View a product"
+                                              },
+                                          new ActivityLogType
+                                              {
+                                                  SystemKeyword = "PublicStore.PlaceOrder",
+                                                  Enabled = false,
+                                                  Name = "Public store. Place an order"
+                                              },
                                       };
             activityLogTypes.ForEach(alt => _activityLogTypeRepository.Insert(alt));
         }
@@ -9192,6 +9367,55 @@ namespace Nop.Services.Installation
 
         }
 
+        protected virtual void InstallScheduleTasks()
+        {
+            var tasks = new List<ScheduleTask>()
+            {
+                new ScheduleTask()
+                {
+                    Name = "Send emails",
+                    Seconds = 60,
+                    Type = "Nop.Services.Messages.QueuedMessagesSendTask, Nop.Services",
+                    Enabled = true,
+                    StopOnError = false,
+                },
+                new ScheduleTask()
+                {
+                    Name = "Keep alive",
+                    Seconds = 300,
+                    Type = "Nop.Services.Common.KeepAliveTask, Nop.Services",
+                    Enabled = true,
+                    StopOnError = false,
+                },
+                new ScheduleTask()
+                {
+                    Name = "Delete guests",
+                    Seconds = 600,
+                    Type = "Nop.Services.Customers.DeleteGuestsTask, Nop.Services",
+                    Enabled = true,
+                    StopOnError = false,
+                },
+                new ScheduleTask()
+                {
+                    Name = "Clear cache",
+                    Seconds = 600,
+                    Type = "Nop.Services.Caching.ClearCacheTask, Nop.Services",
+                    Enabled = false,
+                    StopOnError = false,
+                },
+                new ScheduleTask()
+                {
+                    Name = "Update currency exchange rates",
+                    Seconds = 900,
+                    Type = "Nop.Services.Directory.UpdateExchangeRateTask, Nop.Services",
+                    Enabled = true,
+                    StopOnError = false,
+                },
+            };
+
+            tasks.ForEach(x => _scheduleTaskRepository.Insert(x));
+        }
+
         private void AddProductTag(Product product, string tag)
         {
             var productTag = _productTagRepository.Table.Where(pt => pt.Name == tag).FirstOrDefault();
@@ -9222,7 +9446,7 @@ namespace Nop.Services.Installation
         {
             InstallMeasures();
             InstallTaxCategories();
-            InstallLanguagesAndResources();
+            InstallLanguages();
             InstallCurrencies();
             InstallCountriesAndStates();
             InstallShippingMethods();
@@ -9231,11 +9455,13 @@ namespace Nop.Services.Installation
             InstallMessageTemplates();
             InstallTopics();
             InstallSettings();
+            InstallLocaleResources();
             InstallActivityLogTypes();
             HashDefaultCustomerPassword(defaultUserEmail, defaultUserPassword);
             InstallProductTemplates();
             InstallCategoryTemplates();
             InstallManufacturerTemplates();
+            InstallScheduleTasks();
 
             if (installSampleData)
             {

@@ -22,6 +22,13 @@ namespace Nop.Services.Orders
         Order GetOrderById(int orderId);
 
         /// <summary>
+        /// Get orders by identifiers
+        /// </summary>
+        /// <param name="orderIds">Order identifiers</param>
+        /// <returns>Order</returns>
+        IList<Order> GetOrdersByIds(int[] orderIds);
+
+        /// <summary>
         /// Gets an order
         /// </summary>
         /// <param name="orderGuid">The order identifier</param>
@@ -89,7 +96,14 @@ namespace Nop.Services.Orders
         /// <param name="orderNote">The order note</param>
         void DeleteOrderNote(OrderNote orderNote);
 
+        /// <summary>
+        /// Get an order by authorization transaction ID and payment method system name
+        /// </summary>
+        /// <param name="authorizationTransactionId">Authorization transaction ID</param>
+        /// <param name="paymentMethodSystemName">Payment method system name</param>
+        /// <returns>Order</returns>
         Order GetOrderByAuthorizationTransactionIdAndPaymentMethod(string authorizationTransactionId, string paymentMethodSystemName);
+        
         #endregion
 
         #region Orders product variants

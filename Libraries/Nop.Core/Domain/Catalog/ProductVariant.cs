@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Nop.Core.Domain.Discounts;
 using Nop.Core.Domain.Localization;
-using Nop.Core.Domain.Orders;
 
 namespace Nop.Core.Domain.Catalog
 {
@@ -46,6 +45,11 @@ namespace Nop.Core.Domain.Catalog
         /// Gets or sets the manufacturer part number
         /// </summary>
         public virtual string ManufacturerPartNumber { get; set; }
+
+        /// <summary>
+        /// Gets or sets the Global Trade Item Number (GTIN). These identifiers include UPC (in North America), EAN (in Europe), JAN (in Japan), and ISBN (for books).
+        /// </summary>
+        public virtual string Gtin { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the product variant is gift card
@@ -208,6 +212,11 @@ namespace Nop.Core.Domain.Catalog
         public virtual int BackorderModeId { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether to back in stock subscriptions are allowed
+        /// </summary>
+        public virtual bool AllowBackInStockSubscriptions { get; set; }
+
+        /// <summary>
         /// Gets or sets the order minimum quantity
         /// </summary>
         public virtual int OrderMinimumQuantity { get; set; }
@@ -218,6 +227,11 @@ namespace Nop.Core.Domain.Catalog
         public virtual int OrderMaximumQuantity { get; set; }
 
         /// <summary>
+        /// Gets or sets the comma seperated list of allowed quantities. null or empty if any quantity is allowed
+        /// </summary>
+        public virtual string AllowedQuantities { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether to disable buy (Add to cart) button
         /// </summary>
         public virtual bool DisableBuyButton { get; set; }
@@ -226,6 +240,11 @@ namespace Nop.Core.Domain.Catalog
         /// Gets or sets a value indicating whether to disable "Add to wishlist" button
         /// </summary>
         public virtual bool DisableWishlistButton { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether this item is available for Pre-Order
+        /// </summary>
+        public virtual bool AvailableForPreOrder { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether to show "Call for Pricing" or "Call for quote" instead of price
@@ -248,6 +267,21 @@ namespace Nop.Core.Domain.Catalog
         public virtual decimal ProductCost { get; set; }
 
         /// <summary>
+        /// Gets or sets the product special price
+        /// </summary>
+        public virtual decimal? SpecialPrice { get; set; }
+
+        /// <summary>
+        /// Gets or sets the start date and time of the special price
+        /// </summary>
+        public virtual DateTime? SpecialPriceStartDateTimeUtc { get; set; }
+
+        /// <summary>
+        /// Gets or sets the end date and time of the special price
+        /// </summary>
+        public virtual DateTime? SpecialPriceEndDateTimeUtc { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether a customer enters price
         /// </summary>
         public virtual bool CustomerEntersPrice { get; set; }
@@ -261,6 +295,23 @@ namespace Nop.Core.Domain.Catalog
         /// Gets or sets the maximum price entered by a customer
         /// </summary>
         public virtual decimal MaximumCustomerEnteredPrice { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether this product variant has tier prices configured
+        /// <remarks>The same as if we run variant.TierPrices.Count > 0
+        /// We use this property for performance optimization:
+        /// if this property is set to false, then we do not need to load tier prices navifation property
+        /// </remarks>
+        /// </summary>
+        public virtual bool HasTierPrices { get; set; }
+        /// <summary>
+        /// Gets or sets a value indicating whether this product variant has discounts applied
+        /// <remarks>The same as if we run variant.AppliedDiscounts.Count > 0
+        /// We use this property for performance optimization:
+        /// if this property is set to false, then we do not need to load Applied Discounts navifation property
+        /// </remarks>
+        /// </summary>
+        public virtual bool HasDiscountsApplied { get; set; }
 
         /// <summary>
         /// Gets or sets the weight
@@ -293,7 +344,7 @@ namespace Nop.Core.Domain.Catalog
         public virtual DateTime? AvailableStartDateTimeUtc { get; set; }
 
         /// <summary>
-        /// Gets or sets the shipped end date and time
+        /// Gets or sets the available end date and time
         /// </summary>
         public virtual DateTime? AvailableEndDateTimeUtc { get; set; }
 
@@ -321,6 +372,12 @@ namespace Nop.Core.Domain.Catalog
         /// Gets or sets the date and time of instance update
         /// </summary>
         public virtual DateTime UpdatedOnUtc { get; set; }
+
+
+
+
+
+
 
         /// <summary>
         /// Gets the full product name

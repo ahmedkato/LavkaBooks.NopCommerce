@@ -9,14 +9,14 @@ using Nop.Services.Configuration;
 using Nop.Services.Directory;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
+using Nop.Services.Security;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
 
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class CurrencyController :  BaseNopController
+    public partial class CurrencyController :  BaseNopController
     {
         #region Fields
 
@@ -26,6 +26,8 @@ namespace Nop.Admin.Controllers
         private readonly IDateTimeHelper _dateTimeHelper;
         private readonly ILocalizationService _localizationService;
         private readonly IPermissionService _permissionService;
+        private readonly ILocalizedEntityService _localizedEntityService;
+        private readonly ILanguageService _languageService;
 
         #endregion
 
@@ -34,7 +36,8 @@ namespace Nop.Admin.Controllers
         public CurrencyController(ICurrencyService currencyService, 
             CurrencySettings currencySettings, ISettingService settingService,
             IDateTimeHelper dateTimeHelper, ILocalizationService localizationService,
-            IPermissionService permissionService)
+            IPermissionService permissionService,
+            ILocalizedEntityService localizedEntityService, ILanguageService languageService)
         {
             this._currencyService = currencyService;
             this._currencySettings = currencySettings;
@@ -42,8 +45,27 @@ namespace Nop.Admin.Controllers
             this._dateTimeHelper = dateTimeHelper;
             this._localizationService = localizationService;
             this._permissionService = permissionService;
+            this._localizedEntityService = localizedEntityService;
+            this._languageService = languageService;
         }
         
+        #endregion
+
+        #region Utilities
+
+        [NonAction]
+        protected void UpdateLocales(Currency currency, CurrencyModel model)
+        {
+            foreach (var localized in model.Locales)
+            {
+                _localizedEntityService.SaveLocalizedValue(currency,
+                                                               x => x.Name,
+                                                               localized.Name,
+                                                               localized.LanguageId);
+            }
+        }
+
+
         #endregion
 
         #region Methods
@@ -130,11 +152,16 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCurrencies))
                 return AccessDeniedView();
 
-            var currencies = _currencyService.GetAllCurrencies(true);
+            var currenciesModel = _currencyService.GetAllCurrencies(true).Select(x => x.ToModel()).ToList();
+            foreach (var currency in currenciesModel)
+                currency.IsPrimaryExchangeRateCurrency = currency.Id == _currencySettings.PrimaryExchangeRateCurrencyId ? true : false;
+            foreach (var currency in currenciesModel)
+                currency.IsPrimaryStoreCurrency = currency.Id == _currencySettings.PrimaryStoreCurrencyId ? true : false;
+            
             var gridModel = new GridModel<CurrencyModel>
             {
-                Data = currencies.Select(x => x.ToModel()),
-                Total = currencies.Count()
+                Data = currenciesModel,
+                Total = currenciesModel.Count
             };
             return new JsonResult
             {
@@ -172,13 +199,15 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var model = new CurrencyModel();
+            //locales
+            AddLocales(_languageService, model.Locales);
             //default values
             model.Published = true;
             model.Rate = 1;
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Create(CurrencyModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCurrencies))
@@ -190,6 +219,8 @@ namespace Nop.Admin.Controllers
                 currency.CreatedOnUtc = DateTime.UtcNow;
                 currency.UpdatedOnUtc = DateTime.UtcNow;
                 _currencyService.InsertCurrency(currency);
+                //locales
+                UpdateLocales(currency, model);
 
                 SuccessNotification(_localizationService.GetResource("Admin.Configuration.Currencies.Added"));
                 return continueEditing ? RedirectToAction("Edit", new { id = currency.Id }) : RedirectToAction("List");
@@ -205,14 +236,21 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var currency = _currencyService.GetCurrencyById(id);
-            if (currency == null) 
-                throw new ArgumentException("No currency found with the specified id", "id");
+            if (currency == null)
+                //No currency found with the specified id
+                return RedirectToAction("List");
+
             var model = currency.ToModel();
             model.CreatedOn = _dateTimeHelper.ConvertToUserTime(currency.CreatedOnUtc, DateTimeKind.Utc);
+            //locales
+            AddLocales(_languageService, model.Locales, (locale, languageId) =>
+            {
+                locale.Name = currency.GetLocalized(x => x.Name, languageId, false, false);
+            });
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Edit(CurrencyModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCurrencies))
@@ -220,13 +258,16 @@ namespace Nop.Admin.Controllers
 
             var currency = _currencyService.GetCurrencyById(model.Id);
             if (currency == null)
-                throw new ArgumentException("No currency found with the specified id");
+                //No currency found with the specified id
+                return RedirectToAction("List");
 
             if (ModelState.IsValid)
             {
                 currency = model.ToEntity(currency);
                 currency.UpdatedOnUtc = DateTime.UtcNow;
                 _currencyService.UpdateCurrency(currency);
+                //locales
+                UpdateLocales(currency, model);
 
                 SuccessNotification(_localizationService.GetResource("Admin.Configuration.Currencies.Updated"));
                 return continueEditing ? RedirectToAction("Edit", new { id = currency.Id }) : RedirectToAction("List");
@@ -237,23 +278,24 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
         
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCurrencies))
                 return AccessDeniedView();
 
             var currency = _currencyService.GetCurrencyById(id);
             if (currency == null)
-                throw new ArgumentException("No currency found with the specified id", "id");
+                //No currency found with the specified id
+                return RedirectToAction("List");
             
             try
             {
                 if (currency.Id == _currencySettings.PrimaryStoreCurrencyId)
-                    throw new NopException("The primary store currency can't be deleted.");
+                    throw new NopException(_localizationService.GetResource("Admin.Configuration.Currencies.CantDeletePrimary"));
 
                 if (currency.Id == _currencySettings.PrimaryExchangeRateCurrencyId)
-                    throw new NopException("The primary exchange rate currency can't be deleted.");
+                    throw new NopException(_localizationService.GetResource("Admin.Configuration.Currencies.CantDeleteExchange"));
 
                 _currencyService.DeleteCurrency(currency);
 

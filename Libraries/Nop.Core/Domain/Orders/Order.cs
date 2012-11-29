@@ -22,6 +22,7 @@ namespace Nop.Core.Domain.Orders
         private ICollection<GiftCardUsageHistory> _giftCardUsageHistory;
         private ICollection<OrderNote> _orderNotes;
         private ICollection<OrderProductVariant> _orderProductVariant;
+        private ICollection<Shipment> _shipments;
 
         #region Utilities
 
@@ -85,7 +86,7 @@ namespace Nop.Core.Domain.Orders
         public virtual int? ShippingAddressId { get; set; }
 
         /// <summary>
-        /// Gets or sets an order status identifer
+        /// Gets or sets an order status identifier
         /// </summary>
         public virtual int OrderStatusId { get; set; }
 
@@ -310,26 +311,6 @@ namespace Nop.Core.Domain.Orders
         public virtual string ShippingRateComputationMethodSystemName { get; set; }
 
         /// <summary>
-        /// Gets or sets the shipped date and time
-        /// </summary>
-        public virtual DateTime? ShippedDateUtc { get; set; }
-
-        /// <summary>
-        /// Gets or sets the delivery date and time
-        /// </summary>
-        public virtual DateTime? DeliveryDateUtc { get; set; }
-
-        /// <summary>
-        /// Gets or sets the order weight
-        /// </summary>
-        public virtual decimal OrderWeight { get; set; }
-
-        /// <summary>
-        /// Gets or sets the tracking number of current order
-        /// </summary>
-        public virtual string TrackingNumber { get; set; }
-
-        /// <summary>
         /// Gets or sets a value indicating whether the entity has been deleted
         /// </summary>
         public virtual bool Deleted { get; set; }
@@ -403,6 +384,16 @@ namespace Nop.Core.Domain.Orders
             get { return _orderProductVariant ?? (_orderProductVariant = new List<OrderProductVariant>()); }
             protected set { _orderProductVariant = value; }
         }
+
+        /// <summary>
+        /// Gets or sets shipments
+        /// </summary>
+        public virtual ICollection<Shipment> Shipments
+        {
+            get { return _shipments ?? (_shipments = new List<Shipment>()); }
+            protected set { _shipments = value; }
+        }
+
         #endregion
 
         #region Custom properties

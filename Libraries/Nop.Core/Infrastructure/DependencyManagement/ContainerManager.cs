@@ -4,14 +4,12 @@ using System.Linq;
 using System.Web;
 using Autofac;
 using Autofac.Integration.Mvc;
-using AutofacContrib.Startable;
-using Nop.Core.Plugins;
 
 namespace Nop.Core.Infrastructure.DependencyManagement
 {
     public class ContainerManager
     {
-        private IContainer _container;
+        private readonly IContainer _container;
 
         public ContainerManager(IContainer container)
         {
@@ -43,8 +41,6 @@ namespace Nop.Core.Infrastructure.DependencyManagement
             UpdateContainer(x =>
             {
                 var serviceTypes = new List<Type> { service };
-                if (typeof(IAutoStart).IsAssignableFrom(serviceTypes[0]))
-                    serviceTypes.Add(typeof(IAutoStart));
 
                 if (service.IsGenericType)
                 {
@@ -77,9 +73,6 @@ namespace Nop.Core.Infrastructure.DependencyManagement
             UpdateContainer(x =>
             {
                 var registration = x.RegisterInstance(instance).Keyed(key, service).As(service).PerLifeStyle(lifeStyle);
-
-                if (typeof(IAutoStart).IsAssignableFrom(instance.GetType()))
-                    registration.As<IAutoStart>();
             });
         }
 
@@ -98,12 +91,9 @@ namespace Nop.Core.Infrastructure.DependencyManagement
             UpdateContainer(x =>
             {
                 var serviceTypes = new List<Type> { service };
-                if (typeof(IAutoStart).IsAssignableFrom(serviceTypes[0]))
-                    serviceTypes.Add(typeof(IAutoStart));
 
                 var temp = x.RegisterType(implementation).As(serviceTypes.ToArray()).
-                    WithParameters(
-                        properties.Select(y => new NamedParameter(y.Key, y.Value)));
+                    WithParameters(properties.Select(y => new NamedParameter(y.Key, y.Value)));
                 if (!string.IsNullOrEmpty(key))
                 {
                     temp.Keyed(key, service);
@@ -123,7 +113,6 @@ namespace Nop.Core.Infrastructure.DependencyManagement
         public object Resolve(Type type)
         {
             return Scope().Resolve(type);
-
         }
 
         public T[] ResolveAll<T>(string key = "")
@@ -165,10 +154,21 @@ namespace Nop.Core.Infrastructure.DependencyManagement
             throw new NopException("No contructor was found that had all the dependencies satisfied.");
         }
 
-        public void StartComponents()
+        public bool TryResolve(Type serviceType, out object instance)
         {
-            _container.Resolve<IStarter>().Start();
+            return Scope().TryResolve(serviceType, out instance);
         }
+
+        public bool IsRegistered(Type serviceType)
+        {
+            return Scope().IsRegistered(serviceType);
+        }
+
+        public object ResolveOptional(Type serviceType)
+        {
+            return Scope().ResolveOptional(serviceType);
+        }
+        
 
         public void UpdateContainer(Action<ContainerBuilder> action)
         {

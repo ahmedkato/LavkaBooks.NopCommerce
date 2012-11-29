@@ -23,6 +23,11 @@ namespace Nop.Services.Customers
         /// <param name="username">Username; null to load all customers</param>
         /// <param name="firstName">First name; null to load all customers</param>
         /// <param name="lastName">Last name; null to load all customers</param>
+        /// <param name="dayOfBirth">Day of birth; 0 to load all customers</param>
+        /// <param name="monthOfBirth">Month of birth; 0 to load all customers</param>
+        /// <param name="company">Company; null to load all customers</param>
+        /// <param name="phone">Phone; null to load all customers</param>
+        /// <param name="zipPostalCode">Phone; null to load all customers</param>
         /// <param name="loadOnlyWithShoppingCart">Value indicating whther to load customers only with shopping cart</param>
         /// <param name="sct">Value indicating what shopping cart type to filter; userd when 'loadOnlyWithShoppingCart' param is 'true'</param>
         /// <param name="pageIndex">Page index</param>
@@ -30,8 +35,16 @@ namespace Nop.Services.Customers
         /// <returns>Customer collection</returns>
         IPagedList<Customer> GetAllCustomers(DateTime? registrationFrom,
            DateTime? registrationTo, int[] customerRoleIds, string email, string username,
-           string firstName, string lastName,
+           string firstName, string lastName, int dayOfBirth, int monthOfBirth,
+           string company, string phone, string zipPostalCode,
            bool loadOnlyWithShoppingCart, ShoppingCartType? sct, int pageIndex, int pageSize);
+
+        /// <summary>
+        /// Gets all customers by customer format (including deleted ones)
+        /// </summary>
+        /// <param name="passwordFormat">Password format</param>
+        /// <returns>Customers</returns>
+        IList<Customer> GetAllCustomersByPasswordFormat(PasswordFormat passwordFormat);
 
         /// <summary>
         /// Gets online customers
@@ -66,6 +79,13 @@ namespace Nop.Services.Customers
         Customer GetCustomerById(int customerId);
 
         /// <summary>
+        /// Get customers by identifiers
+        /// </summary>
+        /// <param name="customerIds">Customer identifiers</param>
+        /// <returns>Customers</returns>
+        IList<Customer> GetCustomersByIds(int[] customerIds);
+
+        /// <summary>
         /// Gets a customer by GUID
         /// </summary>
         /// <param name="customerGuid">Customer GUID</param>
@@ -94,40 +114,18 @@ namespace Nop.Services.Customers
         Customer GetCustomerByUsername(string username);
 
         /// <summary>
-        /// Validate customer
+        /// Get customers by language identifier
         /// </summary>
-        /// <param name="usernameOrEmail">Username or email</param>
-        /// <param name="password">Password</param>
-        /// <returns>Result</returns>
-        bool ValidateCustomer(string usernameOrEmail, string password);
+        /// <param name="languageId">Language identifier</param>
+        /// <returns>Customers</returns>
+        IList<Customer> GetCustomersByLanguageId(int languageId);
 
         /// <summary>
-        /// Register customer
+        /// Get customers by currency identifier
         /// </summary>
-        /// <param name="request">Request</param>
-        /// <returns>Result</returns>
-        CustomerRegistrationResult RegisterCustomer(CustomerRegistrationRequest request);
-
-        /// <summary>
-        /// Change password
-        /// </summary>
-        /// <param name="request">Request</param>
-        /// <returns>Result</returns>
-        PasswordChangeResult ChangePassword(ChangePasswordRequest request);
-
-        /// <summary>
-        /// Sets a user email
-        /// </summary>
-        /// <param name="customer">Customer</param>
-        /// <param name="newEmail">New email</param>
-        void SetEmail(Customer customer, string newEmail);
-
-        /// <summary>
-        /// Sets a customer username
-        /// </summary>
-        /// <param name="customer">Customer</param>
-        /// <param name="newUsername">New Username</param>
-        void SetUsername(Customer customer, string newUsername);
+        /// <param name="currencyId">Currency identifier</param>
+        /// <returns>Customers</returns>
+        IList<Customer> GetCustomersByCurrencyId(int currencyId);
 
         /// <summary>
         /// Insert a guest customer
@@ -146,13 +144,20 @@ namespace Nop.Services.Customers
         /// </summary>
         /// <param name="customer">Customer</param>
         void UpdateCustomer(Customer customer);
-
+        
         /// <summary>
         /// Reset data required for checkout
         /// </summary>
         /// <param name="customer">Customer</param>
         /// <param name="clearCouponCodes">A value indicating whether to clear coupon code</param>
-        void ResetCheckoutData(Customer customer, bool clearCouponCodes = false);
+        /// <param name="clearCheckoutAttributes">A value indicating whether to clear selected checkout attributes</param>
+        /// <param name="clearRewardPoints">A value indicating whether to clear "Use reward points" flag</param>
+        /// <param name="clearShippingMethod">A value indicating whether to clear selected shipping method</param>
+        /// <param name="clearPaymentMethod">A value indicating whether to clear selected payment method</param>
+        void ResetCheckoutData(Customer customer,
+            bool clearCouponCodes = false, bool clearCheckoutAttributes = false,
+            bool clearRewardPoints = true, bool clearShippingMethod = true,
+            bool clearPaymentMethod = true);
 
         /// <summary>
         /// Delete guest customer records
@@ -207,45 +212,6 @@ namespace Nop.Services.Customers
         /// <param name="customerRole">Customer role</param>
         void UpdateCustomerRole(CustomerRole customerRole);
 
-        #endregion
-
-        #region Customer attributes
-
-        /// <summary>
-        /// Deletes a customer attribute
-        /// </summary>
-        /// <param name="customerAttribute">Customer attribute</param>
-        void DeleteCustomerAttribute(CustomerAttribute customerAttribute);
-
-        /// <summary>
-        /// Gets a customer attribute
-        /// </summary>
-        /// <param name="customerAttributeId">Customer attribute identifier</param>
-        /// <returns>A customer attribute</returns>
-        CustomerAttribute GetCustomerAttributeById(int customerAttributeId);
-
-        /// <summary>
-        /// Inserts a customer attribute
-        /// </summary>
-        /// <param name="customerAttribute">Customer attribute</param>
-        void InsertCustomerAttribute(CustomerAttribute customerAttribute);
-
-        /// <summary>
-        /// Updates the customer attribute
-        /// </summary>
-        /// <param name="customerAttribute">Customer attribute</param>
-        void UpdateCustomerAttribute(CustomerAttribute customerAttribute);
-
-        /// <summary>
-        /// Save customer attribute
-        /// </summary>
-        /// <typeparam name="T">Type</typeparam>
-        /// <param name="customer">Customer</param>
-        /// <param name="key">Key</param>
-        /// <param name="value">Value</param>
-        /// <returns>Customer attribute</returns>
-        CustomerAttribute SaveCustomerAttribute<T>(Customer customer,
-            string key, T value);
         #endregion
     }
 }

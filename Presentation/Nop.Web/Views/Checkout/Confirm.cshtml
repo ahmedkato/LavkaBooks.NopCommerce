@@ -1,16 +1,15 @@
 ﻿@model CheckoutConfirmModel
-@using Nop.Core.Domain.Orders
-@using Nop.Web.Models.Checkout
-@using Nop.Web.Models.Common
-@using Nop.Web.Framework.UI
+@using Nop.Core.Domain.Orders;
+@using Nop.Web.Models.Checkout;
+@using Nop.Web.Models.Common;
 @{
     Layout = "~/Views/Shared/_ColumnsOne.cshtml";
 
     //title
     Html.AddTitleParts(T("PageTitle.Checkout").Text);
 }
-<div class="checkout-page">
-    @Html.Partial("~/Views/Checkout/CheckoutProgress.cshtml", new CheckoutProgressModel() { CheckoutProgressStep = CheckoutProgressStep.Confirm }, new ViewDataDictionary())
+<div class="page checkout-page">
+    @Html.Action("CheckoutProgress", "Checkout", new { step = CheckoutProgressStep.Confirm })
     <div class="clear">
     </div>
     <div class="page-title">
@@ -18,17 +17,18 @@
     </div>
     <div class="clear">
     </div>
-    <div class="checkout-data">
-        @using (Html.BeginRouteForm("CheckoutConfirm", FormMethod.Post, new { id = "confirmorderform" }))
+    <div class="page-body checkout-data">
+        @using (Html.BeginRouteForm("CheckoutConfirm", FormMethod.Post, new { id = "confirm-order-form" }))
         {
+            @Html.Widget("checkout_confirm_top")
             
-    <script type="text/javascript">
-        $(document).ready(function () {
-            $('#confirmorderform').submit(function () {
-                $('input[type=submit]', this).attr('disabled', 'disabled');
-            });
-        });
-    </script>
+            <script type="text/javascript">
+                $(document).ready(function () {
+                    $('#confirm-order-form').submit(function () {
+                        $('input[type=submit]', this).attr('disabled', 'disabled');
+                    });
+                });
+            </script>
             
             <div class="confirm-order">
                 <div class="select-button">
@@ -38,37 +38,29 @@
                     }
                     else
                     {
-                        <input type="submit" name="nextstep" value="@T("Checkout.ConfirmButton")" id="nextstep" class="confirmordernextstepbutton" />
+                        <input type="submit" name="nextstep" value="@T("Checkout.ConfirmButton")" class="button-1 confirm-order-next-step-button" />
                     }
                 </div>
                 @if (Model.Warnings.Count > 0)
                 {
                     <div class="clear">
                     </div>
-                    <div class="error-block">
-                        <div class="message-error">
+                    <div class="message-error">
+                        <ul>
                             @for (int i = 0; i < Model.Warnings.Count; i++)
                             {
-                                @Model.Warnings[i]
-                           if (i != Model.Warnings.Count - 1)
-                           {
-                                <br />
-                           }
+                                <li>@Model.Warnings[i]</li>
                             }
-                        </div>
+                        </ul>
                     </div>
                 }
             </div>  
+            @Html.Widget("checkout_confirm_bottom")
         }
         <div class="clear">
         </div>
-        <div class="order-summary-title">
-            @T("Checkout.OrderSummary")
-        </div>
-        <div class="clear">
-        </div>
         <div class="order-summary-body">
-            @Html.Action("OrderSummary", "ShoppingCart", new { isEditable = false })
+            @Html.Action("OrderSummary", "ShoppingCart", new { prepareAndDisplayOrderReviewData = true })
         </div>
     </div>
 </div>

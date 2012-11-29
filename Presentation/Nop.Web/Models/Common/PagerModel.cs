@@ -1,9 +1,9 @@
 ﻿using Nop.Core.Infrastructure;
 using Nop.Services.Localization;
 
-namespace Nop.Web.Models
+namespace Nop.Web.Models.Common
 {
-    public class PagerModel
+    public partial class PagerModel
     {
         #region Constructors
 
@@ -412,7 +412,7 @@ namespace Nop.Web.Models
     /// Class that has a slug and page for route values. Used for Topic (posts) and 
     /// Forum (topics) pagination
     /// </summary>
-    public class RouteValues : IRouteValues
+    public partial class RouteValues : IRouteValues
     {
         public int id { get; set; }
         public string slug { get; set; }
@@ -422,7 +422,7 @@ namespace Nop.Web.Models
     /// <summary>
     /// Class that has search options for route values. Used for Search result pagination
     /// </summary>
-    public class ForumSearchRouteValues : IRouteValues
+    public partial class ForumSearchRouteValues : IRouteValues
     {
         public string searchterms { get; set; }
         public string adv { get; set; }
@@ -435,7 +435,7 @@ namespace Nop.Web.Models
     /// <summary>
     /// Class that has a slug and page for route values. Used for Private Messages pagination
     /// </summary>
-    public class PrivateMessageRouteValues : IRouteValues
+    public partial class PrivateMessageRouteValues : IRouteValues
     {
         public string tab { get; set; }
         public int page { get; set; }
@@ -444,8 +444,16 @@ namespace Nop.Web.Models
     /// <summary>
     /// Class that has only page for route value. Used for (My Account) Forum Subscriptions pagination
     /// </summary>
-    public class ForumSubscriptionsRouteValues : IRouteValues
+    public partial class ForumSubscriptionsRouteValues : IRouteValues
     {        
+        public int page { get; set; }
+    }
+
+    /// <summary>
+    /// Class that has only page for route value. Used for (My Account) Back in stock subscriptions pagination
+    /// </summary>
+    public partial class BackInStockSubscriptionsRouteValues : IRouteValues
+    {
         public int page { get; set; }
     }
 

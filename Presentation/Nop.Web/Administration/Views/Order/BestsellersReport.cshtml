@@ -1,9 +1,9 @@
 ﻿@model BestsellersReportModel
-       
-    
 @using Telerik.Web.Mvc.UI
-
-
+@{
+    //page title
+    ViewBag.Title = T("Admin.SalesReport.Bestsellers").Text;
+}
 @using (Html.BeginForm())
 {
     <div class="section-header">
@@ -49,11 +49,11 @@
         </tr>
         <tr>
             <td colspan="2">
-                <button type="submit" id="btnSearch" class="t-button">@T("Admin.SalesReport.Bestsellers.RunReport")</button>
+                <input type="button" id="btnSearch" class="t-button" value="@T("Admin.SalesReport.Bestsellers.RunReport")" />
             </td>
         </tr>
     </table>
-     <p>
+    <p>
     </p>
     <table class="adminContent">
         <tr>
@@ -71,7 +71,7 @@
                                 .ClientTemplate("<a href=\"" + @Url.Content("~/Admin/ProductVariant/Edit/") + "<#= ProductVariantId #>\">" + T("Admin.Common.View").Text + "</a>")
                                 .Width(50)
                                 .Centered()
-                                .Title("View");
+                                .Title(T("Admin.Common.View").Text);
                         })
                         .DataBinding(dataBinding => dataBinding.Ajax().Select("BestsellersReportList", "Order"))
                         .EnableCustomBinding(true))
@@ -92,16 +92,16 @@
 
         });
 
-    function onDataBinding(e) {
-        var searchModel = {
+        function onDataBinding(e) {
+            var searchModel = {
                 StartDate: $('#@Html.FieldIdFor(model => model.StartDate)').val(),
                 EndDate: $('#@Html.FieldIdFor(model => model.EndDate)').val(),
                 OrderStatusId: $('#@Html.FieldIdFor(model => model.OrderStatusId)').val(),
                 PaymentStatusId: $('#@Html.FieldIdFor(model => model.PaymentStatusId)').val()
-                };
-        e.data = searchModel;
-    }
+            };
+            e.data = searchModel;
+        }
 
-   </script>
+    </script>
     
 }

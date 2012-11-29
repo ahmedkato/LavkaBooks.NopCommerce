@@ -22,13 +22,11 @@ namespace Nop.Core.Domain.Customers
         private ICollection<ExternalAuthenticationRecord> _externalAuthenticationRecords;
         private ICollection<CustomerContent> _customerContent;
         private ICollection<CustomerRole> _customerRoles;
-        private ICollection<CustomerAttribute> _customerAttributes;
         private ICollection<ShoppingCartItem> _shoppingCartItems;
         private ICollection<Order> _orders;
         private ICollection<RewardPointsHistory> _rewardPointsHistory;
         private ICollection<ReturnRequest> _returnRequests;
         private ICollection<Address> _addresses;
-        private ICollection<ActivityLog> _activityLog;
         private ICollection<ForumTopic> _forumTopics;
         private ICollection<ForumPost> _forumPosts;
 
@@ -244,15 +242,6 @@ namespace Nop.Core.Domain.Customers
         }
 
         /// <summary>
-        /// Gets or sets customer attributes
-        /// </summary>
-        public virtual ICollection<CustomerAttribute> CustomerAttributes
-        {
-            get { return _customerAttributes ?? (_customerAttributes = new List<CustomerAttribute>()); }
-            protected set { _customerAttributes = value; }
-        }
-
-        /// <summary>
         /// Gets or sets shopping cart items
         /// </summary>
         public virtual ICollection<ShoppingCartItem> ShoppingCartItems
@@ -306,16 +295,7 @@ namespace Nop.Core.Domain.Customers
             get { return _addresses ?? (_addresses = new List<Address>()); }
             protected set { _addresses = value; }            
         }
-
-        /// <summary>
-        /// Gets the activity log
-        /// </summary>
-        public virtual ICollection<ActivityLog> ActivityLog
-        {
-            get { return _activityLog ?? (_activityLog = new List<ActivityLog>()); }
-            protected set { _activityLog = value; }            
-        }
-
+        
         /// <summary>
         /// Gets or sets the created forum topics
         /// </summary>
@@ -338,12 +318,6 @@ namespace Nop.Core.Domain.Customers
 
         #region Addresses
 
-        public virtual void AddAddress(Address address)
-        {
-            if (!this.Addresses.Contains(address))
-                this.Addresses.Add(address);
-        }
-
         public virtual void RemoveAddress(Address address)
         {
             if (this.Addresses.Contains(address))
@@ -352,32 +326,6 @@ namespace Nop.Core.Domain.Customers
                 if (this.ShippingAddress == address) this.ShippingAddress = null;
 
                 this.Addresses.Remove(address);
-            }
-        }
-
-        public virtual void SetBillingAddress(Address address)
-        {
-            if (address != null)
-            {
-                if (this.Addresses.Contains(address))
-                    this.BillingAddress = address;
-            }
-            else
-            {
-                this.BillingAddress = address;
-            }
-        }
-
-        public virtual void SetShippingAddress(Address address)
-        {
-            if (address != null)
-            {
-                if (this.Addresses.Contains(address))
-                    this.ShippingAddress = address;
-            }
-            else
-            {
-                this.ShippingAddress = address;
             }
         }
 

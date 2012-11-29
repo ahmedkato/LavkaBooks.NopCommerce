@@ -1,16 +1,15 @@
-﻿@model Nop.Web.Models.Checkout.CheckoutCompletedModel
-@using Nop.Core.Domain.Orders
-@using Nop.Web.Models.Checkout
-@using Nop.Web.Models.Common
-@using Nop.Web.Framework.UI
+﻿@model CheckoutCompletedModel
+@using Nop.Core.Domain.Orders;
+@using Nop.Web.Models.Checkout;
+@using Nop.Web.Models.Common;
 @{
     Layout = "~/Views/Shared/_ColumnsOne.cshtml";
 
     //title
     Html.AddTitleParts(T("PageTitle.Checkout").Text);
 }
-<div class="checkout-page">
-    @Html.Partial("~/Views/Checkout/CheckoutProgress.cshtml", new CheckoutProgressModel() { CheckoutProgressStep = CheckoutProgressStep.Complete }, new ViewDataDictionary())
+<div class="page checkout-page">
+    @Html.Action("CheckoutProgress", "Checkout", new { step = CheckoutProgressStep.Complete })
     <div class="clear">
     </div>
     <div class="page-title">
@@ -18,11 +17,12 @@
     </div>
     <div class="clear">
     </div>
-    <div class="checkout-data">
+    <div class="page-body checkout-data">
         <div class="order-completed">
+            @Html.Widget("checkout_completed_top")
             <div class="body">
-                <b>
-                    @T("Checkout.YourOrderHasBeenSuccessfullyProcessed")</b>
+                <strong>
+                    @T("Checkout.YourOrderHasBeenSuccessfullyProcessed")</strong>
                 <p>
                     @T("Checkout.OrderNumber"): @Model.OrderId
                 </p>
@@ -33,8 +33,9 @@
             <div class="clear">
             </div>
             <div class="select-button">
-                <input type="submit" name="nextstep" value="@T("Checkout.Continue")" id="nextstep" class="orderprocessedcontinuebutton" onclick="setLocation('@Url.Action("index", "home")')" />
+                <input type="button" value="@T("Checkout.Continue")" class="button-2 order-completed-continue-button" onclick="setLocation('@Url.RouteUrl("HomePage")')" />
             </div>
+            @Html.Widget("checkout_completed_bottom")
         </div>
     </div>
 </div>

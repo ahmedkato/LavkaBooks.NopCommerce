@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Nop.Core;
 using Nop.Core.Caching;
 using Nop.Core.Data;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Discounts;
-using Nop.Core.Events;
 using Nop.Core.Plugins;
 using Nop.Services.Customers;
+using Nop.Services.Events;
 
 namespace Nop.Services.Discounts
 {
@@ -41,8 +42,9 @@ namespace Nop.Services.Discounts
         /// <param name="cacheManager">Cache manager</param>
         /// <param name="discountRepository">Discount repository</param>
         /// <param name="discountRequirementRepository">Discount requirement repository</param>
+        /// <param name="discountUsageHistoryRepository">Discount usage history repository</param>
         /// <param name="pluginFinder">Plugin finder</param>
-        /// <param name="eventPublisher"></param>
+        /// <param name="eventPublisher">Event published</param>
         public DiscountService(ICacheManager cacheManager,
             IRepository<Discount> discountRepository,
             IRepository<DiscountRequirement> discountRequirementRepository,
@@ -50,12 +52,12 @@ namespace Nop.Services.Discounts
             IPluginFinder pluginFinder,
             IEventPublisher eventPublisher)
         {
-            _cacheManager = cacheManager;
-            _discountRepository = discountRepository;
-            _discountRequirementRepository = discountRequirementRepository;
-            _discountUsageHistoryRepository = discountUsageHistoryRepository;
-            _pluginFinder = pluginFinder;
-            _eventPublisher = eventPublisher;
+            this._cacheManager = cacheManager;
+            this._discountRepository = discountRepository;
+            this._discountRequirementRepository = discountRequirementRepository;
+            this._discountUsageHistoryRepository = discountUsageHistoryRepository;
+            this._pluginFinder = pluginFinder;
+            this._eventPublisher = eventPublisher;
         }
 
         #endregion
@@ -81,19 +83,16 @@ namespace Nop.Services.Discounts
                     }
                 case DiscountLimitationType.NTimesOnly:
                     {
-                        var usageHistory = discount.DiscountUsageHistory;
-                        return usageHistory.Count < discount.LimitationTimes;
+                        var totalDuh = GetAllDiscountUsageHistory(discount.Id, null, 0, 1).TotalCount;
+                        return totalDuh < discount.LimitationTimes;
                     }
                 case DiscountLimitationType.NTimesPerCustomer:
                     {
                         if (customer != null && !customer.IsGuest())
                         {
                             //registered customer
-                            var usageHistory = discount.DiscountUsageHistory
-                                .Where(duh => duh.Order != null
-                                    //&& !duh.Order.Deleted 
-                                    && duh.Order.CustomerId == customer.Id).ToList();
-                            return usageHistory.Count < discount.LimitationTimes;
+                            var totalDuh = GetAllDiscountUsageHistory(discount.Id, customer.Id, 0, 1).TotalCount;
+                            return totalDuh < discount.LimitationTimes;
                         }
                         else
                         {
@@ -259,6 +258,24 @@ namespace Nop.Services.Discounts
         }
 
         /// <summary>
+        /// Get discount by coupon code
+        /// </summary>
+        /// <param name="couponCode">CouponCode</param>
+        /// <param name="showHidden">A value indicating whether to show hidden records</param>
+        /// <returns>Discount</returns>
+        public virtual Discount GetDiscountByCouponCode(string couponCode, bool showHidden = false)
+        {
+            if (String.IsNullOrWhiteSpace(couponCode))
+                return null;
+
+            var discounts = GetAllDiscounts(null, showHidden);
+            var discount = discounts.
+                Where(d => !String.IsNullOrEmpty(d.CouponCode) && d.CouponCode.Equals(couponCode, StringComparison.InvariantCultureIgnoreCase))
+                .FirstOrDefault();
+            return discount;
+        }
+
+        /// <summary>
         /// Check discount requirements
         /// </summary>
         /// <param name="discount">Discount</param>
@@ -269,15 +286,30 @@ namespace Nop.Services.Discounts
             if (discount == null)
                 throw new ArgumentNullException("discount");
 
+            var couponCodeToValidate = "";
+            if (customer != null)
+                couponCodeToValidate = customer.DiscountCouponCode;
+
+            return IsDiscountValid(discount, customer, couponCodeToValidate);
+        }
+
+        /// <summary>
+        /// Check discount requirements
+        /// </summary>
+        /// <param name="discount">Discount</param>
+        /// <param name="customer">Customer</param>
+        /// <param name="couponCodeToValidate">Coupon code to validate</param>
+        /// <returns>true - requirement is met; otherwise, false</returns>
+        public virtual bool IsDiscountValid(Discount discount, Customer customer, string couponCodeToValidate)
+        {
+            if (discount == null)
+                throw new ArgumentNullException("discount");
+
             //check coupon code
             if (discount.RequiresCouponCode)
             {
                 if (String.IsNullOrEmpty(discount.CouponCode))
                     return false;
-
-                string couponCodeToValidate = string.Empty;
-                if (customer!=null)
-                    couponCodeToValidate = customer.DiscountCouponCode;
                 if (!discount.CouponCode.Equals(couponCodeToValidate, StringComparison.InvariantCultureIgnoreCase))
                     return false;
             }
@@ -299,7 +331,7 @@ namespace Nop.Services.Discounts
 
             if (!CheckDiscountLimitations(discount, customer))
                 return false;
-            
+
             //discount requirements
             var requirements = discount.DiscountRequirements;
             foreach (var req in requirements)
@@ -309,13 +341,82 @@ namespace Nop.Services.Discounts
                     continue;
                 var request = new CheckDiscountRequirementRequest()
                 {
-                     DiscountRequirement = req,
-                     Customer = customer
+                    DiscountRequirement = req,
+                    Customer = customer
                 };
                 if (!requirementRule.CheckRequirement(request))
                     return false;
             }
             return true;
+        }
+
+        /// <summary>
+        /// Gets a discount usage history record
+        /// </summary>
+        /// <param name="discountUsageHistoryId">Discount usage history record identifier</param>
+        /// <returns>Discount usage history</returns>
+        public virtual DiscountUsageHistory GetDiscountUsageHistoryById(int discountUsageHistoryId)
+        {
+            if (discountUsageHistoryId == 0)
+                return null;
+
+            var duh = _discountUsageHistoryRepository.GetById(discountUsageHistoryId);
+            return duh;
+        }
+
+        /// <summary>
+        /// Gets all discount usage history records
+        /// </summary>
+        /// <param name="discountId">Discount identifier</param>
+        /// <param name="customerId">Customer identifier</param>
+        /// <param name="pageIndex">Page index</param>
+        /// <param name="pageSize">Page size</param>
+        /// <returns>Discount usage history records</returns>
+        public virtual IPagedList<DiscountUsageHistory> GetAllDiscountUsageHistory(int? discountId,
+            int? customerId, int pageIndex, int pageSize)
+        {
+            var query = _discountUsageHistoryRepository.Table;
+            if (discountId.HasValue && discountId.Value > 0)
+                query = query.Where(duh => duh.DiscountId == discountId.Value);
+            if (customerId.HasValue && customerId.Value > 0)
+                query = query.Where(duh => duh.Order != null && duh.Order.CustomerId == customerId.Value);
+            query = query.OrderByDescending(c => c.CreatedOnUtc);
+            return new PagedList<DiscountUsageHistory>(query, pageIndex, pageSize);
+        }
+
+        /// <summary>
+        /// Insert discount usage history record
+        /// </summary>
+        /// <param name="discountUsageHistory">Discount usage history record</param>
+        public virtual void InsertDiscountUsageHistory(DiscountUsageHistory discountUsageHistory)
+        {
+            if (discountUsageHistory == null)
+                throw new ArgumentNullException("discountUsageHistory");
+
+            _discountUsageHistoryRepository.Insert(discountUsageHistory);
+
+            _cacheManager.RemoveByPattern(DISCOUNTS_PATTERN_KEY);
+
+            //event notification
+            _eventPublisher.EntityInserted(discountUsageHistory);
+        }
+
+
+        /// <summary>
+        /// Update discount usage history record
+        /// </summary>
+        /// <param name="discountUsageHistory">Discount usage history record</param>
+        public virtual void UpdateDiscountUsageHistory(DiscountUsageHistory discountUsageHistory)
+        {
+            if (discountUsageHistory == null)
+                throw new ArgumentNullException("discountUsageHistory");
+
+            _discountUsageHistoryRepository.Update(discountUsageHistory);
+
+            _cacheManager.RemoveByPattern(DISCOUNTS_PATTERN_KEY);
+
+            //event notification
+            _eventPublisher.EntityUpdated(discountUsageHistory);
         }
 
         /// <summary>
@@ -334,6 +435,7 @@ namespace Nop.Services.Discounts
             //event notification
             _eventPublisher.EntityDeleted(discountUsageHistory);
         }
+
         #endregion
     }
 }

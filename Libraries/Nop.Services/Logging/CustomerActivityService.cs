@@ -34,11 +34,10 @@ namespace Nop.Services.Logging
         /// <summary>
         /// Ctor
         /// </summary>
-        /// <param name="cacheManager"></param>
-        /// <param name="activityLogRepository"></param>
-        /// <param name="activityLogTypeRepository"></param>
-        /// <param name="customerRepository"></param>
-        /// <param name="workContext"></param>
+        /// <param name="cacheManager">Cache manager</param>
+        /// <param name="activityLogRepository">Activity log repository</param>
+        /// <param name="activityLogTypeRepository">Activity log type repository</param>
+        /// <param name="workContext">Work context</param>
         public CustomerActivityService(ICacheManager cacheManager,
             IRepository<ActivityLog> activityLogRepository,
             IRepository<ActivityLogType> activityLogTypeRepository,
@@ -99,7 +98,7 @@ namespace Nop.Services.Logging
         /// <returns>Activity log type collection</returns>
         public virtual IList<ActivityLogType> GetAllActivityTypes()
         {
-            string key = ACTIVITYTYPE_PATTERN_KEY;
+            string key = string.Format(ACTIVITYTYPE_ALL_KEY);
             return _cacheManager.Get(key, () =>
             {
                 var query = from alt in _activityLogTypeRepository.Table
@@ -125,17 +124,6 @@ namespace Nop.Services.Logging
             {
                 return _activityLogTypeRepository.GetById(activityLogTypeId);
             });
-        }
-
-        /// <summary>
-        /// Inserts an activity log item
-        /// </summary>
-        /// <param name="systemKeyword">The system keyword</param>
-        /// <param name="comment">The activity comment</param>
-        /// <returns>Activity log item</returns>
-        public virtual ActivityLog InsertActivity(string systemKeyword, string comment)
-        {
-            return InsertActivity(systemKeyword, comment, new object[0]);
         }
 
         /// <summary>
@@ -190,14 +178,13 @@ namespace Nop.Services.Logging
         /// </summary>
         /// <param name="createdOnFrom">Log item creation from; null to load all customers</param>
         /// <param name="createdOnTo">Log item creation to; null to load all customers</param>
-        /// <param name="email">Customer Email</param>
-        /// <param name="username">Customer username</param>
+        /// <param name="customerId">Customer identifier; null to load all customers</param>
         /// <param name="activityLogTypeId">Activity log type identifier</param>
         /// <param name="pageIndex">Page index</param>
         /// <param name="pageSize">Page size</param>
         /// <returns>Activity log collection</returns>
-        public virtual PagedList<ActivityLog> GetAllActivities(DateTime? createdOnFrom,
-            DateTime? createdOnTo, string email, string username, int activityLogTypeId,
+        public virtual IPagedList<ActivityLog> GetAllActivities(DateTime? createdOnFrom,
+            DateTime? createdOnTo, int? customerId, int activityLogTypeId,
             int pageIndex, int pageSize)
         {
             var query = _activityLogRepository.Table;
@@ -207,16 +194,8 @@ namespace Nop.Services.Logging
                 query = query.Where(al => createdOnTo.Value >= al.CreatedOnUtc);
             if (activityLogTypeId > 0)
                 query = query.Where(al => activityLogTypeId == al.ActivityLogTypeId);
-            query = query.Where(al => !al.Customer.Deleted);
-            
-            if (!String.IsNullOrEmpty(email))
-            {
-                query = query.Where(c => c.Customer.Email.Contains(email));
-            };
-            if (!String.IsNullOrEmpty(username))
-            {
-                query = query.Where(c => c.Customer.Username.Contains(username));
-            };
+            if (customerId.HasValue)
+                query = query.Where(al => customerId.Value == al.CustomerId);
 
             query = query.OrderByDescending(al => al.CreatedOnUtc);
 

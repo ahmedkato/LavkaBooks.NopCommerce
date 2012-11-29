@@ -12,9 +12,16 @@ namespace Nop.Services.Configuration
         /// <summary>
         /// Gets a setting by identifier
         /// </summary>
-        /// <param name="settingId">Setting identifer</param>
+        /// <param name="settingId">Setting identifier</param>
         /// <returns>Setting</returns>
         Setting GetSettingById(int settingId);
+
+        /// <summary>
+        /// Get setting by key
+        /// </summary>
+        /// <param name="key">Key</param>
+        /// <returns>Setting object</returns>
+        Setting GetSettingByKey(string key);
 
         /// <summary>
         /// Get setting value by key
@@ -44,7 +51,7 @@ namespace Nop.Services.Configuration
         /// Gets all settings
         /// </summary>
         /// <returns>Setting collection</returns>
-        IDictionary<string, Setting> GetAllSettings();
+        IDictionary<string, KeyValuePair<int, string>> GetAllSettings();
 
         /// <summary>
         /// Save settings object
@@ -52,6 +59,12 @@ namespace Nop.Services.Configuration
         /// <typeparam name="T">Type</typeparam>
         /// <param name="settingInstance">Setting instance</param>
         void SaveSetting<T>(T settingInstance) where T : ISettings, new();
+
+        /// <summary>
+        /// Delete all settings
+        /// </summary>
+        /// <typeparam name="T">Type</typeparam>
+        void DeleteSetting<T>() where T : ISettings, new();
 
         /// <summary>
         /// Clear cache

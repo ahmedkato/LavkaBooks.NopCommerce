@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations;
 using System.Web.Mvc;
 using FluentValidation.Attributes;
 using Nop.Admin.Validators.News;
@@ -8,7 +9,7 @@ using Nop.Web.Framework.Mvc;
 namespace Nop.Admin.Models.News
 {
     [Validator(typeof(NewsItemValidator))]
-    public class NewsItemModel : BaseNopEntityModel
+    public partial class NewsItemModel : BaseNopEntityModel
     {
         [NopResourceDisplayName("Admin.ContentManagement.News.NewsItems.Fields.Language")]
         public int LanguageId { get; set; }
@@ -31,6 +32,14 @@ namespace Nop.Admin.Models.News
 
         [NopResourceDisplayName("Admin.ContentManagement.News.NewsItems.Fields.AllowComments")]
         public bool AllowComments { get; set; }
+
+        [NopResourceDisplayName("Admin.ContentManagement.News.NewsItems.Fields.StartDate")]
+        [UIHint("DateNullable")]
+        public DateTime? StartDate { get; set; }
+
+        [NopResourceDisplayName("Admin.ContentManagement.News.NewsItems.Fields.EndDate")]
+        [UIHint("DateNullable")]
+        public DateTime? EndDate { get; set; }
 
         [NopResourceDisplayName("Admin.ContentManagement.News.NewsItems.Fields.Published")]
         public bool Published { get; set; }

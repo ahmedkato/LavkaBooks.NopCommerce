@@ -1,21 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
 using System.Web.Routing;
 using Nop.Admin.Models.Payments;
 using Nop.Core.Domain.Payments;
+using Nop.Core.Plugins;
 using Nop.Services.Configuration;
 using Nop.Services.Payments;
+using Nop.Services.Security;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
 
 namespace Nop.Admin.Controllers
 {
 	[AdminAuthorize]
-    public class PaymentController : BaseNopController
+    public partial class PaymentController : BaseNopController
 	{
 		#region Fields
 
@@ -23,18 +23,21 @@ namespace Nop.Admin.Controllers
         private readonly PaymentSettings _paymentSettings;
         private readonly ISettingService _settingService;
         private readonly IPermissionService _permissionService;
+        private readonly IPluginFinder _pluginFinder;
 
 		#endregion
 
 		#region Constructors
 
         public PaymentController(IPaymentService paymentService, PaymentSettings paymentSettings,
-            ISettingService settingService, IPermissionService permissionService)
+            ISettingService settingService, IPermissionService permissionService,
+            IPluginFinder pluginFinder)
 		{
             this._paymentService = paymentService;
             this._paymentSettings = paymentSettings;
             this._settingService = settingService;
             this._permissionService = permissionService;
+            this._pluginFinder = pluginFinder;
 		}
 
 		#endregion 
@@ -94,11 +97,6 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManagePaymentMethods))
                 return AccessDeniedView();
 
-            if (!ModelState.IsValid)
-            {
-                return RedirectToAction("Methods");
-            }
-            
             var pm = _paymentService.LoadPaymentMethodBySystemName(model.SystemName);
             if (pm.IsPaymentMethodActive(_paymentSettings))
             {
@@ -118,6 +116,12 @@ namespace Nop.Admin.Controllers
                     _settingService.SaveSetting(_paymentSettings);
                 }
             }
+            var pluginDescriptor = pm.PluginDescriptor;
+            //display order
+            pluginDescriptor.DisplayOrder = model.DisplayOrder;
+            PluginFileParser.SavePluginDescriptionFile(pluginDescriptor);
+            //reset plugin cache
+            _pluginFinder.ReloadPlugins();
             
             return Methods(command);
         }
@@ -128,7 +132,9 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var pm = _paymentService.LoadPaymentMethodBySystemName(systemName);
-            if (pm == null) throw new ArgumentException("No payment method found with the specified system name", "systemName");
+            if (pm == null)
+                //No payment method found with the specified id
+                return RedirectToAction("Methods");
 
             var model = pm.ToModel();
             string actionName, controllerName;

@@ -1,4 +1,8 @@
 ﻿@model PermissionMappingModel
+@{               
+    //page title
+    ViewBag.Title = @T("Admin.Configuration.ACL").Text;
+}
 @using (Html.BeginForm())
 {
     <div class="section-header">
@@ -7,7 +11,7 @@
             @T("Admin.Configuration.ACL")
         </div>
         <div class="options">
-            <button type="submit" name="save" value="save" class="t-button">@T("Admin.Common.Save")</button>
+            <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
         </div>
     </div>
     
@@ -29,12 +33,12 @@
                         <tbody>
                             <tr class="headerstyle">
                                 <th scope="col">
-                                    <b>@T("Admin.Configuration.ACL.Permission")</b>
+                                    <strong>@T("Admin.Configuration.ACL.Permission")</strong>
                                 </th>
                                 @foreach (var cr in Model.AvailableCustomerRoles)
                                 {
                                     <th scope="col">
-                                        <b>@cr.Name</b>
+                                        <strong>@cr.Name</strong>
                                     </th>
                                 }
                             </tr>

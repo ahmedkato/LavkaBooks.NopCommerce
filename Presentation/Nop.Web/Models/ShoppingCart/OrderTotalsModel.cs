@@ -3,7 +3,7 @@ using Nop.Web.Framework.Mvc;
 
 namespace Nop.Web.Models.ShoppingCart
 {
-    public class OrderTotalsModel : BaseNopModel
+    public partial class OrderTotalsModel : BaseNopModel
     {
         public OrderTotalsModel()
         {
@@ -19,6 +19,7 @@ namespace Nop.Web.Models.ShoppingCart
 
         public string Shipping { get; set; }
         public bool RequiresShipping { get; set; }
+        public string SelectedShippingMethod { get; set; }
 
         public string PaymentMethodAdditionalFee { get; set; }
 
@@ -38,13 +39,13 @@ namespace Nop.Web.Models.ShoppingCart
 
         #region Nested classes
 
-        public class TaxRate: BaseNopModel
+        public partial class TaxRate: BaseNopModel
         {
             public string Rate { get; set; }
             public string Value { get; set; }
         }
 
-        public class GiftCard : BaseNopEntityModel
+        public partial class GiftCard : BaseNopEntityModel
         {
             public string CouponCode { get; set; }
             public string Amount { get; set; }

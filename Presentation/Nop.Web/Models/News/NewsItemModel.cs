@@ -7,11 +7,10 @@ using Nop.Web.Validators.News;
 namespace Nop.Web.Models.News
 {
     [Validator(typeof(NewsItemValidator))]
-    public class NewsItemModel : BaseNopEntityModel
+    public partial class NewsItemModel : BaseNopEntityModel
     {
         public NewsItemModel()
         {
-            Tags = new List<string>();
             Comments = new List<NewsCommentModel>();
             AddNewComment = new AddNewsCommentModel();
         }
@@ -29,8 +28,6 @@ namespace Nop.Web.Models.News
         public int NumberOfComments { get; set; }
 
         public DateTime CreatedOn { get; set; }
-
-        public IList<string> Tags { get; set; }
 
         public IList<NewsCommentModel> Comments { get; set; }
         public AddNewsCommentModel AddNewComment { get; set; }

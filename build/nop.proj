@@ -9,12 +9,12 @@
 
 	<PropertyGroup>
 		<RootFolder>$(MSBuildProjectDirectory)\..</RootFolder>
-		<Version Condition="'$(Version)' == ''">2.20</Version>
+		<Version Condition="'$(Version)' == ''">2.65</Version>
 		<DeployPrefix>nop_$(Version)</DeployPrefix>
 		<DeployFolder>$(RootFolder)\Deployable</DeployFolder>
-        <PluginsFolder>$(RootFolder)\Plugins</PluginsFolder>
-        <WebFolder>$(RootFolder)\Presentation\Nop.Web</WebFolder>
-        <WebPluginsFolder>$(WebFolder)\Plugins</WebPluginsFolder>
+        	<PluginsFolder>$(RootFolder)\Plugins</PluginsFolder>
+        	<WebFolder>$(RootFolder)\Presentation\Nop.Web</WebFolder>
+        	<WebPluginsFolder>$(WebFolder)\Plugins</WebPluginsFolder>
 		<Configuration Condition="'$(Configuration)' == ''">Release</Configuration>
 		<Platform Condition="'$(Platform)' == ''">Any CPU</Platform>
 		<Platform Condition="'$(Platform)' == 'MCD'">Any CPU</Platform>
@@ -36,6 +36,7 @@
         <RemoveDir Directories="$(DeployFolder)" />
         <MakeDir Directories="$(DeployFolder)" />
         <MakeDir Directories="$(DeployFolder)\$(DeployPrefix)" />
+	<MakeDir Directories="$(DeployFolder)\$(DeployPrefix)\Plugins\bin\" />
 
         <!--Lets publish Nop.Web-->
         <MSBuild Projects="$(RootFolder)\Presentation\Nop.Web\Nop.Web.csproj"
@@ -63,12 +64,12 @@
                 DestinationFolder="$(DeployFolder)\$(DeployPrefix)\bin\" />
 
 
-        <!--Lets move the deployable-bin directory to the /bin-->
-        <CreateItem Include="$(RootFolder)\Presentation\Nop.Web\_bin_deployableAssemblies\**\*.dll">
+        <!--Lets move the deployable-bin directory to the /bin-->        
+        <!--<CreateItem Include="$(RootFolder)\Presentation\Nop.Web\_bin_deployableAssemblies\**\*.dll">
             <Output TaskParameter="Include" ItemName="deployableAssemblies" />
         </CreateItem>
         <Copy SourceFiles="@(deployableAssemblies)"
-                DestinationFolder="$(DeployFolder)\$(DeployPrefix)\bin\%(RecursiveDir)" />
+                DestinationFolder="$(DeployFolder)\$(DeployPrefix)\bin\%(RecursiveDir)" />-->
 
         <!--Lets delete the bin in Nop.Admin-->
         <RemoveDir Directories="$(DeployFolder)\$(DeployPrefix)\Administration\bin\" />
@@ -86,6 +87,16 @@
         </CreateItem>
         <Copy SourceFiles="@(uploadedImages)"
                 DestinationFolder="$(DeployFolder)\$(DeployPrefix)\Content\Images\uploaded\%(RecursiveDir)"
+		SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" />
+
+
+
+        <!--Lets copy SQL Compact native binaries-->
+        <CreateItem Include="$(RootFolder)\packages\Microsoft.SqlServer.Compact.4.0.8876.1\NativeBinaries\**\*.*">
+            <Output TaskParameter="Include" ItemName="sqlServerCompact" />
+        </CreateItem>
+        <Copy SourceFiles="@(sqlServerCompact)"
+                DestinationFolder="$(DeployFolder)\$(DeployPrefix)\bin\%(RecursiveDir)"
 		SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" />
 
     </Target>

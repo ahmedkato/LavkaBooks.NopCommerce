@@ -1,68 +1,47 @@
-﻿using System;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
 using System.Web.Routing;
 using Nop.Admin.Models.Cms;
-using Nop.Core;
 using Nop.Core.Domain.Cms;
+using Nop.Core.Plugins;
 using Nop.Services.Cms;
-using Nop.Services.Localization;
-using Nop.Services.Logging;
+using Nop.Services.Configuration;
 using Nop.Services.Security;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
+using Telerik.Web.Mvc;
 
 namespace Nop.Admin.Controllers
 {
 	[AdminAuthorize]
-    public class WidgetController : BaseNopController
+    public partial class WidgetController : BaseNopController
 	{
 		#region Fields
 
         private readonly IWidgetService _widgetService;
-        private readonly ILocalizationService _localizationService;
-        private readonly IWorkContext _workContext;
         private readonly IPermissionService _permissionService;
-        private readonly ICustomerActivityService _customerActivityService;
+        private readonly ISettingService _settingService;
+        private readonly WidgetSettings _widgetSettings;
+	    private readonly IPluginFinder _pluginFinder;
 
 	    #endregion
 
 		#region Constructors
 
         public WidgetController(IWidgetService widgetService,
-            ILocalizationService localizationService, IWorkContext workContext,
-            IPermissionService permissionService, ICustomerActivityService customerActivityService)
+            IPermissionService permissionService, ISettingService settingService,
+            WidgetSettings widgetSettings, IPluginFinder pluginFinder)
 		{
             this._widgetService = widgetService;
-            this._localizationService = localizationService;
-            this._workContext = workContext;
             this._permissionService = permissionService;
-            this._customerActivityService = customerActivityService;
+            this._settingService = settingService;
+            this._widgetSettings = widgetSettings;
+            this._pluginFinder = pluginFinder;
 		}
 
 		#endregion 
         
-        #region Utilities
-
-        protected WidgetModel PrepareWidgetModel(Widget widget)
-        {
-            var widgetPlugin = _widgetService.LoadWidgetPluginBySystemName(widget.PluginSystemName);
-            if (widgetPlugin == null || !widgetPlugin.PluginDescriptor.Installed)
-                return null;    //don't throw an exception. Maybe, plugin widget was deleted.
-            var model = new WidgetModel()
-            {
-                Id = widget.Id,
-                WidgetZoneId = widget.WidgetZoneId,
-                WidgetZoneName = widget.WidgetZone.GetLocalizedEnum(_localizationService, _workContext),
-                PluginFriendlyName = widgetPlugin.PluginDescriptor.FriendlyName,
-                DisplayOrder = widget.DisplayOrder,
-            };
-
-            return model;
-        }
-
-        #endregion
-
         #region Methods
         
         public ActionResult Index()
@@ -72,216 +51,129 @@ namespace Nop.Admin.Controllers
 
         public ActionResult List()
         {
-            var model = new WidgetListModel();
-            //widget plugins
-            model.AvailableWidgetPlugins = _widgetService.LoadAllWidgetPlugins()
-                .Select(x => new WidgetPluginModel()
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageWidgets))
+                return AccessDeniedView();
+
+            var widgetsModel = new List<WidgetModel>();
+            var widgets = _widgetService.LoadAllWidgets();
+            foreach (var widget in widgets)
+            {
+                var tmp1 = widget.ToModel();
+                tmp1.IsActive = widget.IsWidgetActive(_widgetSettings);
+                widgetsModel.Add(tmp1);
+            }
+            var gridModel = new GridModel<WidgetModel>
+            {
+                Data = widgetsModel,
+                Total = widgetsModel.Count()
+            };
+            return View(gridModel);
+        }
+
+        [HttpPost, GridAction(EnableCustomBinding = true)]
+        public ActionResult List(GridCommand command)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageWidgets))
+                return AccessDeniedView();
+
+            var widgetsModel = new List<WidgetModel>();
+            var widgets = _widgetService.LoadAllWidgets();
+            foreach (var widget in widgets)
+            {
+                var tmp1 = widget.ToModel();
+                tmp1.IsActive = widget.IsWidgetActive(_widgetSettings);
+                widgetsModel.Add(tmp1);
+            }
+            widgetsModel = widgetsModel.ForCommand(command).ToList();
+            var gridModel = new GridModel<WidgetModel>
+            {
+                Data = widgetsModel,
+                Total = widgetsModel.Count()
+            };
+            return new JsonResult
+            {
+                Data = gridModel
+            };
+        }
+
+        [GridAction(EnableCustomBinding = true)]
+        public ActionResult WidgetUpdate(WidgetModel model, GridCommand command)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageWidgets))
+                return AccessDeniedView();
+
+            var widget = _widgetService.LoadWidgetBySystemName(model.SystemName);
+            if (widget.IsWidgetActive(_widgetSettings))
+            {
+                if (!model.IsActive)
                 {
-                    SystemName = x.PluginDescriptor.SystemName,
-                    FriendlyName = x.PluginDescriptor.FriendlyName
-                })
-                .ToList();
-            //widgets
-            foreach (var widget in _widgetService.GetAllWidgets().OrderBy(w => w.WidgetZoneId).ThenBy(w => w.DisplayOrder))
-            {
-                var widgetModel = PrepareWidgetModel(widget);
-                if (widgetModel != null)
-                    model.AvailableWidgets.Add(widgetModel);
-            }
-
-            return View(model);
-        }
-
-        //create
-        public ActionResult Create(string systemName)
-        {
-            if (!_permissionService.Authorize(StandardPermissionProvider.ManageWidgets))
-                return AccessDeniedView();
-
-            var widgetPlugin = _widgetService.LoadWidgetPluginBySystemName(systemName);
-            if (widgetPlugin == null)
-                throw new ArgumentException("No widget plugin found with the specified system name");
-            
-            var model = new EditWidgetModel();
-            model.DisplayOrder = 1; //default value
-            model.PluginFriendlyName = widgetPlugin.PluginDescriptor.FriendlyName;
-            var supportedWidgetZones = widgetPlugin.SupportedWidgetZones();
-            if (supportedWidgetZones == null || supportedWidgetZones.Count == 0)
-            {
-                model.SupportedWidgetZones = WidgetZone.HeadHtmlTag.ToSelectList();
+                    //mark as disabled
+                    _widgetSettings.ActiveWidgetSystemNames.Remove(widget.PluginDescriptor.SystemName);
+                    _settingService.SaveSetting(_widgetSettings);
+                }
             }
             else
             {
-                var zoneValues = from supportedWidgetZone in supportedWidgetZones
-                             select new { ID = Convert.ToInt32(supportedWidgetZone), Name = supportedWidgetZone.GetLocalizedEnum(_localizationService, _workContext) };
-                model.SupportedWidgetZones = new SelectList(zoneValues, "ID", "Name");
+                if (model.IsActive)
+                {
+                    //mark as active
+                    _widgetSettings.ActiveWidgetSystemNames.Add(widget.PluginDescriptor.SystemName);
+                    _settingService.SaveSetting(_widgetSettings);
+                }
             }
+            var pluginDescriptor = widget.PluginDescriptor;
+            //display order
+            pluginDescriptor.DisplayOrder = model.DisplayOrder;
+            PluginFileParser.SavePluginDescriptionFile(pluginDescriptor);
+            //reset plugin cache
+            _pluginFinder.ReloadPlugins();
 
-            string actionName, controllerName;
-            RouteValueDictionary routeValues;
-            widgetPlugin.GetConfigurationRoute(0, out actionName, out controllerName, out routeValues);
-            model.ConfigurationActionName = actionName;
-            model.ConfigurationControllerName = controllerName;
-            model.ConfigurationRouteValues = routeValues;
-            return View(model);
-        }
-
-        [HttpPost]
-        public ActionResult Create(string systemName, EditWidgetModel model)
-        {
-            if (!_permissionService.Authorize(StandardPermissionProvider.ManageWidgets))
-                return AccessDeniedView();
-
-            var widgetPlugin = _widgetService.LoadWidgetPluginBySystemName(systemName);
-            if (widgetPlugin == null)
-                throw new ArgumentException("No widget plugin found with the specified system name");
-
-
-            var widget = new Widget();
-            widget.PluginSystemName = systemName;
-            widget.DisplayOrder = model.DisplayOrder;
-            widget.WidgetZoneId = model.WidgetZoneId;
-            _widgetService.InsertWidget(widget);
-            
-            model.Id = widget.Id;
-
-            var supportedWidgetZones = widgetPlugin.SupportedWidgetZones();
-            if (supportedWidgetZones == null || supportedWidgetZones.Count == 0)
-            {
-                model.SupportedWidgetZones = WidgetZone.HeadHtmlTag.ToSelectList();
-            }
-            else
-            {
-                var zoneValues = from supportedWidgetZone in supportedWidgetZones
-                                 select new { ID = Convert.ToInt32(supportedWidgetZone), Name = supportedWidgetZone.GetLocalizedEnum(_localizationService, _workContext) };
-                model.SupportedWidgetZones = new SelectList(zoneValues, "ID", "Name");
-            }
-
-            string actionName, controllerName;
-            RouteValueDictionary routeValues;
-            widgetPlugin.GetConfigurationRoute(widget.Id, out actionName, out controllerName, out routeValues);
-            model.ConfigurationActionName = actionName;
-            model.ConfigurationControllerName = controllerName;
-            model.ConfigurationRouteValues = routeValues;
-
-            model.PluginFriendlyName = widgetPlugin.PluginDescriptor.FriendlyName;
-
-
-            ViewBag.RedirectedToList = true;
-
-            //activity log
-            _customerActivityService.InsertActivity("AddNewWidget", _localizationService.GetResource("ActivityLog.AddNewWidget"), widget.Id);
-
-            SuccessNotification(_localizationService.GetResource("Admin.ContentManagement.Widgets.Added"));
-            return View(model);
-        }
-
-        //edit
-        public ActionResult Edit(int id)
-        {
-            if (!_permissionService.Authorize(StandardPermissionProvider.ManageWidgets))
-                return AccessDeniedView();
-
-            var widget = _widgetService.GetWidgetById(id);
-            if (widget == null)
-                throw new ArgumentException("No widget found with the specified id", "id");
-
-            var widgetPlugin = _widgetService.LoadWidgetPluginBySystemName(widget.PluginSystemName);
-            if (widgetPlugin == null)
-                throw new ArgumentException("No widget plugin found with the specified system name");
-
-
-            var model = new EditWidgetModel();
-            model.Id = widget.Id;
-            model.DisplayOrder = widget.DisplayOrder;
-            model.PluginFriendlyName = widgetPlugin.PluginDescriptor.FriendlyName;
-            model.WidgetZoneId = widget.WidgetZoneId;
-            var supportedWidgetZones = widgetPlugin.SupportedWidgetZones();
-            if (supportedWidgetZones == null || supportedWidgetZones.Count == 0)
-            {
-                model.SupportedWidgetZones = WidgetZone.HeadHtmlTag.ToSelectList();
-            }
-            else
-            {
-                var zoneValues = from supportedWidgetZone in supportedWidgetZones
-                                 select new { ID = Convert.ToInt32(supportedWidgetZone), Name = supportedWidgetZone.GetLocalizedEnum(_localizationService, _workContext) };
-                model.SupportedWidgetZones = new SelectList(zoneValues, "ID", "Name");
-            }
-
-            string actionName, controllerName;
-            RouteValueDictionary routeValues;
-            widgetPlugin.GetConfigurationRoute(widget.Id, out actionName, out controllerName, out routeValues);
-            model.ConfigurationActionName = actionName;
-            model.ConfigurationControllerName = controllerName;
-            model.ConfigurationRouteValues = routeValues;
-
-            return View(model);
-        }
-
-        [HttpPost]
-        public ActionResult Edit(EditWidgetModel model)
-        {
-            if (!_permissionService.Authorize(StandardPermissionProvider.ManageWidgets))
-                return AccessDeniedView();
-
-            var widget = _widgetService.GetWidgetById(model.Id);
-            if (widget == null)
-                throw new ArgumentException("No widget found with the specified id");
-
-            var widgetPlugin = _widgetService.LoadWidgetPluginBySystemName(widget.PluginSystemName);
-            if (widgetPlugin == null)
-                throw new ArgumentException("No widget plugin found with the specified system name");
-
-            string actionName, controllerName;
-            RouteValueDictionary routeValues;
-            widgetPlugin.GetConfigurationRoute(widget.Id, out actionName, out controllerName, out routeValues);
-            model.ConfigurationActionName = actionName;
-            model.ConfigurationControllerName = controllerName;
-            model.ConfigurationRouteValues = routeValues;
-
-            var supportedWidgetZones = widgetPlugin.SupportedWidgetZones();
-            if (supportedWidgetZones == null || supportedWidgetZones.Count == 0)
-            {
-                model.SupportedWidgetZones = WidgetZone.HeadHtmlTag.ToSelectList();
-            }
-            else
-            {
-                var zoneValues = from supportedWidgetZone in supportedWidgetZones
-                                 select new { ID = Convert.ToInt32(supportedWidgetZone), Name = supportedWidgetZone.GetLocalizedEnum(_localizationService, _workContext) };
-                model.SupportedWidgetZones = new SelectList(zoneValues, "ID", "Name");
-            }
-
-            model.PluginFriendlyName = widgetPlugin.PluginDescriptor.FriendlyName;
-
-            widget.DisplayOrder = model.DisplayOrder;
-            widget.WidgetZoneId = model.WidgetZoneId;
-
-            _widgetService.UpdateWidget(widget);
-            
-            //activity log
-            _customerActivityService.InsertActivity("EditWidget", _localizationService.GetResource("ActivityLog.EditWidget"), widget.Id);
-
-            SuccessNotification(_localizationService.GetResource("Admin.ContentManagement.Widgets.Updated"));
-            return View(model);
+            return List(command);
         }
         
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        public ActionResult ConfigureWidget(string systemName)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageWidgets))
                 return AccessDeniedView();
 
-            var widget = _widgetService.GetWidgetById(id);
+            var widget = _widgetService.LoadWidgetBySystemName(systemName);
             if (widget == null)
-                throw new ArgumentException("No widget found with the specified id");
+                //No widget found with the specified id
+                return RedirectToAction("List");
 
-            _widgetService.DeleteWidget(widget);
+            var model = widget.ToModel();
+            string actionName, controllerName;
+            RouteValueDictionary routeValues;
+            widget.GetConfigurationRoute(out actionName, out controllerName, out routeValues);
+            model.ConfigurationActionName = actionName;
+            model.ConfigurationControllerName = controllerName;
+            model.ConfigurationRouteValues = routeValues;
+            return View(model);
+        }
 
-            //activity log
-            _customerActivityService.InsertActivity("DeleteWidget", _localizationService.GetResource("ActivityLog.DeleteWidget"), widget.Id);
+        [ChildActionOnly]
+        public ActionResult WidgetsByZone(string widgetZone)
+        {
+            //model
+            var model = new List<RenderWidgetModel>();
 
-            SuccessNotification(_localizationService.GetResource("Admin.ContentManagement.Widgets.Deleted"));
-            return RedirectToAction("List");
+            var widgets = _widgetService.LoadActiveWidgetsByWidgetZone(widgetZone);
+            foreach (var widget in widgets)
+            {
+                var widgetModel = new RenderWidgetModel();
+
+                string actionName;
+                string controllerName;
+                RouteValueDictionary routeValues;
+                widget.GetDisplayWidgetRoute(widgetZone, out actionName, out controllerName, out routeValues);
+                widgetModel.ActionName = actionName;
+                widgetModel.ControllerName = controllerName;
+                widgetModel.RouteValues = routeValues;
+
+                model.Add(widgetModel);
+            }
+
+            return PartialView(model);
         }
         #endregion
     }

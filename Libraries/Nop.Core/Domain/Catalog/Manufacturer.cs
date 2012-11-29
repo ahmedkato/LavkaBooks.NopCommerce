@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Nop.Core.Domain.Localization;
 
 namespace Nop.Core.Domain.Catalog
@@ -9,8 +8,6 @@ namespace Nop.Core.Domain.Catalog
     /// </summary>
     public partial class Manufacturer : BaseEntity, ILocalizedEntity
     {
-        private ICollection<ProductManufacturer> _productManufacturers;
-
         /// <summary>
         /// Gets or sets the name
         /// </summary>
@@ -57,6 +54,16 @@ namespace Nop.Core.Domain.Catalog
         public virtual int PageSize { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether customers can select the page size
+        /// </summary>
+        public virtual bool AllowCustomersToSelectPageSize { get; set; }
+
+        /// <summary>
+        /// Gets or sets the available customer selectable page size options
+        /// </summary>
+        public virtual string PageSizeOptions { get; set; }
+
+        /// <summary>
         /// Gets or sets the available price ranges
         /// </summary>
         public virtual string PriceRanges { get; set; }
@@ -85,14 +92,5 @@ namespace Nop.Core.Domain.Catalog
         /// Gets or sets the date and time of instance update
         /// </summary>
         public virtual DateTime UpdatedOnUtc { get; set; }
-        
-        /// <summary>
-        /// Gets or sets the product manufacturers
-        /// </summary>
-        public virtual ICollection<ProductManufacturer> ProductManufacturers
-        {
-            get { return _productManufacturers ?? (_productManufacturers = new List<ProductManufacturer>()); }
-            protected set { _productManufacturers = value; }
-        }
     }
 }

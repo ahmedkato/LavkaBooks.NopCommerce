@@ -25,11 +25,20 @@ namespace Nop.Services.Catalog
         /// <summary>
         /// Gets all categories
         /// </summary>
+        /// <param name="categoryName">Category name</param>
+        /// <param name="showHidden">A value indicating whether to show hidden records</param>
+        /// <returns>Categories</returns>
+        IList<Category> GetAllCategories(string categoryName, bool showHidden = false);
+
+        /// <summary>
+        /// Gets all categories
+        /// </summary>
+        /// <param name="categoryName">Category name</param>
         /// <param name="pageIndex">Page index</param>
         /// <param name="pageSize">Page size</param>
         /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Categories</returns>
-        IPagedList<Category> GetAllCategories(int pageIndex, int pageSize, bool showHidden = false);
+        IPagedList<Category> GetAllCategories(string categoryName, int pageIndex, int pageSize, bool showHidden = false);
 
         /// <summary>
         /// Gets all categories filtered by parent category identifier
@@ -66,6 +75,12 @@ namespace Nop.Services.Catalog
         void UpdateCategory(Category category);
 
         /// <summary>
+        /// Update HasDiscountsApplied property (used for performance optimization)
+        /// </summary>
+        /// <param name="category">Category</param>
+        void UpdateHasDiscountsApplied(Category category);
+
+        /// <summary>
         /// Deletes a product category mapping
         /// </summary>
         /// <param name="productCategory">Product category</param>
@@ -75,9 +90,12 @@ namespace Nop.Services.Catalog
         /// Gets product category mapping collection
         /// </summary>
         /// <param name="categoryId">Category identifier</param>
+        /// <param name="pageIndex">Page index</param>
+        /// <param name="pageSize">Page size</param>
         /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Product a category mapping collection</returns>
-        IList<ProductCategory> GetProductCategoriesByCategoryId(int categoryId, bool showHidden = false);
+        IPagedList<ProductCategory> GetProductCategoriesByCategoryId(int categoryId,
+            int pageIndex, int pageSize, bool showHidden = false);
 
         /// <summary>
         /// Gets a product category mapping collection
@@ -88,7 +106,7 @@ namespace Nop.Services.Catalog
         IList<ProductCategory> GetProductCategoriesByProductId(int productId, bool showHidden = false);
 
         /// <summary>
-        /// Get a total number of featured products by category identifer
+        /// Get a total number of featured products by category identifier
         /// </summary>
         /// <param name="categoryId">Category identifier</param>
         /// <returns>Number of featured products</returns>

@@ -5,7 +5,7 @@ using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Models.Logging
 {
-    public class LogModel : BaseNopEntityModel
+    public partial class LogModel : BaseNopEntityModel
     {
         [NopResourceDisplayName("Admin.System.Log.Fields.LogLevel")]
         public string LogLevel { get; set; }
@@ -25,8 +25,7 @@ namespace Nop.Admin.Models.Logging
         [NopResourceDisplayName("Admin.System.Log.Fields.Customer")]
         public int? CustomerId { get; set; }
         [NopResourceDisplayName("Admin.System.Log.Fields.Customer")]
-        [AllowHtml]
-        public string CustomerName { get; set; }
+        public string CustomerEmail { get; set; }
 
         [NopResourceDisplayName("Admin.System.Log.Fields.PageURL")]
         [AllowHtml]

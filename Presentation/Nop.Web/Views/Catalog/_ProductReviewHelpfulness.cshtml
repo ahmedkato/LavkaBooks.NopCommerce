@@ -1,4 +1,5 @@
-﻿@model Nop.Web.Models.Catalog.ProductReviewHelpfulnessModel
+﻿@model ProductReviewHelpfulnessModel
+@using Nop.Web.Models.Catalog;
 <div class="product-review-helpfulness">
     @T("Reviews.Helpfulness.WasHelpful?")
     <span id="vote-yes-@(Model.ProductReviewId)" class="vote">@T("Common.Yes")</span>&nbsp;<span id="vote-no-@(Model.ProductReviewId)" class="vote">@T("Common.No")</span>
@@ -18,10 +19,10 @@
 
         function setProductReviewHelpfulness@(Model.ProductReviewId)(wasHelpful){
                 $.ajax({
-                    cache:false,
+                    cache: false,
                     type: "POST",
-                    url: "@(Url.Action("SetProductReviewHelpfulness", "Catalog"))",
-                    data: "productReviewId=" + @(Model.ProductReviewId) + "&washelpful=" + wasHelpful,
+                    url: "@(Url.RouteUrl("SetProductReviewHelpfulness"))",
+                    data: { "productReviewId": @(Model.ProductReviewId), "washelpful": wasHelpful },
                     success: function (data) {
                          $("#helpfulness-vote-yes-@(Model.ProductReviewId)").html(data.TotalYes);
                          $("#helpfulness-vote-no-@(Model.ProductReviewId)").html(data.TotalNo);
@@ -30,7 +31,7 @@
                          $('#helpfulness-vote-result-@(Model.ProductReviewId)').fadeIn("slow").delay(1000).fadeOut("slow");
                     },
                     error:function (xhr, ajaxOptions, thrownError){
-                        alert('Failed to vote. Please refresh the page and try one more time.')
+                        alert('Failed to vote. Please refresh the page and try one more time.');
                     }  
                 });
         }

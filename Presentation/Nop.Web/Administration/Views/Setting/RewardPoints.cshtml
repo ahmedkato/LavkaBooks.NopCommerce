@@ -1,8 +1,10 @@
 ﻿@model RewardPointsSettingsModel
-
-
 @using Telerik.Web.Mvc.UI;
 @using Nop.Core.Domain.Orders;
+@{
+    //page title
+    ViewBag.Title = @T("Admin.Configuration.Settings.RewardPoints").Text;
+}
 @using (Html.BeginForm())
 {
     <div class="section-header">
@@ -11,7 +13,7 @@
             @T("Admin.Configuration.Settings.RewardPoints")
         </div>
         <div class="options">
-            <button type="submit" name="save" value="save" class="t-button">@T("Admin.Common.Save")</button>
+            <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
         </div>
     </div>
 @Html.ValidationSummary(false)

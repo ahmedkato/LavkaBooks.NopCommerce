@@ -1,22 +1,17 @@
-﻿using System.Collections.Generic;
-using Nop.Core.Domain.Forums;
+﻿using System;
+using System.Collections.Generic;
 
 namespace Nop.Web.Models.Boards
 {
-    public class BoardsIndexModel
+    public partial class BoardsIndexModel
     {
-        public BoardsIndexModel(IEnumerable<ForumGroup> forumGroup, ActiveDiscussionsModel activeDiscusssionsModel)
+        public BoardsIndexModel()
         {
-            ForumGroup = forumGroup;
-            ActiveDiscussionsModel = activeDiscusssionsModel;
+            this.ForumGroups = new List<ForumGroupModel>();
         }
 
-        public ActiveDiscussionsModel ActiveDiscussionsModel { get; set; }
-
-        public IEnumerable<ForumGroup> ForumGroup { get; private set; }
-
-        public bool AllowViewingProfiles { get; set; }
-
-        public bool RelativeDateTimeFormattingEnabled { get; set; }
+        public DateTime CurrentTime { get; set; }
+        
+        public IList<ForumGroupModel> ForumGroups { get; set; }
     }
 }

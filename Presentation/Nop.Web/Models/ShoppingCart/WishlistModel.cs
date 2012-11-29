@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Web.Mvc;
 using Nop.Web.Framework.Mvc;
 using Nop.Web.Models.Media;
 
 namespace Nop.Web.Models.ShoppingCart
 {
-    public class WishlistModel : BaseNopModel
+    public partial class WishlistModel : BaseNopModel
     {
         public WishlistModel()
         {
@@ -24,17 +25,20 @@ namespace Nop.Web.Models.ShoppingCart
 
         public bool IsEditable { get; set; }
 
+        public bool DisplayAddToCart { get; set; }
+
         public IList<ShoppingCartItemModel> Items { get; set; }
 
         public IList<string> Warnings { get; set; }
         
 		#region Nested Classes
 
-        public class ShoppingCartItemModel : BaseNopEntityModel
+        public partial class ShoppingCartItemModel : BaseNopEntityModel
         {
             public ShoppingCartItemModel()
             {
                 Picture = new PictureModel();
+                AllowedQuantities = new List<SelectListItem>();
                 Warnings = new List<string>();
             }
             public string Sku { get; set; }
@@ -54,6 +58,7 @@ namespace Nop.Web.Models.ShoppingCart
             public string Discount { get; set; }
 
             public int Quantity { get; set; }
+            public List<SelectListItem> AllowedQuantities { get; set; }
             
             public string AttributeInfo { get; set; }
 

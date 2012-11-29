@@ -5,6 +5,7 @@ using Nop.Core;
 using Nop.Core.Data;
 using Nop.Core.Domain;
 using Nop.Core.Infrastructure;
+using Nop.Services.Customers;
 
 namespace Nop.Web.Framework
 {
@@ -36,11 +37,20 @@ namespace Nop.Web.Framework
 
             var storeInformationSettings = EngineContext.Current.Resolve<StoreInformationSettings>();
             if (storeInformationSettings.StoreClosed &&
+                //ensure it's not the Login page
                 !(controllerName.Equals("Nop.Web.Controllers.CustomerController", StringComparison.InvariantCultureIgnoreCase) && actionName.Equals("Login", StringComparison.InvariantCultureIgnoreCase)) &&
+                //ensure it's not the Logout page
                 !(controllerName.Equals("Nop.Web.Controllers.CustomerController", StringComparison.InvariantCultureIgnoreCase) && actionName.Equals("Logout", StringComparison.InvariantCultureIgnoreCase)))
             {
-                var webHelper = EngineContext.Current.Resolve<IWebHelper>();
-                filterContext.Result = new RedirectResult(webHelper.GetStoreLocation() + "StoreClosed.htm");
+                if (storeInformationSettings.StoreClosedAllowForAdmins && EngineContext.Current.Resolve<IWorkContext>().CurrentCustomer.IsAdmin())
+                {
+                    //do nothing - allow admin access
+                }
+                else
+                {
+                    var webHelper = EngineContext.Current.Resolve<IWebHelper>();
+                    filterContext.Result = new RedirectResult(webHelper.GetStoreLocation() + "StoreClosed.htm");
+                }
             }
         }
     }

@@ -5,22 +5,21 @@ using System.IO;
 using System.Text;
 using System.Web.Routing;
 using Nop.Core;
-using Nop.Core.Domain;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Directory;
-using Nop.Core.Domain.Media;
 using Nop.Core.Html;
 using Nop.Core.Plugins;
 using Nop.Services.Catalog;
+using Nop.Services.Common;
 using Nop.Services.Configuration;
 using Nop.Services.Directory;
+using Nop.Services.Localization;
 using Nop.Services.Media;
-using Nop.Services.PromotionFeed;
 using Nop.Services.Seo;
 
 namespace Nop.Plugin.Feed.Become
 {
-    public class BecomeService : BasePlugin,  IPromotionFeed
+    public class BecomeService : BasePlugin,  IMiscPlugin
     {
         #region Fields
 
@@ -120,7 +119,7 @@ namespace Nop.Plugin.Feed.Become
         /// <returns>Generated feed</returns>
         public void GenerateFeed(Stream stream)
         {
-            using (StreamWriter writer = new StreamWriter(stream))
+            using (var writer = new StreamWriter(stream))
             {
                 writer.WriteLine("UPC;Mfr Part #;Manufacturer;Product URL;Image URL;Product Title;Product Description;Category;Price;Condition;Stock Status");
 
@@ -138,10 +137,12 @@ namespace Nop.Plugin.Feed.Become
 
                         string imageUrl = string.Empty;
                         var pictures = _pictureService.GetPicturesByProductId(p.Id, 1);
+
+                        //always use HTTP when getting image URL
                         if (pictures.Count > 0)
-                            imageUrl = _pictureService.GetPictureUrl(pictures[0], _becomeSettings.ProductPictureSize, true);
+                            imageUrl = _pictureService.GetPictureUrl(pictures[0], _becomeSettings.ProductPictureSize, useSsl: false);
                         else
-                            imageUrl = _pictureService.GetDefaultPictureUrl(_becomeSettings.ProductPictureSize, PictureType.Entity);
+                            imageUrl = _pictureService.GetDefaultPictureUrl(_becomeSettings.ProductPictureSize, useSsl: false);
 
                         string description = pv.Description;
                         var currency = GetUsedCurrency();
@@ -211,13 +212,40 @@ namespace Nop.Plugin.Feed.Become
         /// </summary>
         public override void Install()
         {
+            //settings
             var settings = new BecomeSettings()
             {
                 ProductPictureSize = 125
             };
             _settingService.SaveSetting(settings);
 
+            //locales
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Become.ClickHere", "Click here");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Become.Currency", "Currency");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Become.Currency.Hint", "Select the default currency that will be used to generate the feed.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Become.Generate", "Generate feed");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Become.ProductPictureSize", "Product thumbnail image size");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Become.ProductPictureSize.Hint", "The default size (pixels) for product thumbnail images.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Become.SuccessResult", "Become.com feed has been successfully generated. {0} to see generated feed");
+
             base.Install();
+        }
+        
+        public override void Uninstall()
+        {
+            //settings
+            _settingService.DeleteSetting<BecomeSettings>();
+
+            //locales
+            this.DeletePluginLocaleResource("Plugins.Feed.Become.ClickHere");
+            this.DeletePluginLocaleResource("Plugins.Feed.Become.Currency");
+            this.DeletePluginLocaleResource("Plugins.Feed.Become.Currency.Hint");
+            this.DeletePluginLocaleResource("Plugins.Feed.Become.Generate");
+            this.DeletePluginLocaleResource("Plugins.Feed.Become.ProductPictureSize");
+            this.DeletePluginLocaleResource("Plugins.Feed.Become.ProductPictureSize.Hint");
+            this.DeletePluginLocaleResource("Plugins.Feed.Become.SuccessResult");
+
+            base.Uninstall();
         }
 
         #endregion

@@ -2,22 +2,25 @@
 
 namespace Nop.Admin.Models.Settings
 {
-    public class CatalogSettingsModel
+    public partial class CatalogSettingsModel
     {
-        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.HidePricesForNonRegistered")]
-        public bool HidePricesForNonRegistered { get; set; }
-
         [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.ShowProductSku")]
         public bool ShowProductSku { get; set; }
 
         [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.ShowManufacturerPartNumber")]
         public bool ShowManufacturerPartNumber { get; set; }
 
+        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.ShowGtin")]
+        public bool ShowGtin { get; set; }
+
         [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.AllowProductSorting")]
         public bool AllowProductSorting { get; set; }
 
         [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.AllowProductViewModeChanging")]
         public bool AllowProductViewModeChanging { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.ShowProductsFromSubcategories")]
+        public bool ShowProductsFromSubcategories { get; set; }
 
         [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.ShowCategoryProductNumber")]
         public bool ShowCategoryProductNumber { get; set; }
@@ -70,6 +73,15 @@ namespace Nop.Admin.Models.Settings
         [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.SearchPageProductsPerPage")]
         public int SearchPageProductsPerPage { get; set; }
 
+        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.ProductSearchAutoCompleteEnabled")]
+        public bool ProductSearchAutoCompleteEnabled { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.ProductSearchAutoCompleteNumberOfProducts")]
+        public int ProductSearchAutoCompleteNumberOfProducts { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.ShowProductImagesInSearchAutoComplete")]
+        public bool ShowProductImagesInSearchAutoComplete { get; set; }
+
         [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.ProductsAlsoPurchasedEnabled")]
         public bool ProductsAlsoPurchasedEnabled { get; set; }
 
@@ -85,13 +97,25 @@ namespace Nop.Admin.Models.Settings
         [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.ProductsByTagPageSize")]
         public int ProductsByTagPageSize { get; set; }
 
-        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.IgnoreTierPrices")]
-        public bool IgnoreTierPrices { get; set; }
+        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.ProductsByTagAllowCustomersToSelectPageSize")]
+        public bool ProductsByTagAllowCustomersToSelectPageSize { get; set; }
 
+        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.ProductsByTagPageSizeOptions")]
+        public string ProductsByTagPageSizeOptions { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.IncludeShortDescriptionInCompareProducts")]
+        public bool IncludeShortDescriptionInCompareProducts { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.IncludeFullDescriptionInCompareProducts")]
+        public bool IncludeFullDescriptionInCompareProducts { get; set; }
+        
         [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.IgnoreDiscounts")]
         public bool IgnoreDiscounts { get; set; }
 
         [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.IgnoreFeaturedProducts")]
         public bool IgnoreFeaturedProducts { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.ManufacturersBlockItemsToDisplay")]
+        public int ManufacturersBlockItemsToDisplay { get; set; }
     }
 }

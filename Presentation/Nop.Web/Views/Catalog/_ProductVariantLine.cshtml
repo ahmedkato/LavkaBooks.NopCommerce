@@ -1,23 +1,22 @@
-﻿@model Nop.Web.Models.Catalog.ProductModel.ProductVariantModel
+﻿@model ProductDetailsModel.ProductVariantModel
+@using Nop.Web.Models.Catalog;
 <div class="product-variant-line">
     @if (!String.IsNullOrWhiteSpace(Model.PictureModel.ImageUrl))
     {
-        <div class="picture">
-            <img style="border-width: 0px;" alt="@Model.PictureModel.AlternateText" src="@Model.PictureModel.ImageUrl"
+        <div class="variant-picture">
+            <img alt="@Model.PictureModel.AlternateText" src="@Model.PictureModel.ImageUrl"
                                     title="@Model.PictureModel.Title" />
         </div>
     }
     @if (!String.IsNullOrWhiteSpace(Model.Name))
     {
-        <div class="overview">
-            <div class="productname">
-                @Model.Name
-            </div>
+        <div class="variant-name">
+            @Model.Name
         </div>
     }
     @if (!String.IsNullOrWhiteSpace(Model.Description))
     {
-        <div class="description">
+        <div class="variant-description">
             @Html.Raw(Model.Description)
         </div>
     }
@@ -34,7 +33,12 @@
     }
     <div class="clear">
     </div>
+    <!--product SKU, manufacturer part number, stock info-->
     @Html.Partial("_ProductVariant_SKU_Man_Stock", Model)
+    <div class="clear">
+    </div>
+    <!--Back in stock subscription-->
+    @Html.Partial("_ProductVariantBackInStockSubscription", Model)
     <div class="clear">
     </div>
     @{
@@ -52,6 +56,6 @@
     @{
         var dataDictAddToCart = new ViewDataDictionary();
         dataDictAddToCart.TemplateInfo.HtmlFieldPrefix = string.Format("addtocart_{0}", Model.Id);
-        @Html.Partial("_ProductVariantAddToCart", Model.AddToCart, dataDictPrice)
+        @Html.Partial("_ProductVariantAddToCart", Model.AddToCart, dataDictAddToCart)
     }
 </div>

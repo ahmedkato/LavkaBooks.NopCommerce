@@ -1,11 +1,10 @@
 //Contributor:  Nicholas Mayne
 
 using System;
-using System.Collections.Generic;
-using System.Web;
 using Nop.Core;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Localization;
+using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Messages;
 using Nop.Services.Orders;
@@ -18,29 +17,31 @@ namespace Nop.Services.Authentication.External
 
         private readonly IAuthenticationService _authenticationService;
         private readonly IOpenAuthenticationService _openAuthenticationService;
-        private readonly ICustomerService _customerService;
+        private readonly IGenericAttributeService _genericAttributeService;
+        private readonly ICustomerRegistrationService _customerRegistrationService;
         private readonly IWorkContext _workContext;
         private readonly CustomerSettings _customerSettings;
         private readonly ExternalAuthenticationSettings _externalAuthenticationSettings;
         private readonly IShoppingCartService _shoppingCartService;
         private readonly IWorkflowMessageService _workflowMessageService;
         private readonly LocalizationSettings _localizationSettings;
-        
         #endregion
 
         #region Ctor
 
         public ExternalAuthorizer(IAuthenticationService authenticationService,
             IOpenAuthenticationService openAuthenticationService,
-            ICustomerService customerService, IWorkContext workContext,
-            CustomerSettings customerSettings,
+            IGenericAttributeService genericAttributeService,
+            ICustomerRegistrationService customerRegistrationService, 
+            IWorkContext workContext, CustomerSettings customerSettings,
             ExternalAuthenticationSettings externalAuthenticationSettings,
             IShoppingCartService shoppingCartService,
             IWorkflowMessageService workflowMessageService, LocalizationSettings localizationSettings)
         {
             this._authenticationService = authenticationService;
             this._openAuthenticationService = openAuthenticationService;
-            this._customerService = customerService;
+            this._genericAttributeService = genericAttributeService;
+            this._customerRegistrationService = customerRegistrationService;
             this._workContext = workContext;
             this._customerSettings = customerSettings;
             this._externalAuthenticationSettings = externalAuthenticationSettings;
@@ -78,11 +79,6 @@ namespace Nop.Services.Authentication.External
             return userFound != null && userLoggedIn != null;
         }
 
-        private void StoreParametersForRoundTrip(OpenAuthenticationParameters parameters)
-        {
-            HttpContext.Current.Session["nop.externalauth.parameters"] = parameters;
-        }
-
         #endregion
 
         #region Methods
@@ -107,7 +103,7 @@ namespace Nop.Services.Authentication.External
             }
             if (AccountDoesNotExistAndUserIsNotLoggedOn(userFound, userLoggedIn))
             {
-                StoreParametersForRoundTrip(parameters);
+                ExternalAuthorizerHelper.StoreParametersForRoundTrip(parameters);
 
                 if (AutoRegistrationIsEnabled())
                 {
@@ -121,9 +117,16 @@ namespace Nop.Services.Authentication.External
                     bool isApproved = _customerSettings.UserRegistrationType == UserRegistrationType.Standard;
                     var registrationRequest = new CustomerRegistrationRequest(currentCustomer, details.EmailAddress,
                         _customerSettings.UsernamesEnabled ? details.UserName : details.EmailAddress, randomPassword, PasswordFormat.Clear, isApproved);
-                    var registrationResult = _customerService.RegisterCustomer(registrationRequest);
+                    var registrationResult = _customerRegistrationService.RegisterCustomer(registrationRequest);
                     if (registrationResult.Success)
                     {
+                        //store other parameters (form fields)
+                        if (!String.IsNullOrEmpty(details.FirstName))
+                            _genericAttributeService.SaveAttribute(currentCustomer, SystemCustomerAttributeNames.FirstName, details.FirstName);
+                        if (!String.IsNullOrEmpty(details.LastName))
+                            _genericAttributeService.SaveAttribute(currentCustomer, SystemCustomerAttributeNames.LastName, details.LastName);
+                    
+
                         userFound = currentCustomer;
                         _openAuthenticationService.AssociateExternalAccountWithUser(currentCustomer, parameters);
                         ExternalAuthorizerHelper.RemoveParameters();
@@ -143,7 +146,7 @@ namespace Nop.Services.Authentication.External
                             case UserRegistrationType.EmailValidation:
                                 {
                                     //email validation message
-                                    _customerService.SaveCustomerAttribute(currentCustomer, SystemCustomerAttributeNames.AccountActivationToken, Guid.NewGuid().ToString());
+                                    _genericAttributeService.SaveAttribute(currentCustomer, SystemCustomerAttributeNames.AccountActivationToken, Guid.NewGuid().ToString());
                                     _workflowMessageService.SendCustomerEmailValidationMessage(currentCustomer, _workContext.WorkingLanguage.Id);
 
                                     //result

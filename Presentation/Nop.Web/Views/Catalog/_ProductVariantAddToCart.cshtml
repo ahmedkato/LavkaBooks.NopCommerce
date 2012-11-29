@@ -1,24 +1,39 @@
-﻿@model Nop.Web.Models.Catalog.ProductModel.ProductVariantModel.AddToCartModel
-<div class="add-info">
+﻿@model ProductDetailsModel.ProductVariantModel.AddToCartModel
+@using Nop.Web.Models.Catalog;
+@using Nop.Core.Domain.Orders;
+<div class="add-to-cart">
     @if (Model.CustomerEntersPrice)
     {
-        @Html.LabelFor(model => model.CustomerEnteredPrice)<text>:</text>
-        @Html.TextBoxFor(model => model.CustomerEnteredPrice, new { style = "Width: 60px;" })
-        <br />
-        @Model.CustomerEnteredPriceRange
-        <br />
+        <div class="customer-entered-price">
+            @Html.LabelFor(model => model.CustomerEnteredPrice, new { @class = "enter-price-label" }):
+            @*round price*@
+            @Html.TextBox("CustomerEnteredPrice", Convert.ToInt32(Math.Ceiling(Model.CustomerEnteredPrice)), new { @class = "enter-price-input" })
+            <div class="price-range">
+                @Model.CustomerEnteredPriceRange
+            </div>
+        </div>
     }
-    @if (!Model.DisableBuyButton)
+    @if (!Model.DisableBuyButton || !Model.DisableWishlistButton)
     {
-        @Html.LabelFor(model => model.EnteredQuantity)<text>:</text> 
-        @Html.TextBoxFor(model => model.EnteredQuantity, new { style = "Width: 40px;" })
+        <div>
+            @Html.LabelFor(model => model.EnteredQuantity, new { @class = "qty-label" }):
+            @if (Model.AllowedQuantities.Count > 0)
+            {
+                @Html.DropDownListFor(model => model.EnteredQuantity, Model.AllowedQuantities, new { @class = "qty-dropdown" })
+            }
+            else
+            {
+                @Html.TextBoxFor(model => model.EnteredQuantity, new { @class = "qty-input" })
+            }
+            @if (!Model.DisableBuyButton)
+            {
+                <input type="button" class="button-1 add-to-cart-button" value="@(Model.AvailableForPreOrder ? T("ShoppingCart.PreOrder") : T("ShoppingCart.AddToCart"))" onclick="AjaxCart.addproductvarianttocart('@Url.RouteUrl("AddProductVariantToCart", new { productVariantId = Model.ProductVariantId, shoppingCartTypeId = (int)ShoppingCartType.ShoppingCart })', '#product-details-form');return false;" />
+            }
+            @if (!Model.DisableWishlistButton)
+            {
+                <input type="button" class="button-2 add-to-wishlist-button" value="@T("ShoppingCart.AddToWishlist")" onclick="AjaxCart.addproductvarianttocart('@Url.RouteUrl("AddProductVariantToCart", new { productVariantId = Model.ProductVariantId, shoppingCartTypeId = (int)ShoppingCartType.Wishlist })', '#product-details-form');return false;" />
+            }
+        </div>
     }
-    @if (!Model.DisableBuyButton)
-    {
-        <input type="submit" name="addtocart-@(Model.ProductVariantId)" class="productvariantaddtocartbutton" value="@T("ShoppingCart.AddToCart")" />
-    }
-    @if (!Model.DisableWishlistButton)
-    {
-        <input type="submit" name="addtowishlist-@(Model.ProductVariantId)" class="productvariantaddtowishlistbutton" value="@T("ShoppingCart.AddToWishlist")" />
-    }
+    @Html.Widget("productdetails_add_info")
 </div>

@@ -48,19 +48,19 @@ namespace Nop.Plugin.Tax.CountryStateZip.Controllers
                 return Content("No tax categories can be loaded");
 
             var model = new TaxRateListModel();
+            //tax categories
             foreach (var tc in taxCategories)
                 model.AvailableTaxCategories.Add(new SelectListItem() { Text = tc.Name, Value = tc.Id.ToString() });
+            //countries
             var countries = _countryService.GetAllCountries(true);
             foreach (var c in countries)
                 model.AvailableCountries.Add(new SelectListItem() { Text = c.Name, Value = c.Id.ToString() });
+            //states
             model.AvailableStates.Add(new SelectListItem() { Text = "*", Value = "0" });
             var states = _stateProvinceService.GetStateProvincesByCountryId(countries.FirstOrDefault().Id);
-            if (states.Count > 0)
-            {
-                foreach (var s in states)
-                    model.AvailableStates.Add(new SelectListItem() { Text = s.Name, Value = s.Id.ToString() });
-            }
-
+            foreach (var s in states)
+                model.AvailableStates.Add(new SelectListItem() { Text = s.Name, Value = s.Id.ToString() });
+            //tax rates
             model.TaxRates = _taxRateService.GetAllTaxRates()
                 .Select(x =>
                 {
@@ -127,13 +127,8 @@ namespace Nop.Plugin.Tax.CountryStateZip.Controllers
         [GridAction(EnableCustomBinding = true)]
         public ActionResult RateUpdate(TaxRateModel model, GridCommand command)
         {
-            if (!ModelState.IsValid)
-            {
-                return new JsonResult { Data = "error" };
-            }
-
             var taxRate = _taxRateService.GetTaxRateById(model.Id);
-            taxRate.Zip = model.Zip;
+            taxRate.Zip = model.Zip == "*" ? null : model.Zip;
             taxRate.Percentage = model.Percentage;
             _taxRateService.UpdateTaxRate(taxRate);
 
@@ -144,20 +139,15 @@ namespace Nop.Plugin.Tax.CountryStateZip.Controllers
         public ActionResult RateDelete(int id, GridCommand command)
         {
             var taxRate = _taxRateService.GetTaxRateById(id);
-            _taxRateService.DeleteTaxRate(taxRate);
+            if (taxRate != null)
+                _taxRateService.DeleteTaxRate(taxRate);
 
             return RatesList(command);
         }
 
-        [HttpPost, ActionName("Configure")]
-        [FormValueRequired("addtaxrate")]
+        [HttpPost]
         public ActionResult AddTaxRate(TaxRateListModel model)
         {
-            if (!ModelState.IsValid)
-            {
-                return Configure();
-            }
-
             var taxRate = new TaxRate()
             {
                 TaxCategoryId = model.AddTaxCategoryId,
@@ -168,7 +158,7 @@ namespace Nop.Plugin.Tax.CountryStateZip.Controllers
             };
             _taxRateService.InsertTaxRate(taxRate);
 
-            return Configure();
+            return Json(new { Result = true });
         }
 
     }

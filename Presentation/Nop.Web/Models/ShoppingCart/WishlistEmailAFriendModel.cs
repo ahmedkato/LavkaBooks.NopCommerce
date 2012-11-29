@@ -7,7 +7,7 @@ using Nop.Web.Validators.ShoppingCart;
 namespace Nop.Web.Models.ShoppingCart
 {
     [Validator(typeof(WishlistEmailAFriendValidator))]
-    public class WishlistEmailAFriendModel : BaseNopModel
+    public partial class WishlistEmailAFriendModel : BaseNopModel
     {
         [AllowHtml]
         [NopResourceDisplayName("Wishlist.EmailAFriend.FriendEmail")]
@@ -23,5 +23,7 @@ namespace Nop.Web.Models.ShoppingCart
 
         public bool SuccessfullySent { get; set; }
         public string Result { get; set; }
+
+        public bool DisplayCaptcha { get; set; }
     }
 }

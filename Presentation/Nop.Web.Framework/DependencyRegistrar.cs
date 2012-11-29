@@ -16,7 +16,6 @@ using Nop.Core.Infrastructure;
 using Nop.Core.Infrastructure.DependencyManagement;
 using Nop.Core.Plugins;
 using Nop.Data;
-using Nop.Services;
 using Nop.Services.Affiliates;
 using Nop.Services.Authentication;
 using Nop.Services.Authentication.External;
@@ -28,6 +27,7 @@ using Nop.Services.Configuration;
 using Nop.Services.Customers;
 using Nop.Services.Directory;
 using Nop.Services.Discounts;
+using Nop.Services.Events;
 using Nop.Services.ExportImport;
 using Nop.Services.Forums;
 using Nop.Services.Helpers;
@@ -40,16 +40,17 @@ using Nop.Services.News;
 using Nop.Services.Orders;
 using Nop.Services.Payments;
 using Nop.Services.Polls;
-using Nop.Services.PromotionFeed;
 using Nop.Services.Security;
 using Nop.Services.Seo;
 using Nop.Services.Shipping;
+using Nop.Services.Tasks;
 using Nop.Services.Tax;
 using Nop.Services.Topics;
 using Nop.Web.Framework.EmbeddedViews;
 using Nop.Web.Framework.Mvc.Routes;
 using Nop.Web.Framework.Themes;
 using Nop.Web.Framework.UI;
+using Nop.Web.Framework.UI.Editor;
 
 namespace Nop.Web.Framework
 {
@@ -57,6 +58,31 @@ namespace Nop.Web.Framework
     {
         public virtual void Register(ContainerBuilder builder, ITypeFinder typeFinder)
         {
+            //HTTP context and other related stuff
+            builder.Register(c => 
+                //register FakeHttpContext when HttpContext is not available
+                HttpContext.Current != null ?
+                (new HttpContextWrapper(HttpContext.Current) as HttpContextBase) :
+                (new FakeHttpContext("~/") as HttpContextBase))
+                .As<HttpContextBase>()
+                .InstancePerHttpRequest();
+            builder.Register(c => c.Resolve<HttpContextBase>().Request)
+                .As<HttpRequestBase>()
+                .InstancePerHttpRequest();
+            builder.Register(c => c.Resolve<HttpContextBase>().Response)
+                .As<HttpResponseBase>()
+                .InstancePerHttpRequest();
+            builder.Register(c => c.Resolve<HttpContextBase>().Server)
+                .As<HttpServerUtilityBase>()
+                .InstancePerHttpRequest();
+            builder.Register(c => c.Resolve<HttpContextBase>().Session)
+                .As<HttpSessionStateBase>()
+                .InstancePerHttpRequest();
+
+            //web helper
+            builder.RegisterType<WebHelper>().As<IWebHelper>().InstancePerHttpRequest();
+
+            //controllers
             builder.RegisterControllers(typeFinder.GetAssemblies().ToArray());
 
             //data layer
@@ -85,26 +111,6 @@ namespace Nop.Web.Framework
 
             builder.RegisterGeneric(typeof(EfRepository<>)).As(typeof(IRepository<>)).InstancePerHttpRequest();
             
-            //register FakeHttpContext when HttpContext is not available
-            builder.Register(c => HttpContext.Current != null ? 
-                (new HttpContextWrapper(HttpContext.Current) as HttpContextBase) : 
-                (new FakeHttpContext("~/") as HttpContextBase))
-                .As<HttpContextBase>()
-                .InstancePerHttpRequest();
-            builder.Register(c => c.Resolve<HttpContextBase>().Request)
-                .As<HttpRequestBase>()
-                .InstancePerHttpRequest();
-            builder.Register(c => c.Resolve<HttpContextBase>().Response)
-                .As<HttpResponseBase>()
-                .InstancePerHttpRequest();
-            builder.Register(c => c.Resolve<HttpContextBase>().Server)
-                .As<HttpServerUtilityBase>()
-                .InstancePerHttpRequest();
-            builder.Register(c => c.Resolve<HttpContextBase>().Session)
-                .As<HttpSessionStateBase>()
-                .InstancePerHttpRequest();
-
-
             //plugins
             builder.RegisterType<PluginFinder>().As<IPluginFinder>().InstancePerHttpRequest();
 
@@ -117,6 +123,7 @@ namespace Nop.Web.Framework
             builder.RegisterType<WebWorkContext>().As<IWorkContext>().InstancePerHttpRequest();
 
             //services
+            builder.RegisterType<BackInStockSubscriptionService>().As<IBackInStockSubscriptionService>().InstancePerHttpRequest();
             builder.RegisterType<CategoryService>().As<ICategoryService>().InstancePerHttpRequest();
             builder.RegisterType<CompareProductsService>().As<ICompareProductsService>().InstancePerHttpRequest();
             builder.RegisterType<RecentlyViewedProductsService>().As<IRecentlyViewedProductsService>().InstancePerHttpRequest();
@@ -137,14 +144,22 @@ namespace Nop.Web.Framework
 
             builder.RegisterType<AffiliateService>().As<IAffiliateService>().InstancePerHttpRequest();
             builder.RegisterType<AddressService>().As<IAddressService>().InstancePerHttpRequest();
+            builder.RegisterType<GenericAttributeService>().As<IGenericAttributeService>().InstancePerHttpRequest();
+            builder.RegisterType<FulltextService>().As<IFulltextService>().InstancePerHttpRequest();
+
 
             builder.RegisterGeneric(typeof(ConfigurationProvider<>)).As(typeof(IConfigurationProvider<>));
             builder.RegisterSource(new SettingsSource());
             
             builder.RegisterType<CustomerContentService>().As<ICustomerContentService>().InstancePerHttpRequest();
             builder.RegisterType<CustomerService>().As<ICustomerService>().InstancePerHttpRequest();
+            builder.RegisterType<CustomerRegistrationService>().As<ICustomerRegistrationService>().InstancePerHttpRequest();
             builder.RegisterType<CustomerReportService>().As<ICustomerReportService>().InstancePerHttpRequest();
-            builder.RegisterType<PermissionService>().As<IPermissionService>().InstancePerHttpRequest();
+
+            //pass MemoryCacheManager to SettingService as cacheManager (cache settngs between requests)
+            builder.RegisterType<PermissionService>().As<IPermissionService>()
+                .WithParameter(ResolvedParameter.ForNamed<ICacheManager>("nop_cache_static"))
+                .InstancePerHttpRequest();
 
             builder.RegisterType<GeoCountryLookup>().As<IGeoCountryLookup>().InstancePerHttpRequest();
             builder.RegisterType<CountryService>().As<ICountryService>().InstancePerHttpRequest();
@@ -153,23 +168,21 @@ namespace Nop.Web.Framework
             builder.RegisterType<StateProvinceService>().As<IStateProvinceService>().InstancePerHttpRequest();
 
             builder.RegisterType<DiscountService>().As<IDiscountService>().InstancePerHttpRequest();
-            builder.RegisterType<PromotionFeedService>().As<IPromotionFeedService>().InstancePerHttpRequest();
-
 
 
             //pass MemoryCacheManager to SettingService as cacheManager (cache settngs between requests)
-            //builder.RegisterType<SettingService>().As<ISettingService>().InstancePerHttpRequest();
             builder.RegisterType<SettingService>().As<ISettingService>()
                 .WithParameter(ResolvedParameter.ForNamed<ICacheManager>("nop_cache_static"))
                 .InstancePerHttpRequest();
             //pass MemoryCacheManager to LocalizationService as cacheManager (cache locales between requests)
-            //builder.RegisterType<LocalizationService>().As<ILocalizationService>().InstancePerHttpRequest();
             builder.RegisterType<LocalizationService>().As<ILocalizationService>()
                 .WithParameter(ResolvedParameter.ForNamed<ICacheManager>("nop_cache_static"))
                 .InstancePerHttpRequest();
 
-
-            builder.RegisterType<LocalizedEntityService>().As<ILocalizedEntityService>().InstancePerHttpRequest();
+            //pass MemoryCacheManager to LocalizedEntityService as cacheManager (cache locales between requests)
+            builder.RegisterType<LocalizedEntityService>().As<ILocalizedEntityService>()
+                .WithParameter(ResolvedParameter.ForNamed<ICacheManager>("nop_cache_static"))
+                .InstancePerHttpRequest();
             builder.RegisterType<LanguageService>().As<ILanguageService>().InstancePerHttpRequest();
 
             builder.RegisterType<DownloadService>().As<IDownloadService>().InstancePerHttpRequest();
@@ -184,7 +197,6 @@ namespace Nop.Web.Framework
             builder.RegisterType<MessageTokenProvider>().As<IMessageTokenProvider>().InstancePerHttpRequest();
             builder.RegisterType<Tokenizer>().As<ITokenizer>().InstancePerHttpRequest();
             builder.RegisterType<EmailSender>().As<IEmailSender>().InstancePerHttpRequest();
-            builder.RegisterType<SmsService>().As<ISmsService>().InstancePerHttpRequest();
 
             builder.RegisterType<CheckoutAttributeFormatter>().As<ICheckoutAttributeFormatter>().InstancePerHttpRequest();
             builder.RegisterType<CheckoutAttributeParser>().As<ICheckoutAttributeParser>().InstancePerHttpRequest();
@@ -200,7 +212,8 @@ namespace Nop.Web.Framework
 
             builder.RegisterType<EncryptionService>().As<IEncryptionService>().InstancePerHttpRequest();
             builder.RegisterType<FormsAuthenticationService>().As<IAuthenticationService>().InstancePerHttpRequest();
-            
+
+            builder.RegisterType<ShipmentService>().As<IShipmentService>().InstancePerHttpRequest();
             builder.RegisterType<ShippingService>().As<IShippingService>().InstancePerHttpRequest();
 
             builder.RegisterType<TaxCategoryService>().As<ITaxCategoryService>().InstancePerHttpRequest();
@@ -218,30 +231,50 @@ namespace Nop.Web.Framework
             builder.RegisterType<BlogService>().As<IBlogService>().InstancePerHttpRequest();
             builder.RegisterType<WidgetService>().As<IWidgetService>().InstancePerHttpRequest();
             builder.RegisterType<TopicService>().As<ITopicService>().InstancePerHttpRequest();
-            builder.RegisterType<TopicService>().As<ITopicService>().InstancePerHttpRequest();
             builder.RegisterType<NewsService>().As<INewsService>().InstancePerHttpRequest();
 
             builder.RegisterType<DateTimeHelper>().As<IDateTimeHelper>().InstancePerHttpRequest();
             builder.RegisterType<SitemapGenerator>().As<ISitemapGenerator>().InstancePerHttpRequest();
             builder.RegisterType<PageTitleBuilder>().As<IPageTitleBuilder>().InstancePerHttpRequest();
 
+            builder.RegisterType<ScheduleTaskService>().As<IScheduleTaskService>().InstancePerHttpRequest();
 
             builder.RegisterType<TelerikLocalizationServiceFactory>().As<Telerik.Web.Mvc.Infrastructure.ILocalizationServiceFactory>().InstancePerHttpRequest();
 
             builder.RegisterType<ExportManager>().As<IExportManager>().InstancePerHttpRequest();
             builder.RegisterType<ImportManager>().As<IImportManager>().InstancePerHttpRequest();
+            builder.RegisterType<MobileDeviceHelper>().As<IMobileDeviceHelper>().InstancePerHttpRequest();
             builder.RegisterType<PdfService>().As<IPdfService>().InstancePerHttpRequest();
-            builder.RegisterType<ThemeProvider>().As<IThemeProvider>().SingleInstance();
+            builder.RegisterType<ThemeProvider>().As<IThemeProvider>().InstancePerHttpRequest();
             builder.RegisterType<ThemeContext>().As<IThemeContext>().InstancePerHttpRequest();
 
 
             builder.RegisterType<ExternalAuthorizer>().As<IExternalAuthorizer>().InstancePerHttpRequest();
-            builder.RegisterType<OpenAuthenticationProviderPermissionService>().As<IOpenAuthenticationProviderPermissionService>().InstancePerHttpRequest();
             builder.RegisterType<OpenAuthenticationService>().As<IOpenAuthenticationService>().InstancePerHttpRequest();
            
                 
             builder.RegisterType<EmbeddedViewResolver>().As<IEmbeddedViewResolver>().SingleInstance();
             builder.RegisterType<RoutePublisher>().As<IRoutePublisher>().SingleInstance();
+
+            //HTML Editor services
+            builder.RegisterType<NetAdvDirectoryService>().As<INetAdvDirectoryService>().InstancePerHttpRequest();
+            builder.RegisterType<NetAdvImageService>().As<INetAdvImageService>().InstancePerHttpRequest();
+
+            //Register event consumers
+            var consumers = typeFinder.FindClassesOfType(typeof(IConsumer<>)).ToList();
+            foreach (var consumer in consumers)
+            {
+                builder.RegisterType(consumer)
+                    .As(consumer.FindInterfaces((type, criteria) =>
+                    {
+                        var isMatch = type.IsGenericType && ((Type)criteria).IsAssignableFrom(type.GetGenericTypeDefinition());
+                        return isMatch;
+                    }, typeof(IConsumer<>)))
+                    .InstancePerHttpRequest();
+            }
+            builder.RegisterType<EventPublisher>().As<IEventPublisher>().SingleInstance();
+            builder.RegisterType<SubscriptionService>().As<ISubscriptionService>().SingleInstance();
+
         }
 
         public int Order

@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Web.Mvc;
@@ -19,6 +20,7 @@ namespace Nop.Plugin.Shipping.ByWeight.Controllers
     {
         private readonly IShippingService _shippingService;
         private readonly ICountryService _countryService;
+        private readonly IStateProvinceService _stateProvinceService;
         private readonly ShippingByWeightSettings _shippingByWeightSettings;
         private readonly IShippingByWeightService _shippingByWeightService;
         private readonly ISettingService _settingService;
@@ -29,13 +31,15 @@ namespace Nop.Plugin.Shipping.ByWeight.Controllers
         private readonly MeasureSettings _measureSettings;
 
         public ShippingByWeightController(IShippingService shippingService,
-            ICountryService countryService, ShippingByWeightSettings shippingByWeightSettings,
+            ICountryService countryService, IStateProvinceService stateProvinceService,
+            ShippingByWeightSettings shippingByWeightSettings,
             IShippingByWeightService shippingByWeightService, ISettingService settingService,
             ICurrencyService currencyService, CurrencySettings currencySettings,
             IMeasureService measureService, MeasureSettings measureSettings)
         {
             this._shippingService = shippingService;
             this._countryService = countryService;
+            this._stateProvinceService = stateProvinceService;
             this._shippingByWeightSettings = shippingByWeightSettings;
             this._shippingByWeightService = shippingByWeightService;
             this._settingService = settingService;
@@ -64,18 +68,22 @@ namespace Nop.Plugin.Shipping.ByWeight.Controllers
                 return Content("No shipping methods can be loaded");
 
             var model = new ShippingByWeightListModel();
+            //shipping methods
             foreach (var sm in shippingMethods)
                 model.AvailableShippingMethods.Add(new SelectListItem() { Text = sm.Name, Value = sm.Id.ToString() });
-            
-
+            //countries
             model.AvailableCountries.Add(new SelectListItem() { Text = "*", Value = "0" });
             var countries = _countryService.GetAllCountries(true);
             foreach (var c in countries)
                 model.AvailableCountries.Add(new SelectListItem() { Text = c.Name, Value = c.Id.ToString() });
+            //states
+            model.AvailableStates.Add(new SelectListItem() { Text = "*", Value = "0" });
+            //other settings
             model.LimitMethodsToCreated = _shippingByWeightSettings.LimitMethodsToCreated;
+            model.CalculatePerWeightUnit = _shippingByWeightSettings.CalculatePerWeightUnit;
             model.PrimaryStoreCurrencyCode = _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId).CurrencyCode;
             model.BaseWeightIn = _measureService.GetMeasureWeightById(_measureSettings.BaseWeightId).Name;
-
+            //rates
             model.Records = _shippingByWeightService.GetAll()
                 .Select(x =>
                 {
@@ -84,24 +92,22 @@ namespace Nop.Plugin.Shipping.ByWeight.Controllers
                         Id = x.Id,
                         ShippingMethodId = x.ShippingMethodId,
                         CountryId = x.CountryId,
+                        StateProvinceId = x.StateProvinceId,
+                        Zip = x.Zip,
                         From = x.From,
                         To = x.To,
                         UsePercentage = x.UsePercentage,
                         ShippingChargePercentage = x.ShippingChargePercentage,
                         ShippingChargeAmount = x.ShippingChargeAmount,
                     };
-                    var shippingMethodId = _shippingService.GetShippingMethodById(x.ShippingMethodId);
-                    m.ShippingMethodName = (shippingMethodId != null) ? shippingMethodId.Name : "Unavailable";
-                    if (x.CountryId > 0)
-                    {
-                        var c = _countryService.GetCountryById(x.CountryId);
-                        m.CountryName = (c != null) ? c.Name : "Unavailable";
-                    }
-                    else
-                    {
-                        m.CountryName = "*";
-                    }
-
+                    var shippingMethod = _shippingService.GetShippingMethodById(x.ShippingMethodId);
+                    m.ShippingMethodName = (shippingMethod != null) ? shippingMethod.Name : "Unavailable";
+                    var c = _countryService.GetCountryById(x.CountryId);
+                    m.CountryName = (c != null) ? c.Name : "*";
+                    var s = _stateProvinceService.GetStateProvinceById(x.StateProvinceId);
+                    m.StateProvinceName = (s != null) ? s.Name : "*";
+                    m.Zip = (!String.IsNullOrEmpty(x.Zip)) ? x.Zip : "*";
+                    
                     return m;
                 })
                 .ToList();
@@ -126,17 +132,13 @@ namespace Nop.Plugin.Shipping.ByWeight.Controllers
                         ShippingChargePercentage = x.ShippingChargePercentage,
                         ShippingChargeAmount = x.ShippingChargeAmount,
                     };
-                    var shippingMethodId = _shippingService.GetShippingMethodById(x.ShippingMethodId);
-                    m.ShippingMethodName = (shippingMethodId != null) ? shippingMethodId.Name : "Unavailable";
-                    if (x.CountryId > 0)
-                    {
-                        var c = _countryService.GetCountryById(x.CountryId);
-                        m.CountryName = (c != null) ? c.Name : "Unavailable";
-                    }
-                    else
-                    {
-                        m.CountryName = "*";
-                    }
+                    var shippingMethod = _shippingService.GetShippingMethodById(x.ShippingMethodId);
+                    m.ShippingMethodName = (shippingMethod != null) ? shippingMethod.Name : "Unavailable";
+                    var c = _countryService.GetCountryById(x.CountryId);
+                    m.CountryName = (c != null) ? c.Name : "*";
+                    var s = _stateProvinceService.GetStateProvinceById(x.StateProvinceId);
+                    m.StateProvinceName = (s != null) ? s.Name : "*";
+                    m.Zip = (!String.IsNullOrEmpty(x.Zip)) ? x.Zip : "*";
                     return m;
                 })
                 .ToList();
@@ -155,12 +157,8 @@ namespace Nop.Plugin.Shipping.ByWeight.Controllers
         [GridAction(EnableCustomBinding = true)]
         public ActionResult RateUpdate(ShippingByWeightModel model, GridCommand command)
         {
-            if (!ModelState.IsValid)
-            {
-                return new JsonResult { Data = "error" };
-            }
-
             var sbw = _shippingByWeightService.GetById(model.Id);
+            sbw.Zip = model.Zip == "*" ? null : model.Zip;
             sbw.From = model.From;
             sbw.To = model.To;
             sbw.UsePercentage = model.UsePercentage;
@@ -175,24 +173,21 @@ namespace Nop.Plugin.Shipping.ByWeight.Controllers
         public ActionResult RateDelete(int id, GridCommand command)
         {
             var sbw = _shippingByWeightService.GetById(id);
-            _shippingByWeightService.DeleteShippingByWeightRecord(sbw);
+            if (sbw != null)
+                _shippingByWeightService.DeleteShippingByWeightRecord(sbw);
 
             return RatesList(command);
         }
 
-        [HttpPost, ActionName("Configure")]
-        [FormValueRequired("addshippingbyweightrecord")]
-        public ActionResult AddShippingByWeightRecord(ShippingByWeightListModel model)
+        [HttpPost]
+        public ActionResult AddShippingRate(ShippingByWeightListModel model)
         {
-            if (!ModelState.IsValid)
-            {
-                return Configure();
-            }
-
             var sbw = new ShippingByWeightRecord()
             {
                 ShippingMethodId = model.AddShippingMethodId,
                 CountryId = model.AddCountryId,
+                StateProvinceId = model.AddStateProvinceId,
+                Zip = model.AddZip,
                 From = model.AddFrom,
                 To = model.AddTo,
                 UsePercentage = model.AddUsePercentage,
@@ -201,18 +196,18 @@ namespace Nop.Plugin.Shipping.ByWeight.Controllers
             };
             _shippingByWeightService.InsertShippingByWeightRecord(sbw);
 
-            return Configure();
+            return Json(new { Result = true });
         }
 
-        [HttpPost, ActionName("Configure")]
-        [FormValueRequired("savegeneralsettings")]
+        [HttpPost]
         public ActionResult SaveGeneralSettings(ShippingByWeightListModel model)
         {
             //save settings
             _shippingByWeightSettings.LimitMethodsToCreated = model.LimitMethodsToCreated;
+            _shippingByWeightSettings.CalculatePerWeightUnit = model.CalculatePerWeightUnit;
             _settingService.SaveSetting(_shippingByWeightSettings);
-            
-            return Configure();
+
+            return Json(new { Result = true });
         }
         
     }

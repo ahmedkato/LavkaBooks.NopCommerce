@@ -31,6 +31,22 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Autofac, Version=2.6.3.862, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\packages\Autofac.2.6.3.862\lib\NET40\Autofac.dll</HintPath>
+    </Reference>
+    <Reference Include="Autofac.Configuration, Version=2.6.3.862, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\packages\Autofac.2.6.3.862\lib\NET40\Autofac.Configuration.dll</HintPath>
+    </Reference>
+    <Reference Include="Autofac.Integration.Mvc, Version=2.6.3.862, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\packages\Autofac.Mvc3.2.6.3.862\lib\NET40\Autofac.Integration.Mvc.dll</HintPath>
+    </Reference>
+    <Reference Include="EPPlus, Version=3.0.0.2, Culture=neutral, PublicKeyToken=ea159fdaa78159a1, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\packages\EPPlus.3.0.0.2\lib\net20\EPPlus.dll</HintPath>
+    </Reference>
     <Reference Include="itextsharp, Version=5.1.2.0, Culture=neutral, PublicKeyToken=8354ae6d2174ddca, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\packages\nopCommerceCustom\itextsharp.dll</HintPath>
@@ -43,7 +59,7 @@
     <Reference Include="System.Web" />
     <Reference Include="System.Web.Mvc, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>C:\Program Files\Microsoft ASP.NET\ASP.NET MVC 3\Assemblies\System.Web.Mvc.dll</HintPath>
+      <HintPath>..\..\packages\aspnetmvc\System.Web.Mvc.dll</HintPath>
     </Reference>
     <Reference Include="System.Web.Services" />
     <Reference Include="System.Xml.Linq" />
@@ -62,8 +78,6 @@
     <Compile Include="Authentication\External\OpenAuthenticationService.cs" />
     <Compile Include="Authentication\External\IExternalAuthorizer.cs" />
     <Compile Include="Authentication\External\ExternalAuthorizer.cs" />
-    <Compile Include="Authentication\External\IOpenAuthenticationProviderPermissionService.cs" />
-    <Compile Include="Authentication\External\OpenAuthenticationProviderPermissionService.cs" />
     <Compile Include="Authentication\External\IExternalProviderAuthorizer.cs" />
     <Compile Include="Authentication\External\OpenAuthentificationExtentions.cs" />
     <Compile Include="Authentication\External\RegistrationDetails.cs" />
@@ -74,10 +88,13 @@
     <Compile Include="Blogs\BlogService.cs" />
     <Compile Include="Blogs\BlogExtensions.cs" />
     <Compile Include="Blogs\IBlogService.cs" />
+    <Compile Include="Caching\ClearCacheTask.cs" />
+    <Compile Include="Catalog\BackInStockSubscriptionService.cs" />
     <Compile Include="Catalog\CategoryService.cs" />
     <Compile Include="Catalog\CategoryExtensions.cs" />
     <Compile Include="Catalog\CompareProductsService.cs" />
     <Compile Include="Catalog\CategoryTemplateService.cs" />
+    <Compile Include="Catalog\IBackInStockSubscriptionService.cs" />
     <Compile Include="Catalog\IManufacturerTemplateService.cs" />
     <Compile Include="Catalog\ManufacturerTemplateService.cs" />
     <Compile Include="Catalog\ICategoryTemplateService.cs" />
@@ -101,20 +118,40 @@
     <Compile Include="Catalog\ProductAttributeFormatter.cs" />
     <Compile Include="Catalog\ProductAttributeParser.cs" />
     <Compile Include="Cms\IWidgetService.cs" />
+    <Compile Include="Cms\WidgetExtentions.cs" />
     <Compile Include="Cms\WidgetService.cs" />
     <Compile Include="Cms\IWidgetPlugin.cs" />
     <Compile Include="Common\AddressService.cs" />
     <Compile Include="Common\AddressExtentions.cs" />
+    <Compile Include="Common\IFulltextService.cs" />
+    <Compile Include="Common\IGenericAttributeService.cs" />
+    <Compile Include="Common\GenericAttributeService.cs" />
+    <Compile Include="Common\IMobileDeviceHelper.cs" />
+    <Compile Include="Common\KeepAliveTask.cs" />
+    <Compile Include="Common\GenericAttributeExtentions.cs" />
+    <Compile Include="Common\MobileDeviceHelper.cs" />
+    <Compile Include="Common\IMiscPlugin.cs" />
     <Compile Include="Common\IPdfService.cs" />
     <Compile Include="Common\PdfService.cs" />
     <Compile Include="Common\IAddressService.cs" />
+    <Compile Include="Common\FulltextService.cs" />
     <Compile Include="Configuration\ConfigurationProvider.cs" />
+    <Compile Include="Customers\ICustomerRegistrationService.cs" />
+    <Compile Include="Customers\CustomerRegistrationService.cs" />
     <Compile Include="Customers\ICustomerReportService.cs" />
     <Compile Include="Customers\CustomerReportService.cs" />
     <Compile Include="Customers\DeleteGuestsTask.cs" />
     <Compile Include="Directory\IGeoCountryLookup.cs" />
     <Compile Include="Directory\GeoCountryLookup.cs" />
+    <Compile Include="Events\EventPublisher.cs" />
+    <Compile Include="Events\EventPublisherExtensions.cs" />
+    <Compile Include="Events\IConsumer.cs" />
+    <Compile Include="Events\IEventPublisher.cs" />
+    <Compile Include="Events\ISubscriptionService.cs" />
+    <Compile Include="Events\SubscriptionService.cs" />
     <Compile Include="Forums\ForumExtensions.cs" />
+    <Compile Include="Messages\EventPublisherExtensions.cs" />
+    <Compile Include="Messages\NewsLetterSubscriptionService.cs" />
     <Compile Include="News\NewsService.cs" />
     <Compile Include="News\INewsService.cs" />
     <Compile Include="Customers\CustomerExtentions.cs" />
@@ -125,8 +162,6 @@
     <Compile Include="Discounts\DiscountService.cs" />
     <Compile Include="Discounts\IDiscountRequirementRule.cs" />
     <Compile Include="Discounts\IDiscountService.cs" />
-    <Compile Include="ExportImport\ExcelHelper.cs" />
-    <Compile Include="ExportImport\ExcelHelperReadTableMode.cs" />
     <Compile Include="ExportImport\ExportManager.cs" />
     <Compile Include="ExportImport\ImportManager.cs" />
     <Compile Include="Authentication\FormsAuthenticationService.cs" />
@@ -171,16 +206,11 @@
     <Compile Include="Messages\IMessageTemplateService.cs" />
     <Compile Include="Messages\INewsLetterSubscriptionService.cs" />
     <Compile Include="Messages\IQueuedEmailService.cs" />
-    <Compile Include="Messages\ISmsProvider.cs" />
-    <Compile Include="Messages\ISmsService.cs" />
     <Compile Include="Messages\ITokenizer.cs" />
     <Compile Include="Messages\IWorkflowMessageService.cs" />
     <Compile Include="Messages\MessageTemplateService.cs" />
-    <Compile Include="Messages\NewsLetterSubscriptionService.cs" />
-    <Compile Include="Messages\SmsExtentions.cs" />
     <Compile Include="Messages\QueuedEmailService.cs" />
     <Compile Include="Messages\QueuedMessagesSendTask.cs" />
-    <Compile Include="Messages\SmsService.cs" />
     <Compile Include="Messages\Tokenizer.cs" />
     <Compile Include="Messages\Token.cs" />
     <Compile Include="Messages\WorkflowMessageService.cs" />
@@ -188,6 +218,8 @@
     <Compile Include="Orders\CheckoutAttributeFormatter.cs" />
     <Compile Include="Orders\CheckoutAttributeParser.cs" />
     <Compile Include="Orders\CheckoutAttributeService.cs" />
+    <Compile Include="Orders\EventPublisherExtensions.cs" />
+    <Compile Include="Orders\OrderExtensions.cs" />
     <Compile Include="Orders\IOrderReportService.cs" />
     <Compile Include="Orders\OrderReportService.cs" />
     <Compile Include="Orders\IOrderProcessingService.cs" />
@@ -223,12 +255,8 @@
     <Compile Include="Payments\PaymentService.cs" />
     <Compile Include="Payments\ProcessPaymentResult.cs" />
     <Compile Include="Payments\RecurringPaymentType.cs" />
-    <Compile Include="Polls\PollExtentions.cs" />
     <Compile Include="Polls\IPollService.cs" />
     <Compile Include="Polls\PollService.cs" />
-    <Compile Include="PromotionFeed\IPromotionFeed.cs" />
-    <Compile Include="PromotionFeed\IPromotionFeedService.cs" />
-    <Compile Include="PromotionFeed\PromotionFeedService.cs" />
     <Compile Include="Properties\Settings.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
@@ -250,6 +278,8 @@
     <Compile Include="Seo\ISitemapGenerator.cs" />
     <Compile Include="Seo\SitemapGenerator.cs" />
     <Compile Include="Seo\UpdateFrequency.cs" />
+    <Compile Include="Shipping\IShipmentService.cs" />
+    <Compile Include="Shipping\ShipmentService.cs" />
     <Compile Include="Shipping\ShippingExtentions.cs" />
     <Compile Include="Shipping\IShippingService.cs" />
     <Compile Include="Shipping\GetShippingOptionRequest.cs" />
@@ -257,6 +287,15 @@
     <Compile Include="Shipping\IShippingRateComputationMethod.cs" />
     <Compile Include="Shipping\ShippingRateComputationMethodType.cs" />
     <Compile Include="Shipping\ShippingService.cs" />
+    <Compile Include="Shipping\Tracking\ShipmentStatusEvent.cs" />
+    <Compile Include="Shipping\Tracking\GeneralShipmentTracker.cs" />
+    <Compile Include="Shipping\Tracking\IShipmentTracker.cs" />
+    <Compile Include="Tasks\ScheduleTaskService.cs" />
+    <Compile Include="Tasks\IScheduleTaskService.cs" />
+    <Compile Include="Tasks\ITask.cs" />
+    <Compile Include="Tasks\Task.cs" />
+    <Compile Include="Tasks\TaskManager.cs" />
+    <Compile Include="Tasks\TaskThread.cs" />
     <Compile Include="Tax\CalculateTaxRequest.cs" />
     <Compile Include="Tax\CalculateTaxResult.cs" />
     <Compile Include="Tax\ITaxCategoryService.cs" />
@@ -310,6 +349,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -322,9 +362,6 @@
       <Generator>MSDiscoCodeGenerator</Generator>
       <LastGenOutput>Reference.cs</LastGenOutput>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <WCFMetadata Include="Service References\" />
   </ItemGroup>
   <ItemGroup>
     <WebReferenceUrl Include="http://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl">

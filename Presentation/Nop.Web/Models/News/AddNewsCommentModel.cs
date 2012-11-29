@@ -4,7 +4,7 @@ using Nop.Web.Framework.Mvc;
 
 namespace Nop.Web.Models.News
 {
-    public class AddNewsCommentModel : BaseNopEntityModel
+    public partial class AddNewsCommentModel : BaseNopModel
     {
         [NopResourceDisplayName("News.Comments.CommentTitle")]
         [AllowHtml]
@@ -14,6 +14,6 @@ namespace Nop.Web.Models.News
         [AllowHtml]
         public string CommentText { get; set; }
 
-        public string Result { get; set; }
+        public bool DisplayCaptcha { get; set; }
     }
 }

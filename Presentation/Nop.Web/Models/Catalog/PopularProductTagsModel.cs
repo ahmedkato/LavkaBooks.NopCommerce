@@ -4,25 +4,16 @@ using Nop.Web.Framework.Mvc;
 
 namespace Nop.Web.Models.Catalog
 {
-    public class PopularProductTagsModel : BaseNopModel
+    public partial class PopularProductTagsModel : BaseNopModel
     {
         public PopularProductTagsModel()
         {
             Tags = new List<ProductTagModel>();
         }
 
-        public int GetFontSize(ProductTagModel productTag)
-        {
-            double mean = 0;
-            var itemWeights = new List<double>();
-            foreach (var tag in Tags)
-                itemWeights.Add(tag.ProductCount);
-            double stdDev = StdDev(itemWeights, out mean);
+        #region Utilities
 
-            return GetFontSize(productTag.ProductCount, mean, stdDev);
-        }
-
-        protected int GetFontSize(double weight, double mean, double stdDev)
+        protected virtual int GetFontSize(double weight, double mean, double stdDev)
         {
             double factor = (weight - mean);
 
@@ -37,7 +28,7 @@ namespace Nop.Web.Models.Catalog
                 75;
         }
 
-        protected double Mean(IEnumerable<double> values)
+        protected virtual double Mean(IEnumerable<double> values)
         {
             double sum = 0;
             int count = 0;
@@ -51,7 +42,7 @@ namespace Nop.Web.Models.Catalog
             return sum / count;
         }
 
-        protected double StdDev(IEnumerable<double> values, out double mean)
+        protected virtual double StdDev(IEnumerable<double> values, out double mean)
         {
             mean = Mean(values);
             double sumOfDiffSquares = 0;
@@ -67,7 +58,29 @@ namespace Nop.Web.Models.Catalog
             return Math.Sqrt(sumOfDiffSquares / count);
         }
 
+        #endregion
+
+        #region Methods
+
+        public virtual int GetFontSize(ProductTagModel productTag)
+        {
+            double mean = 0;
+            var itemWeights = new List<double>();
+            foreach (var tag in Tags)
+                itemWeights.Add(tag.ProductCount);
+            double stdDev = StdDev(itemWeights, out mean);
+
+            return GetFontSize(productTag.ProductCount, mean, stdDev);
+        }
+
+        #endregion
+
+        #region Properties
+
+        public int TotalTags { get; set; }
 
         public IList<ProductTagModel> Tags { get; set; }
+
+        #endregion
     }
 }

@@ -10,7 +10,6 @@ namespace Nop.Core.Domain.Catalog
     /// </summary>
     public partial class Category : BaseEntity, ILocalizedEntity
     {
-        private ICollection<ProductCategory> _productCategories;
         private ICollection<Discount> _appliedDiscounts;
 
         /// <summary>
@@ -64,6 +63,16 @@ namespace Nop.Core.Domain.Catalog
         public virtual int PageSize { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether customers can select the page size
+        /// </summary>
+        public virtual bool AllowCustomersToSelectPageSize { get; set; }
+
+        /// <summary>
+        /// Gets or sets the available customer selectable page size options
+        /// </summary>
+        public virtual string PageSizeOptions { get; set; }
+
+        /// <summary>
         /// Gets or sets the available price ranges
         /// </summary>
         public virtual string PriceRanges { get; set; }
@@ -72,6 +81,15 @@ namespace Nop.Core.Domain.Catalog
         /// Gets or sets a value indicating whether to show the category on home page
         /// </summary>
         public virtual bool ShowOnHomePage { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether this category has discounts applied
+        /// <remarks>The same as if we run category.AppliedDiscounts.Count > 0
+        /// We use this property for performance optimization:
+        /// if this property is set to false, then we do not need to load Applied Discounts navifation property
+        /// </remarks>
+        /// </summary>
+        public virtual bool HasDiscountsApplied { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the entity is published
@@ -98,14 +116,6 @@ namespace Nop.Core.Domain.Catalog
         /// </summary>
         public virtual DateTime UpdatedOnUtc { get; set; }
 
-        /// <summary>
-        /// Gets or sets the collection of ProductCategory
-        /// </summary>
-        public virtual ICollection<ProductCategory> ProductCategories
-        {
-            get { return _productCategories ?? (_productCategories = new List<ProductCategory>()); }
-            protected set { _productCategories = value; }
-        }
         /// <summary>
         /// Gets or sets the collection of applied discounts
         /// </summary>

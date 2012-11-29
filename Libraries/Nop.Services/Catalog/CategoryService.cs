@@ -5,7 +5,7 @@ using Nop.Core;
 using Nop.Core.Caching;
 using Nop.Core.Data;
 using Nop.Core.Domain.Catalog;
-using Nop.Core.Events;
+using Nop.Services.Events;
 
 namespace Nop.Services.Catalog
 {
@@ -16,7 +16,8 @@ namespace Nop.Services.Catalog
     {
         #region Constants
         private const string CATEGORIES_BY_ID_KEY = "Nop.category.id-{0}";
-        private const string PRODUCTCATEGORIES_ALLBYCATEGORYID_KEY = "Nop.productcategory.allbycategoryid-{0}-{1}";
+        private const string CATEGORIES_BY_PARENT_CATEGORY_ID_KEY = "Nop.category.byparent-{0}-{1}";
+        private const string PRODUCTCATEGORIES_ALLBYCATEGORYID_KEY = "Nop.productcategory.allbycategoryid-{0}-{1}-{2}-{3}";
         private const string PRODUCTCATEGORIES_ALLBYPRODUCTID_KEY = "Nop.productcategory.allbyproductid-{0}-{1}";
         private const string PRODUCTCATEGORIES_BY_ID_KEY = "Nop.productcategory.id-{0}";
         private const string CATEGORIES_PATTERN_KEY = "Nop.category.";
@@ -81,34 +82,44 @@ namespace Nop.Services.Catalog
         /// <returns>Categories</returns>
         public virtual IList<Category> GetAllCategories(bool showHidden = false)
         {
-            var query = from c in _categoryRepository.Table
-                        orderby c.ParentCategoryId, c.DisplayOrder
-                        where (showHidden || c.Published) &&
-                        !c.Deleted
-                        select c;
-
-            //filter by access control list (public store)
-            //if (!showHidden)
-            //{
-            //    query = query.WhereAclPerObjectNotDenied(_categoryRepository);
-            //}
-            var unsortedCategories = query.ToList();
-
-            //sort categories
-            var sortedCategories = unsortedCategories.SortCategoriesForTree(0);
-            return sortedCategories;
+            return GetAllCategories(null, showHidden);
         }
 
         /// <summary>
         /// Gets all categories
         /// </summary>
+        /// <param name="categoryName">Category name</param>
+        /// <param name="showHidden">A value indicating whether to show hidden records</param>
+        /// <returns>Categories</returns>
+        public virtual IList<Category> GetAllCategories(string categoryName, bool showHidden = false)
+        {
+            var query = _categoryRepository.Table;
+            if (!showHidden)
+                query = query.Where(c => c.Published);
+            if (!String.IsNullOrWhiteSpace(categoryName))
+                query = query.Where(c => c.Name.Contains(categoryName));
+            query = query.Where(c => !c.Deleted);
+            query = query.OrderBy(c => c.ParentCategoryId).ThenBy(c => c.DisplayOrder);
+            var unsortedCategories = query.ToList();
+
+            //sort categories
+            var sortedCategories = unsortedCategories.SortCategoriesForTree();
+            return sortedCategories;
+        }
+        
+        /// <summary>
+        /// Gets all categories
+        /// </summary>
+        /// <param name="categoryName">Category name</param>
         /// <param name="pageIndex">Page index</param>
         /// <param name="pageSize">Page size</param>
         /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Categories</returns>
-        public virtual IPagedList<Category> GetAllCategories(int pageIndex, int pageSize, bool showHidden = false)
+        public virtual IPagedList<Category> GetAllCategories(string categoryName, 
+            int pageIndex, int pageSize, bool showHidden = false)
         {
-            var categories = GetAllCategories(showHidden);
+            var categories = GetAllCategories(categoryName, showHidden);
+            //filter
             return new PagedList<Category>(categories, pageIndex, pageSize);
         }
 
@@ -121,22 +132,20 @@ namespace Nop.Services.Catalog
         public IList<Category> GetAllCategoriesByParentCategoryId(int parentCategoryId,
             bool showHidden = false)
         {
-            
-            var query = from c in _categoryRepository.Table
-                        orderby c.DisplayOrder
-                        where (showHidden || c.Published) && 
-                        !c.Deleted && 
-                        c.ParentCategoryId == parentCategoryId
-                        select c;
+            string key = string.Format(CATEGORIES_BY_PARENT_CATEGORY_ID_KEY, parentCategoryId, showHidden);
+            return _cacheManager.Get(key, () =>
+            {
+                var query = _categoryRepository.Table;
+                if (!showHidden)
+                    query = query.Where(c => c.Published);
+                query = query.Where(c => c.ParentCategoryId == parentCategoryId);
+                query = query.Where(c => !c.Deleted);
+                query = query.OrderBy(c => c.DisplayOrder);
+                
+                var categories = query.ToList();
+                return categories;
+            });
 
-            //filter by access control list (public store)
-            //if (!showHidden)
-            //{
-            //    query = query.WhereAclPerObjectNotDenied(_categoryRepository);
-            //}
-
-            var categories = query.ToList();
-            return categories;
         }
         
         /// <summary>
@@ -151,12 +160,6 @@ namespace Nop.Services.Catalog
                         !c.Deleted && 
                         c.ShowOnHomePage
                         select c;
-
-            //filter by access control list (public store)
-            //if (!showHidden)
-            //{
-            //    query = query.WhereAclPerObjectNotDenied(_context);
-            //}
 
             var categories = query.ToList();
             return categories;
@@ -176,11 +179,6 @@ namespace Nop.Services.Catalog
             return _cacheManager.Get(key, () =>
             {
                 var category = _categoryRepository.GetById(categoryId);
-                //filter by access control list (public store)
-                //if (category != null && !showHidden && IsCategoryAccessDenied(category))
-                //{
-                //    category = null;
-                //}
                 return category;
             });
         }
@@ -236,6 +234,19 @@ namespace Nop.Services.Catalog
         }
         
         /// <summary>
+        /// Update HasDiscountsApplied property (used for performance optimization)
+        /// </summary>
+        /// <param name="category">Category</param>
+        public virtual void UpdateHasDiscountsApplied(Category category)
+        {
+            if (category == null)
+                throw new ArgumentNullException("category");
+
+            category.HasDiscountsApplied = category.AppliedDiscounts.Count > 0;
+            UpdateCategory(category);
+        }
+
+        /// <summary>
         /// Deletes a product category mapping
         /// </summary>
         /// <param name="productCategory">Product category</param>
@@ -258,14 +269,16 @@ namespace Nop.Services.Catalog
         /// Gets product category mapping collection
         /// </summary>
         /// <param name="categoryId">Category identifier</param>
+        /// <param name="pageIndex">Page index</param>
+        /// <param name="pageSize">Page size</param>
         /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Product a category mapping collection</returns>
-        public virtual IList<ProductCategory> GetProductCategoriesByCategoryId(int categoryId, bool showHidden = false)
+        public virtual IPagedList<ProductCategory> GetProductCategoriesByCategoryId(int categoryId, int pageIndex, int pageSize, bool showHidden = false)
         {
             if (categoryId == 0)
-                return new List<ProductCategory>();
+                return new PagedList<ProductCategory>(new List<ProductCategory>(), pageIndex, pageSize);
 
-            string key = string.Format(PRODUCTCATEGORIES_ALLBYCATEGORYID_KEY, showHidden, categoryId);
+            string key = string.Format(PRODUCTCATEGORIES_ALLBYCATEGORYID_KEY, showHidden, categoryId, pageIndex, pageSize);
             return _cacheManager.Get(key, () =>
             {
                 var query = from pc in _productCategoryRepository.Table
@@ -275,7 +288,7 @@ namespace Nop.Services.Catalog
                                   (showHidden || p.Published)
                             orderby pc.DisplayOrder
                             select pc;
-                var productCategories = query.ToList();
+                var productCategories = new PagedList<ProductCategory>(query, pageIndex, pageSize);
                 return productCategories;
             });
         }
@@ -307,7 +320,7 @@ namespace Nop.Services.Catalog
         }
 
         /// <summary>
-        /// Get a total number of featured products by category identifer
+        /// Get a total number of featured products by category identifier
         /// </summary>
         /// <param name="categoryId">Category identifier</param>
         /// <returns>Number of featured products</returns>

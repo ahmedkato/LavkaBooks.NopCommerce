@@ -35,6 +35,15 @@
         </tr>
         <tr>
             <td class="adminTitle">
+                @Html.NopLabelFor(model => model.ZoneId):
+            </td>
+            <td class="adminData">
+                @Html.DropDownListFor(model => model.ZoneId, Model.AvailableZones)
+                @Html.ValidationMessageFor(model => model.ZoneId)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
                 @Html.NopLabelFor(model => model.ButtonCode):
             </td>
             <td class="adminData">
@@ -51,6 +60,10 @@
                 @Html.ValidationMessageFor(model => model.MonitoringCode)
             </td>
         </tr>
+        <tr>
+            <td colspan="2" width="100%">
+                <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
+            </td>
+        </tr>
     </table>
-    
 }

@@ -6,9 +6,9 @@ using Nop.Core.Caching;
 using Nop.Core.Data;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Forums;
-using Nop.Core.Events;
-using Nop.Services.Configuration;
+using Nop.Services.Common;
 using Nop.Services.Customers;
+using Nop.Services.Events;
 using Nop.Services.Messages;
 
 namespace Nop.Services.Forums
@@ -37,7 +37,7 @@ namespace Nop.Services.Forums
         private readonly ForumSettings _forumSettings;
         private readonly IRepository<Customer> _customerRepository;
         private readonly ICacheManager _cacheManager;
-        private readonly ISettingService _settingService;
+        private readonly IGenericAttributeService _genericAttributeService;
         private readonly ICustomerService _customerService;
         private readonly IWorkContext _workContext;
         private readonly IWorkflowMessageService _workflowMessageService;
@@ -51,14 +51,19 @@ namespace Nop.Services.Forums
         /// Ctor
         /// </summary>
         /// <param name="cacheManager">Cache manager</param>
-        /// <param name="forumGroupRepository">ForumGroup repository</param>
+        /// <param name="forumGroupRepository">Forum group repository</param>
         /// <param name="forumRepository">Forum repository</param>
-        /// <param name="forumTopicRepository">ForumTopic repository</param>
-        /// <param name="forumPostRepository">ForumPost repository</param>
-        /// <param name="forumPrivateMessageRepository">PrivateMessage repository</param>
-        /// <param name="forumSubscriptionRepository">ForumSubscription repository</param>
+        /// <param name="forumTopicRepository">Forum topic repository</param>
+        /// <param name="forumPostRepository">Forum post repository</param>
+        /// <param name="forumPrivateMessageRepository">Private message repository</param>
+        /// <param name="forumSubscriptionRepository">Forum subscription repository</param>
+        /// <param name="forumSettings">Forum settings</param>
         /// <param name="customerRepository">Customer repository</param>
-        /// <param name="eventPublisher"></param>
+        /// <param name="genericAttributeService">Generic attribute service</param>
+        /// <param name="customerService">Customer service</param>
+        /// <param name="workContext">Work context</param>
+        /// <param name="workflowMessageService">Workflow message service</param>
+        /// <param name="eventPublisher">Event published</param>
         public ForumService(ICacheManager cacheManager,
             IRepository<ForumGroup> forumGroupRepository,
             IRepository<Forum> forumRepository,
@@ -68,9 +73,9 @@ namespace Nop.Services.Forums
             IRepository<ForumSubscription> forumSubscriptionRepository,
             ForumSettings forumSettings,
             IRepository<Customer> customerRepository,
-            ISettingService settingService,
+            IGenericAttributeService genericAttributeService,
             ICustomerService customerService,
-            IWorkContext workcContext,
+            IWorkContext workContext,
             IWorkflowMessageService workflowMessageService,
             IEventPublisher eventPublisher
             )
@@ -84,9 +89,9 @@ namespace Nop.Services.Forums
             this._forumSubscriptionRepository = forumSubscriptionRepository;
             this._forumSettings = forumSettings;
             this._customerRepository = customerRepository;
-            this._settingService = settingService;
+            this._genericAttributeService = genericAttributeService;
             this._customerService = customerService;
-            this._workContext = workcContext;
+            this._workContext = workContext;
             this._workflowMessageService = workflowMessageService;
             _eventPublisher = eventPublisher;
         }
@@ -232,7 +237,7 @@ namespace Nop.Services.Forums
                         select fp.Id;
             int numPosts = query.Count();
 
-            _customerService.SaveCustomerAttribute<int>(customer, SystemCustomerAttributeNames.ForumPostCount, numPosts);
+            _genericAttributeService.SaveAttribute(customer, SystemCustomerAttributeNames.ForumPostCount, numPosts);
         }
 
         private bool IsForumModerator(Customer customer)
@@ -294,10 +299,14 @@ namespace Nop.Services.Forums
         /// <returns>Forum groups</returns>
         public virtual IList<ForumGroup> GetAllForumGroups()
         {
-            var query = from fg in _forumGroupRepository.Table
-                        orderby fg.DisplayOrder
-                        select fg;
-            return query.ToList();
+            string key = string.Format(FORUMGROUP_ALL_KEY);
+            return _cacheManager.Get(key, () =>
+            {
+                var query = from fg in _forumGroupRepository.Table
+                            orderby fg.DisplayOrder
+                            select fg;
+                return query.ToList();
+            });
         }
 
         /// <summary>
@@ -354,17 +363,17 @@ namespace Nop.Services.Forums
             }
 
             //delete forum subscriptions (topics)
-            foreach (var topic in forum.ForumTopics)
+            var queryTopicIds = from ft in _forumTopicRepository.Table
+                           where ft.ForumId == forum.Id
+                           select ft.Id;
+            var queryFs1 = from fs in _forumSubscriptionRepository.Table
+                           where queryTopicIds.Contains(fs.TopicId)
+                           select fs;
+            foreach (var fs in queryFs1.ToList())
             {
-                var queryFs = from ft in _forumSubscriptionRepository.Table
-                              where ft.TopicId == topic.Id
-                              select ft;
-                foreach (var fs in queryFs.ToList())
-                {
-                    _forumSubscriptionRepository.Delete(fs);
-                    //event notification
-                    _eventPublisher.EntityDeleted(fs);
-                }
+                _forumSubscriptionRepository.Delete(fs);
+                //event notification
+                _eventPublisher.EntityDeleted(fs);
             }
 
             //delete forum subscriptions (forum)
@@ -415,12 +424,16 @@ namespace Nop.Services.Forums
         /// <returns>Forums</returns>
         public virtual IList<Forum> GetAllForumsByGroupId(int forumGroupId)
         {
-            var query = from f in _forumRepository.Table
-                        orderby f.DisplayOrder
-                        where f.ForumGroupId == forumGroupId
-                        select f;
-            var forums = query.ToList();
-            return forums;
+            string key = string.Format(FORUM_ALLBYFORUMGROUPID_KEY, forumGroupId);
+            return _cacheManager.Get(key, () =>
+            {
+                var query = from f in _forumRepository.Table
+                            orderby f.DisplayOrder
+                            where f.ForumGroupId == forumGroupId
+                            select f;
+                var forums = query.ToList();
+                return forums;
+            });
         }
 
         /// <summary>
@@ -555,7 +568,7 @@ namespace Nop.Services.Forums
         /// <param name="pageIndex">Page index</param>
         /// <param name="pageSize">Page size</param>
         /// <returns>Forum Topics</returns>
-        public virtual IList<ForumTopic> GetAllTopics(int forumId,
+        public virtual IPagedList<ForumTopic> GetAllTopics(int forumId,
             int customerId, string keywords, ForumSearchType searchType,
             int limitDays, int pageIndex, int pageSize)
         {
@@ -564,16 +577,20 @@ namespace Nop.Services.Forums
             {
                 limitDate = DateTime.UtcNow.AddDays(-limitDays);
             }
+            //we need to cast it to int, otherwise it won't work in SQLCE4
+            //we cannot use String.IsNullOrEmpty in query because it causes SqlCeException on SQLCE4
+            bool searchKeywords = !String.IsNullOrEmpty(keywords);
+            bool searchTopicTitles = searchType == ForumSearchType.All || searchType == ForumSearchType.TopicTitlesOnly;
+            bool searchPostText = searchType == ForumSearchType.All || searchType == ForumSearchType.PostTextOnly;
             var query1 = from ft in _forumTopicRepository.Table
                          join fp in _forumPostRepository.Table on ft.Id equals fp.TopicId
                          where
                          (forumId == 0 || ft.ForumId == forumId) &&
                          (customerId == 0 || ft.CustomerId == customerId) &&
                          (
-                             // following line causes SqlCeException on SQLCE4 (comparing parameter to IS NULL in query) -works on SQL Server
-                             // String.IsNullOrEmpty(keywords) ||
-                         ((searchType == ForumSearchType.All || searchType == ForumSearchType.TopicTitlesOnly) && ft.Subject.Contains(keywords)) ||
-                         ((searchType == ForumSearchType.All || searchType == ForumSearchType.PostTextOnly) && fp.Text.Contains(keywords))) &&
+                            !searchKeywords ||
+                            (searchTopicTitles && ft.Subject.Contains(keywords)) ||
+                            (searchPostText && fp.Text.Contains(keywords))) && 
                          (!limitDate.HasValue || limitDate.Value <= ft.LastPostTime)
                          select ft.Id;
 
@@ -582,7 +599,8 @@ namespace Nop.Services.Forums
                          orderby ft.TopicTypeId descending, ft.LastPostTime descending, ft.Id descending
                          select ft;
 
-            return query2.ToList();
+            var topics = new PagedList<ForumTopic>(query2, pageIndex, pageSize);
+            return topics;
         }
 
         /// <summary>
@@ -727,13 +745,10 @@ namespace Nop.Services.Forums
 
             //delete topic if it was the first post
             bool deleteTopic = false;
-            if (forumTopic != null)
+            ForumPost firstPost = forumTopic.GetFirstPost(this);
+            if (firstPost != null && firstPost.Id == forumPost.Id)
             {
-                ForumPost firstPost = forumTopic.FirstPost;
-                if (firstPost != null && firstPost.Id == forumPost.Id)
-                {
-                    deleteTopic = true;
-                }
+                deleteTopic = true;
             }
 
             //delete forum post
@@ -876,6 +891,10 @@ namespace Nop.Services.Forums
 
                 var languageId = _workContext.WorkingLanguage.Id;
 
+                int friendlyTopicPageIndex = CalculateTopicPageIndex(forumPost.TopicId,
+                    _forumSettings.PostsPageSize > 0 ? _forumSettings.PostsPageSize : 10, 
+                    forumPost.Id) + 1;
+
                 foreach (ForumSubscription subscription in subscriptions)
                 {
                     if (subscription.CustomerId == forumPost.CustomerId)
@@ -886,7 +905,7 @@ namespace Nop.Services.Forums
                     if (!String.IsNullOrEmpty(subscription.Customer.Email))
                     {
                         _workflowMessageService.SendNewForumPostMessage(subscription.Customer, forumPost,
-                            forumTopic, forum, languageId);
+                            forumTopic, forum, friendlyTopicPageIndex, languageId);
                     }
                 }
             }
@@ -1012,7 +1031,7 @@ namespace Nop.Services.Forums
             }
 
             //UI notification            
-            _customerService.SaveCustomerAttribute<bool>(customerTo, SystemCustomerAttributeNames.NotifiedAboutNewPrivateMessages, false);
+            _genericAttributeService.SaveAttribute(customerTo, SystemCustomerAttributeNames.NotifiedAboutNewPrivateMessages, false);
 
             //Email notification
             if (_forumSettings.NotifyAboutPrivateMessages)

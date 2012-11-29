@@ -8,12 +8,15 @@ using Nop.Web.Framework.Mvc;
 namespace Nop.Admin.Models.Orders
 {
     [Validator(typeof(RecurringPaymentValidator))]
-    public class RecurringPaymentModel : BaseNopEntityModel
+    public partial class RecurringPaymentModel : BaseNopEntityModel
     {
         public RecurringPaymentModel()
         {
             History = new List<RecurringPaymentHistoryModel>();
         }
+
+        [NopResourceDisplayName("Admin.RecurringPayments.Fields.ID")]
+        public override int Id { get; set; }
 
         [NopResourceDisplayName("Admin.RecurringPayments.Fields.CycleLength")]
         public int CycleLength { get; set; }
@@ -42,6 +45,11 @@ namespace Nop.Admin.Models.Orders
         [NopResourceDisplayName("Admin.RecurringPayments.Fields.InitialOrder")]
         public int InitialOrderId { get; set; }
 
+        [NopResourceDisplayName("Admin.RecurringPayments.Fields.Customer")]
+        public int CustomerId { get; set; }
+        [NopResourceDisplayName("Admin.RecurringPayments.Fields.Customer")]
+        public string CustomerEmail { get; set; }
+
         [NopResourceDisplayName("Admin.RecurringPayments.Fields.PaymentType")]
         public string PaymentType { get; set; }
         
@@ -53,7 +61,7 @@ namespace Nop.Admin.Models.Orders
         #region Nested classes
 
 
-        public class RecurringPaymentHistoryModel : BaseNopEntityModel
+        public partial class RecurringPaymentHistoryModel : BaseNopEntityModel
         {
             [NopResourceDisplayName("Admin.RecurringPayments.History.Order")]
             public int OrderId { get; set; }

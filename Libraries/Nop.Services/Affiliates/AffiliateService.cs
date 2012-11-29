@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Nop.Core.Data;
 using Nop.Core.Domain.Affiliates;
-using Nop.Core.Events;
+using Nop.Services.Events;
 
 namespace Nop.Services.Affiliates
 {
@@ -25,7 +25,7 @@ namespace Nop.Services.Affiliates
         /// Ctor
         /// </summary>
         /// <param name="affiliateRepository">Affiliate repository</param>
-        /// <param name="eventPublisher"></param>
+        /// <param name="eventPublisher">Event published</param>
         public AffiliateService(IRepository<Affiliate> affiliateRepository,
             IEventPublisher eventPublisher)
         {
@@ -70,12 +70,12 @@ namespace Nop.Services.Affiliates
         /// <returns>Affiliate collection</returns>
         public virtual IList<Affiliate> GetAllAffiliates(bool showHidden = false)
         {
-            var query = from a in _affiliateRepository.Table
-                        orderby a.Id
-                        where (showHidden || a.Active) && !a.Deleted
-                        select a;
+            var query = _affiliateRepository.Table;
+            if (!showHidden)
+                query = query.Where(a => a.Active);
+            query = query.Where(a => !a.Deleted);
+            query = query.OrderBy(a => a.Id);
             var affiliates = query.ToList();
-
             return affiliates;
         }
 

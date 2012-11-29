@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Web.Mvc;
+using FluentValidation.Attributes;
+using Nop.Admin.Validators.Messages;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Models.Messages
 {
-    public class NewsLetterSubscriptionModel : BaseNopEntityModel
+    [Validator(typeof(NewsLetterSubscriptionValidator))]
+    public partial class NewsLetterSubscriptionModel : BaseNopEntityModel
     {
         [NopResourceDisplayName("Admin.Promotions.NewsLetterSubscriptions.Fields.Email")]
         [AllowHtml]

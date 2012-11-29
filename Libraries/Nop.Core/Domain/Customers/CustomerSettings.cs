@@ -11,14 +11,29 @@ namespace Nop.Core.Domain.Customers
         public bool UsernamesEnabled { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether users can check the availability of usernames (when registering or changing in 'My Account')
+        /// </summary>
+        public bool CheckUsernameAvailabilityEnabled { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether users are allowed to change their usernames
         /// </summary>
         public bool AllowUsersToChangeUsernames { get; set; }
 
         /// <summary>
+        /// Default password format for customers
+        /// </summary>
+        public PasswordFormat DefaultPasswordFormat { get; set; }
+
+        /// <summary>
         /// Gets or sets a customer password format (SHA1, MD5) when passwords are hashed
         /// </summary>
         public string HashedPasswordFormat { get; set; }
+
+        /// <summary>
+        /// Gets or sets a minimum password length
+        /// </summary>
+        public int PasswordMinLength { get; set; }
 
         /// <summary>
         /// User registration type
@@ -66,6 +81,11 @@ namespace Nop.Core.Domain.Customers
         public bool HideDownloadableProductsTab { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether to hide 'Back in stock subscriptions' tab on 'My account' page
+        /// </summary>
+        public bool HideBackInStockSubscriptionsTab { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether to validate user when downloading products
         /// </summary>
         public bool DownloadableProductsValidateUser { get; set; }
@@ -74,61 +94,6 @@ namespace Nop.Core.Domain.Customers
         /// Customer name formatting
         /// </summary>
         public CustomerNameFormat CustomerNameFormat { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether 'Gender' is enabled
-        /// </summary>
-        public bool GenderEnabled { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether 'Date of Birth' is enabled
-        /// </summary>
-        public bool DateOfBirthEnabled { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether 'Company' is enabled
-        /// </summary>
-        public bool CompanyEnabled { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether 'Street address' is enabled
-        /// </summary>
-        public bool StreetAddressEnabled { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether 'Street address 2' is enabled
-        /// </summary>
-        public bool StreetAddress2Enabled { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether 'Zip / postal code' is enabled
-        /// </summary>
-        public bool ZipPostalCodeEnabled { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether 'City' is enabled
-        /// </summary>
-        public bool CityEnabled { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether 'Country' is enabled
-        /// </summary>
-        public bool CountryEnabled { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether 'State / province' is enabled
-        /// </summary>
-        public bool StateProvinceEnabled { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether 'Phone number' is enabled
-        /// </summary>
-        public bool PhoneEnabled { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether 'Fax number' is enabled
-        /// </summary>
-        public bool FaxEnabled { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether 'Newsletter' form field is enabled
@@ -144,5 +109,97 @@ namespace Nop.Core.Domain.Customers
         /// Gets or sets a value indicating the number of minutes for 'online customers' module
         /// </summary>
         public int OnlineCustomerMinutes { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating we should store last visited page URL for each customer
+        /// </summary>
+        public bool StoreLastVisitedPage { get; set; }
+        
+        #region Form fields
+
+        /// <summary>
+        /// Gets or sets a value indicating whether 'Gender' is enabled
+        /// </summary>
+        public bool GenderEnabled { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether 'Date of Birth' is enabled
+        /// </summary>
+        public bool DateOfBirthEnabled { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether 'Company' is enabled
+        /// </summary>
+        public bool CompanyEnabled { get; set; }
+        /// <summary>
+        /// Gets or sets a value indicating whether 'Company' is required
+        /// </summary>
+        public bool CompanyRequired { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether 'Street address' is enabled
+        /// </summary>
+        public bool StreetAddressEnabled { get; set; }
+        /// <summary>
+        /// Gets or sets a value indicating whether 'Street address' is required
+        /// </summary>
+        public bool StreetAddressRequired { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether 'Street address 2' is enabled
+        /// </summary>
+        public bool StreetAddress2Enabled { get; set; }
+        /// <summary>
+        /// Gets or sets a value indicating whether 'Street address 2' is required
+        /// </summary>
+        public bool StreetAddress2Required { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether 'Zip / postal code' is enabled
+        /// </summary>
+        public bool ZipPostalCodeEnabled { get; set; }
+        /// <summary>
+        /// Gets or sets a value indicating whether 'Zip / postal code' is required
+        /// </summary>
+        public bool ZipPostalCodeRequired { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether 'City' is enabled
+        /// </summary>
+        public bool CityEnabled { get; set; }
+        /// <summary>
+        /// Gets or sets a value indicating whether 'City' is required
+        /// </summary>
+        public bool CityRequired { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether 'Country' is enabled
+        /// </summary>
+        public bool CountryEnabled { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether 'State / province' is enabled
+        /// </summary>
+        public bool StateProvinceEnabled { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether 'Phone number' is enabled
+        /// </summary>
+        public bool PhoneEnabled { get; set; }
+        /// <summary>
+        /// Gets or sets a value indicating whether 'Phone number' is required
+        /// </summary>
+        public bool PhoneRequired { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether 'Fax number' is enabled
+        /// </summary>
+        public bool FaxEnabled { get; set; }
+        /// <summary>
+        /// Gets or sets a value indicating whether 'Fax number' is required
+        /// </summary>
+        public bool FaxRequired { get; set; }
+
+        #endregion
     }
 }

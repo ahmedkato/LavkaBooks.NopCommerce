@@ -4,7 +4,7 @@ using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Models.Catalog
 {
-    public class BulkEditProductVariantModel : BaseNopEntityModel
+    public partial class BulkEditProductVariantModel : BaseNopEntityModel
     {
         [NopResourceDisplayName("Admin.Catalog.BulkEdit.Fields.Name")]
         [AllowHtml]
@@ -19,6 +19,12 @@ namespace Nop.Admin.Models.Catalog
 
         [NopResourceDisplayName("Admin.Catalog.BulkEdit.Fields.OldPrice")]
         public decimal OldPrice { get; set; }
+
+        [NopResourceDisplayName("Admin.Catalog.BulkEdit.Fields.ManageInventoryMethod")]
+        public string ManageInventoryMethod { get; set; }
+
+        [NopResourceDisplayName("Admin.Catalog.BulkEdit.Fields.StockQuantity")]
+        public int StockQuantity { get; set; }
 
         [NopResourceDisplayName("Admin.Catalog.BulkEdit.Fields.Published")]
         public bool Published { get; set; }

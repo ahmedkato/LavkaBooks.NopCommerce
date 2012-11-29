@@ -56,14 +56,14 @@ namespace Nop.Services.Orders
         }
 
         /// <summary>
-        /// Validates whether this shopping cart is valid
+        /// Get a recurring cycle information
         /// </summary>
         /// <param name="shoppingCart">Shopping cart</param>
         /// <param name="cycleLength">Cycle length</param>
         /// <param name="cyclePeriod">Cycle period</param>
         /// <param name="totalCycles">Total cycles</param>
         /// <returns>Error (if exists); otherwise, empty string</returns>
-        public static string GetReccuringCycleInfo(this IList<ShoppingCartItem> shoppingCart,
+        public static string GetRecurringCycleInfo(this IList<ShoppingCartItem> shoppingCart,
             out int cycleLength, out RecurringProductCyclePeriod cyclePeriod, out int totalCycles)
         {
             string error = "";
@@ -81,7 +81,7 @@ namespace Nop.Services.Orders
                 var productVariant = sci.ProductVariant;
                 if (productVariant == null)
                 {
-                    throw new NopException(string.Format("Product variant (Id={0}) can not be loaded", sci.ProductVariantId));
+                    throw new NopException(string.Format("Product variant (Id={0}) cannot be loaded", sci.ProductVariantId));
                 }
 
                 string conflictError = "Your cart has auto-ship (recurring) items with conflicting shipment schedules. Only one auto-ship schedule is allowed per order.";

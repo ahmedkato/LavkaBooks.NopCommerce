@@ -8,19 +8,18 @@ using Nop.Core.Domain.Affiliates;
 using Nop.Core.Domain.Directory;
 using Nop.Services.Affiliates;
 using Nop.Services.Catalog;
-using Nop.Services.Customers;
 using Nop.Services.Directory;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
+using Nop.Services.Security;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
 
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class AffiliateController : BaseNopController
+    public partial class AffiliateController : BaseNopController
     {
         #region Fields
 
@@ -60,7 +59,7 @@ namespace Nop.Admin.Controllers
         #region Utilities
 
         [NonAction]
-        private void PrepareAffiliateModel(AffiliateModel model, Affiliate affiliate, bool excludeProperties)
+        protected void PrepareAffiliateModel(AffiliateModel model, Affiliate affiliate, bool excludeProperties)
         {
             if (model == null)
                 throw new ArgumentNullException("model");
@@ -145,7 +144,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         [FormValueRequired("save", "save-continue")]
         public ActionResult Create(AffiliateModel model, bool continueEditing)
         {
@@ -185,14 +184,15 @@ namespace Nop.Admin.Controllers
 
             var affiliate = _affiliateService.GetAffiliateById(id);
             if (affiliate == null || affiliate.Deleted)
-                throw new ArgumentException("No affiliate found with the specified id", "id");
+                //No affiliate found with the specified id
+                return RedirectToAction("List");
 
             var model = new AffiliateModel();
             PrepareAffiliateModel(model, affiliate, false);
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Edit(AffiliateModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageAffiliates))
@@ -200,7 +200,8 @@ namespace Nop.Admin.Controllers
 
             var affiliate = _affiliateService.GetAffiliateById(model.Id);
             if (affiliate == null || affiliate.Deleted)
-                throw new ArgumentException("No affiliate found with the specified id");
+                //No affiliate found with the specified id
+                return RedirectToAction("List");
 
             if (ModelState.IsValid)
             {
@@ -223,13 +224,17 @@ namespace Nop.Admin.Controllers
         }
 
         //delete
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageAffiliates))
                 return AccessDeniedView();
 
             var affiliate = _affiliateService.GetAffiliateById(id);
+            if (affiliate == null)
+                //No affiliate found with the specified id
+                return RedirectToAction("List");
+
             _affiliateService.DeleteAffiliate(affiliate);
             SuccessNotification(_localizationService.GetResource("Admin.Affiliates.Deleted"));
             return RedirectToAction("List");
@@ -293,7 +298,7 @@ namespace Nop.Admin.Controllers
                     {
                         var customerModel = new AffiliateModel.AffiliatedCustomerModel();
                         customerModel.Id = customer.Id;
-                        customerModel.Name = customer.GetFullName();
+                        customerModel.Name = customer.Email;
                         return customerModel;
                     }),
                 Total = customers.Count

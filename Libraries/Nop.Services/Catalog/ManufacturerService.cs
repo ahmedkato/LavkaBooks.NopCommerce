@@ -5,7 +5,7 @@ using Nop.Core;
 using Nop.Core.Caching;
 using Nop.Core.Data;
 using Nop.Core.Domain.Catalog;
-using Nop.Core.Events;
+using Nop.Services.Events;
 
 namespace Nop.Services.Catalog
 {
@@ -15,9 +15,8 @@ namespace Nop.Services.Catalog
     public partial class ManufacturerService : IManufacturerService
     {
         #region Constants
-        private const string MANUFACTURERS_ALL_KEY = "Nop.manufacturer.all-{0}";
         private const string MANUFACTURERS_BY_ID_KEY = "Nop.manufacturer.id-{0}";
-        private const string PRODUCTMANUFACTURERS_ALLBYMANUFACTURERID_KEY = "Nop.productmanufacturer.allbymanufacturerid-{0}-{1}";
+        private const string PRODUCTMANUFACTURERS_ALLBYMANUFACTURERID_KEY = "Nop.productmanufacturer.allbymanufacturerid-{0}-{1}-{2}-{3}";
         private const string PRODUCTMANUFACTURERS_ALLBYPRODUCTID_KEY = "Nop.productmanufacturer.allbyproductid-{0}-{1}";
         private const string PRODUCTMANUFACTURERS_BY_ID_KEY = "Nop.productmanufacturer.id-{0}";
         private const string MANUFACTURERS_PATTERN_KEY = "Nop.manufacturer.";
@@ -42,7 +41,7 @@ namespace Nop.Services.Catalog
         /// <param name="manufacturerRepository">Category repository</param>
         /// <param name="productManufacturerRepository">ProductCategory repository</param>
         /// <param name="productRepository">Product repository</param>
-        /// <param name="eventPublisher"></param>
+        /// <param name="eventPublisher">Event published</param>
         public ManufacturerService(ICacheManager cacheManager,
             IRepository<Manufacturer> manufacturerRepository,
             IRepository<ProductManufacturer> productManufacturerRepository,
@@ -79,29 +78,41 @@ namespace Nop.Services.Catalog
         /// <returns>Manufacturer collection</returns>
         public virtual IList<Manufacturer> GetAllManufacturers(bool showHidden = false)
         {
-            string key = string.Format(MANUFACTURERS_ALL_KEY, showHidden);
-            return _cacheManager.Get(key, () =>
-            {
-                var query = from m in _manufacturerRepository.Table
-                            orderby m.DisplayOrder
-                            where (showHidden || m.Published) &&
-                            !m.Deleted
-                            select m;
-                var manufacturers = query.ToList();
-                return manufacturers;
-            });
+            return GetAllManufacturers(null, showHidden);
         }
 
         /// <summary>
         /// Gets all manufacturers
         /// </summary>
+        /// <param name="manufacturerName">Manufacturer name</param>
+        /// <param name="showHidden">A value indicating whether to show hidden records</param>
+        /// <returns>Manufacturer collection</returns>
+        public virtual IList<Manufacturer> GetAllManufacturers(string manufacturerName, bool showHidden = false)
+        {
+            var query = _manufacturerRepository.Table;
+            if (!showHidden)
+                query = query.Where(m => m.Published);
+            if (!String.IsNullOrWhiteSpace(manufacturerName))
+                query = query.Where(m => m.Name.Contains(manufacturerName));
+            query = query.Where(m => !m.Deleted);
+            query = query.OrderBy(m => m.DisplayOrder);
+
+            var manufacturers = query.ToList();
+            return manufacturers;
+        }
+        
+        /// <summary>
+        /// Gets all manufacturers
+        /// </summary>
+        /// <param name="manufacturerName">Manufacturer name</param>
         /// <param name="pageIndex">Page index</param>
         /// <param name="pageSize">Page size</param>
         /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Manufacturers</returns>
-        public virtual IPagedList<Manufacturer> GetAllManufacturers(int pageIndex, int pageSize, bool showHidden = false)
+        public virtual IPagedList<Manufacturer> GetAllManufacturers(string manufacturerName,
+            int pageIndex, int pageSize, bool showHidden = false)
         {
-            var manufacturers = GetAllManufacturers(showHidden);
+            var manufacturers = GetAllManufacturers(manufacturerName, showHidden);
             return new PagedList<Manufacturer>(manufacturers, pageIndex, pageSize);
         }
 
@@ -184,14 +195,17 @@ namespace Nop.Services.Catalog
         /// Gets product manufacturer collection
         /// </summary>
         /// <param name="manufacturerId">Manufacturer identifier</param>
+        /// <param name="pageIndex">Page index</param>
+        /// <param name="pageSize">Page size</param>
         /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Product manufacturer collection</returns>
-        public virtual IList<ProductManufacturer> GetProductManufacturersByManufacturerId(int manufacturerId, bool showHidden = false)
+        public virtual IPagedList<ProductManufacturer> GetProductManufacturersByManufacturerId(int manufacturerId, 
+            int pageIndex, int pageSize, bool showHidden = false)
         {
             if (manufacturerId == 0)
-                return new List<ProductManufacturer>();
+                return new PagedList<ProductManufacturer>(new List<ProductManufacturer>(), pageIndex, pageSize);
 
-            string key = string.Format(PRODUCTMANUFACTURERS_ALLBYMANUFACTURERID_KEY, showHidden, manufacturerId);
+            string key = string.Format(PRODUCTMANUFACTURERS_ALLBYMANUFACTURERID_KEY, showHidden, manufacturerId, pageIndex, pageSize);
             return _cacheManager.Get(key, () =>
             {
                 var query = from pm in _productManufacturerRepository.Table
@@ -201,7 +215,7 @@ namespace Nop.Services.Catalog
                                   (showHidden || p.Published)
                             orderby pm.DisplayOrder
                             select pm;
-                var productManufacturers = query.ToList();
+                var productManufacturers = new PagedList<ProductManufacturer>(query, pageIndex, pageSize);
                 return productManufacturers;
             });
         }
@@ -234,7 +248,7 @@ namespace Nop.Services.Catalog
         }
         
         /// <summary>
-        /// Get a total number of featured products by manufacturer identifer
+        /// Get a total number of featured products by manufacturer identifier
         /// </summary>
         /// <param name="manufacturerId">Manufacturer identifier</param>
         /// <returns>Number of featured products</returns>

@@ -3,11 +3,9 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
 using Autofac;
-using AutofacContrib.Startable;
 using Nop.Core.Configuration;
+using Nop.Core.Data;
 using Nop.Core.Infrastructure.DependencyManagement;
-using Nop.Core.Plugins;
-using Nop.Core.Tasks;
 
 namespace Nop.Core.Infrastructure
 {
@@ -39,13 +37,6 @@ namespace Nop.Core.Infrastructure
 
         #region Utilities
 
-        private void InitPlugins()
-        {
-            //var bootstrapper = _containerManager.Resolve<IPluginBootstrapper>();
-            //var plugins = bootstrapper.GetPluginDefinitions();
-            //bootstrapper.InitializePlugins(this, plugins);
-        }
-
         private void RunStartupTasks()
         {
             var typeFinder = _containerManager.Resolve<ITypeFinder>();
@@ -58,24 +49,12 @@ namespace Nop.Core.Infrastructure
             foreach (var startUpTask in startUpTasks)
                 startUpTask.Execute();
         }
-
-        private void StartScheduledTasks(NopConfig config)
-        {
-            //initialize task manager
-            if (config.ScheduleTasks != null)
-            {
-                TaskManager.Instance.Initialize(config.ScheduleTasks);
-                TaskManager.Instance.Start();
-            }
-        }
-
+        
         private void InitializeContainer(ContainerConfigurer configurer, EventBroker broker, NopConfig config)
         {
             var builder = new ContainerBuilder();
-            builder.RegisterModule(new StartableModule<IAutoStart>(s => s.Start()));
 
             _containerManager = new ContainerManager(builder.Build());
-
             configurer.Configure(this, _containerManager, broker, config);
         }
 
@@ -87,25 +66,13 @@ namespace Nop.Core.Infrastructure
         /// Initialize components and plugins in the nop environment.
         /// </summary>
         /// <param name="config">Config</param>
-        /// <param name="databaseIsInstalled">A value indicating whether database is installed</param>
-        public void Initialize(NopConfig config, bool databaseIsInstalled)
+        public void Initialize(NopConfig config)
         {
-            //plugins
-            if (databaseIsInstalled)
+            bool databaseInstalled = DataSettingsHelper.DatabaseIsInstalled();
+            if (databaseInstalled)
             {
-                InitPlugins();
-            }
-
-            //start components
-            this.ContainerManager.StartComponents();
-
-            //startup tasks
-            RunStartupTasks();
-
-            if (databaseIsInstalled)
-            {
-                //scheduled tasks
-                StartScheduledTasks(config);
+                //startup tasks
+                RunStartupTasks();
             }
         }
 
@@ -118,12 +85,7 @@ namespace Nop.Core.Infrastructure
         {
             return ContainerManager.Resolve(type);
         }
-
-        public Array ResolveAll(Type serviceType)
-        {
-            throw new NotImplementedException();
-        }
-
+        
         public T[] ResolveAll<T>()
         {
             return ContainerManager.ResolveAll<T>();
@@ -132,11 +94,6 @@ namespace Nop.Core.Infrastructure
 		#endregion
 
         #region Properties
-
-        public IContainer Container
-        {
-            get { return _containerManager.Container; }
-        }
 
         public ContainerManager ContainerManager
         {

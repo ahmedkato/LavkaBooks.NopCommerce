@@ -34,6 +34,11 @@ namespace Nop.Core.Domain.Orders
         /// Gets or sets a value indicating whether 'One-page checkout' is enabled
         /// </summary>
         public bool OnePageCheckoutEnabled { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether order totals should be displayed on 'Payment info' tab of 'One-page checkout' page
+        /// </summary>
+        public bool OnePageCheckoutDisplayOrderTotalsOnPaymentInfoTab { get; set; }
         
         /// <summary>
         /// Gets or sets a value indicating whether "Return requests" are allowed
@@ -64,6 +69,11 @@ namespace Nop.Core.Domain.Orders
         ///  Gift cards are deactivated when the order status is
         /// </summary>
         public int GiftCards_Deactivated_OrderStatusId { get; set; }
+
+        /// <summary>
+        /// Gets or sets an order placement interval in seconds (prevent 2 orders being placed within an X seconds time frame).
+        /// </summary>
+        public int MinimumOrderPlacementInterval { get; set; }
 
     }
 }

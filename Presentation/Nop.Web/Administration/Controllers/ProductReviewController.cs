@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
 using Nop.Admin.Models.Catalog;
@@ -7,15 +8,15 @@ using Nop.Services.Catalog;
 using Nop.Services.Customers;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
+using Nop.Services.Security;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
 
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class ProductReviewController : BaseNopController
+    public partial class ProductReviewController : BaseNopController
     {
         #region Fields
 
@@ -45,7 +46,7 @@ namespace Nop.Admin.Controllers
         #region Utilities
 
         [NonAction]
-        private void PrepareProductReviewModel(ProductReviewModel model,
+        protected void PrepareProductReviewModel(ProductReviewModel model,
             ProductReview productReview, bool excludeProperties, bool formatReviewText)
         {
             if (model == null)
@@ -87,17 +88,24 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
 
-            var gridModel = new GridModel<ProductReviewModel>();
-            return View(gridModel);
+            var model = new ProductReviewListModel();
+            return View(model);
         }
 
         [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult List(GridCommand command)
+        public ActionResult List(GridCommand command, ProductReviewListModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
 
-            var productReviews = _customerContentService.GetAllCustomerContent<ProductReview>(0, null);
+            DateTime? createdOnFromValue = (model.CreatedOnFrom == null) ? null
+                            : (DateTime?)_dateTimeHelper.ConvertToUtcTime(model.CreatedOnFrom.Value, _dateTimeHelper.CurrentTimeZone);
+
+            DateTime? createdToFromValue = (model.CreatedOnTo == null) ? null
+                            : (DateTime?)_dateTimeHelper.ConvertToUtcTime(model.CreatedOnTo.Value, _dateTimeHelper.CurrentTimeZone).AddDays(1);
+
+            var productReviews = _customerContentService.GetAllCustomerContent<ProductReview>(0, null,
+                createdOnFromValue, createdToFromValue);
             var gridModel = new GridModel<ProductReviewModel>
             {
                 Data = productReviews.PagedForCommand(command).Select(x =>
@@ -122,14 +130,15 @@ namespace Nop.Admin.Controllers
 
             var productReview = _customerContentService.GetCustomerContentById(id) as ProductReview;
             if (productReview == null)
-                throw new ArgumentException("No product review found with the specified id", "id");
+                //No product review found with the specified id
+                return RedirectToAction("List");
 
             var model = new ProductReviewModel();
             PrepareProductReviewModel(model, productReview, false, false);
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Edit(ProductReviewModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
@@ -137,7 +146,8 @@ namespace Nop.Admin.Controllers
 
             var productReview = _customerContentService.GetCustomerContentById(model.Id) as ProductReview;
             if (productReview == null)
-                throw new ArgumentException("No product review found with the specified id");
+                //No product review found with the specified id
+                return RedirectToAction("List");
 
             if (ModelState.IsValid)
             {
@@ -159,17 +169,18 @@ namespace Nop.Admin.Controllers
             PrepareProductReviewModel(model, productReview, true, false);
             return View(model);
         }
-
+        
         //delete
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
 
             var productReview = _customerContentService.GetCustomerContentById(id) as ProductReview;
             if (productReview == null)
-                throw new ArgumentException("No product review found with the specified id");
+                //No product review found with the specified id
+                return RedirectToAction("List");
 
             var product = productReview.Product;
             _customerContentService.DeleteCustomerContent(productReview);
@@ -179,6 +190,57 @@ namespace Nop.Admin.Controllers
             SuccessNotification(_localizationService.GetResource("Admin.Catalog.ProductReviews.Deleted"));
             return RedirectToAction("List");
         }
+
+        [HttpPost]
+        public ActionResult ApproveSelected(ICollection<int> selectedIds)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
+                return AccessDeniedView();
+
+            if (selectedIds != null)
+            {
+                foreach (var id in selectedIds)
+                {
+                    var productReview = _customerContentService.GetCustomerContentById(id) as ProductReview;
+                    if (productReview != null)
+                    {
+                        productReview.IsApproved = true;
+                        _customerContentService.UpdateCustomerContent(productReview);
+                        //update product totals
+                        _productService.UpdateProductReviewTotals(productReview.Product);
+                    }
+                }
+            }
+
+            return Json(new { Result = true });
+        }
+
+        [HttpPost]
+        public ActionResult DisapproveSelected(ICollection<int> selectedIds)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
+                return AccessDeniedView();
+
+            if (selectedIds != null)
+            {
+                foreach (var id in selectedIds)
+                {
+                    var productReview = _customerContentService.GetCustomerContentById(id) as ProductReview;
+                    if (productReview != null)
+                    {
+                        productReview.IsApproved = false;
+                        _customerContentService.UpdateCustomerContent(productReview);
+                        //update product totals
+                        _productService.UpdateProductReviewTotals(productReview.Product);
+                    }
+                }
+            }
+
+            return Json(new { Result = true });
+        }
+
+
+
 
         #endregion
     }

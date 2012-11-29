@@ -4,7 +4,7 @@ using Nop.Web.Framework.Mvc;
 
 namespace Nop.Web.Models.Boards
 {
-    public class TopicMoveModel : BaseNopEntityModel
+    public partial class TopicMoveModel : BaseNopEntityModel
     {
         public TopicMoveModel()
         {
@@ -12,9 +12,8 @@ namespace Nop.Web.Models.Boards
         }
 
         public int ForumSelected { get; set; }
+        public string TopicSeName { get; set; }
 
         public IEnumerable<SelectListItem> ForumList { get; set; }
-
-        public ForumBreadcrumbModel ForumBreadCrumbModel { get; set; }
     }
 }

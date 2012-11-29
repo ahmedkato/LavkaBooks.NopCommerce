@@ -1,7 +1,9 @@
 ﻿@model ShoppingCartSettingsModel
-
-
 @using Telerik.Web.Mvc.UI;
+@{
+    //page title
+    ViewBag.Title = @T("Admin.Configuration.Settings.ShoppingCart").Text;
+}
 @using (Html.BeginForm())
 {
     <div class="section-header">
@@ -10,23 +12,36 @@
             @T("Admin.Configuration.Settings.ShoppingCart")
         </div>
         <div class="options">
-            <button type="submit" name="save" value="save" class="t-button">@T("Admin.Common.Save")</button>
+            <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
         </div>
     </div>
     <script type="text/javascript">
         $(document).ready(function () {
 
-            $("#@Html.FieldIdFor(model => model.MiniShoppingCartEnabled)").click(toggleMiniShoppingCartDisplayProducts);
+            $("#@Html.FieldIdFor(model => model.MiniShoppingCartEnabled)").click(toggleMiniShoppingCartEnabled);
+            $("#@Html.FieldIdFor(model => model.EmailWishlistEnabled)").click(toggleEmailWishlistEnabled);
 
-            toggleMiniShoppingCartDisplayProducts();
+            toggleMiniShoppingCartEnabled();
+            toggleEmailWishlistEnabled();
         });
 
-        function toggleMiniShoppingCartDisplayProducts() {
-            if (getE('@Html.FieldIdFor(model => model.MiniShoppingCartEnabled)').checked) {
-                $('#pnlMiniShoppingCartDisplayProducts').show();
+        function toggleMiniShoppingCartEnabled() {
+            if ($('#@Html.FieldIdFor(model => model.MiniShoppingCartEnabled)').is(':checked')) {
+                $('#pnlMiniShoppingCartProductNumber').show();
+                $('#pnlShowProductImagesInMiniShoppingCart').show();
             }
             else {
-                $('#pnlMiniShoppingCartDisplayProducts').hide();
+                $('#pnlMiniShoppingCartProductNumber').hide();
+                $('#pnlShowProductImagesInMiniShoppingCart').hide();
+            }
+        }
+
+        function toggleEmailWishlistEnabled() {
+            if ($('#@Html.FieldIdFor(model => model.EmailWishlistEnabled)').is(':checked')) {
+                $('#pnlAllowAnonymousUsersToEmailWishlist').show();
+            }
+            else {
+                $('#pnlAllowAnonymousUsersToEmailWishlist').hide();
             }
         }
         
@@ -34,6 +49,33 @@
     
 @Html.ValidationSummary(false)
     <table class="adminContent">
+        <tr>
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.DisplayCartAfterAddingProduct):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.DisplayCartAfterAddingProduct)
+                @Html.ValidationMessageFor(model => model.DisplayCartAfterAddingProduct)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.DisplayWishlistAfterAddingProduct):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.DisplayWishlistAfterAddingProduct)
+                @Html.ValidationMessageFor(model => model.DisplayWishlistAfterAddingProduct)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.AllowOutOfStockItemsToBeAddedToWishlist):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.AllowOutOfStockItemsToBeAddedToWishlist)
+                @Html.ValidationMessageFor(model => model.AllowOutOfStockItemsToBeAddedToWishlist)
+            </td>
+        </tr>
         <tr>
             <td class="adminTitle">
                 @Html.NopLabelFor(model => model.MaximumShoppingCartItems):
@@ -99,15 +141,6 @@
         </tr>
         <tr>
             <td class="adminTitle">
-                @Html.NopLabelFor(model => model.WishlistEnabled):
-            </td>
-            <td class="adminData">
-                @Html.EditorFor(model => model.WishlistEnabled)
-                @Html.ValidationMessageFor(model => model.WishlistEnabled)
-            </td>
-        </tr>
-        <tr>
-            <td class="adminTitle">
                 @Html.NopLabelFor(model => model.EmailWishlistEnabled):
             </td>
             <td class="adminData">
@@ -115,6 +148,15 @@
                 @Html.ValidationMessageFor(model => model.EmailWishlistEnabled)
             </td>
         </tr>
+        <tr id="pnlAllowAnonymousUsersToEmailWishlist">
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.AllowAnonymousUsersToEmailWishlist):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.AllowAnonymousUsersToEmailWishlist)
+                @Html.ValidationMessageFor(model => model.AllowAnonymousUsersToEmailWishlist)
+            </td>
+        </tr>        
         <tr>
             <td class="adminTitle">
                 @Html.NopLabelFor(model => model.MiniShoppingCartEnabled):
@@ -124,14 +166,23 @@
                 @Html.ValidationMessageFor(model => model.MiniShoppingCartEnabled)
             </td>
         </tr>
-        <tr id="pnlMiniShoppingCartDisplayProducts">
+        <tr id="pnlMiniShoppingCartProductNumber">
             <td class="adminTitle">
-                @Html.NopLabelFor(model => model.MiniShoppingCartDisplayProducts):
+                @Html.NopLabelFor(model => model.MiniShoppingCartProductNumber):
             </td>
             <td class="adminData">
-                @Html.EditorFor(model => model.MiniShoppingCartDisplayProducts)
-                @Html.ValidationMessageFor(model => model.MiniShoppingCartDisplayProducts)
+                @Html.EditorFor(model => model.MiniShoppingCartProductNumber)
+                @Html.ValidationMessageFor(model => model.MiniShoppingCartProductNumber)
             </td>
         </tr>
+        <tr id="pnlShowProductImagesInMiniShoppingCart">
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.ShowProductImagesInMiniShoppingCart):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.ShowProductImagesInMiniShoppingCart)
+                @Html.ValidationMessageFor(model => model.ShowProductImagesInMiniShoppingCart)
+            </td>
+        </tr>        
     </table>
 }

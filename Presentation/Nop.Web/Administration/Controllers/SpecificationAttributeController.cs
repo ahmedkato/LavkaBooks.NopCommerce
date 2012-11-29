@@ -6,14 +6,14 @@ using Nop.Core.Domain.Catalog;
 using Nop.Services.Catalog;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
+using Nop.Services.Security;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
 
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class SpecificationAttributeController : BaseNopController
+    public partial class SpecificationAttributeController : BaseNopController
     {
         #region Fields
 
@@ -46,7 +46,7 @@ namespace Nop.Admin.Controllers
         #region Utilities
 
         [NonAction]
-        public void UpdateAttributeLocales(SpecificationAttribute specificationAttribute, SpecificationAttributeModel model)
+        protected void UpdateAttributeLocales(SpecificationAttribute specificationAttribute, SpecificationAttributeModel model)
         {
             foreach (var localized in model.Locales)
             {
@@ -123,7 +123,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Create(SpecificationAttributeModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
@@ -154,7 +154,9 @@ namespace Nop.Admin.Controllers
 
             var specificationAttribute = _specificationAttributeService.GetSpecificationAttributeById(id);
             if (specificationAttribute == null)
-                throw new ArgumentException("No specification attribute found with the specified id", "id");
+                //No specification attribute found with the specified id
+                return RedirectToAction("List");
+
             var model = specificationAttribute.ToModel();
             //locales
             AddLocales(_languageService, model.Locales, (locale, languageId) =>
@@ -165,7 +167,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Edit(SpecificationAttributeModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
@@ -173,7 +175,9 @@ namespace Nop.Admin.Controllers
 
             var specificationAttribute = _specificationAttributeService.GetSpecificationAttributeById(model.Id);
             if (specificationAttribute == null)
-                throw new ArgumentException("No specification attribute found with the specified id");
+                //No specification attribute found with the specified id
+                return RedirectToAction("List");
+
             if (ModelState.IsValid)
             {
                 specificationAttribute = model.ToEntity(specificationAttribute);
@@ -193,13 +197,17 @@ namespace Nop.Admin.Controllers
         }
 
         //delete
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
 
             var specificationAttribute = _specificationAttributeService.GetSpecificationAttributeById(id);
+            if (specificationAttribute == null)
+                //No specification attribute found with the specified id
+                return RedirectToAction("List");
+
             _specificationAttributeService.DeleteSpecificationAttribute(specificationAttribute);
 
             //activity log
@@ -262,7 +270,8 @@ namespace Nop.Admin.Controllers
 
             var specificationAttribute = _specificationAttributeService.GetSpecificationAttributeById(model.SpecificationAttributeId);
             if (specificationAttribute == null)
-                throw new ArgumentException("No specification attribute found with the specified id");
+                //No specification attribute found with the specified id
+                return RedirectToAction("List");
 
             if (ModelState.IsValid)
             {
@@ -289,7 +298,9 @@ namespace Nop.Admin.Controllers
 
             var sao = _specificationAttributeService.GetSpecificationAttributeOptionById(id);
             if (sao == null)
-                throw new ArgumentException("No specification attribute option found with the specified id", "id");
+                //No specification attribute option found with the specified id
+                return RedirectToAction("List");
+
             var model = sao.ToModel();
             //locales
             AddLocales(_languageService, model.Locales, (locale, languageId) =>
@@ -308,7 +319,9 @@ namespace Nop.Admin.Controllers
 
             var sao = _specificationAttributeService.GetSpecificationAttributeOptionById(model.Id);
             if (sao == null)
-                throw new ArgumentException("No specification attribute option found with the specified id");
+                //No specification attribute option found with the specified id
+                return RedirectToAction("List");
+
             if (ModelState.IsValid)
             {
                 sao = model.ToEntity(sao);
@@ -334,6 +347,9 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var sao = _specificationAttributeService.GetSpecificationAttributeOptionById(optionId);
+            if (sao == null)
+                throw new ArgumentException("No specification attribute option found with the specified id");
+
             _specificationAttributeService.DeleteSpecificationAttributeOption(sao);
 
             return OptionList(specificationAttributeId, command);

@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
-using System.Web;
+using Nop.Core;
 
 namespace Nop.Services.Directory
 {
@@ -34,6 +34,14 @@ namespace Nop.Services.Directory
 									"Venezuela","Virgin Islands, British","Virgin Islands, U.S.","Vietnam","Vanuatu","Wallis and Futuna","Samoa","Yemen","Mayotte","Serbia","South Africa","Zambia","Montenegro","Zimbabwe","Anonymous Proxy","Satellite Provider",
 									"Other","Aland Islands","Guernsey","Isle of Man","Jersey","Saint Barthelemy","Saint Martin"};
 
+        private readonly IWebHelper _webHelper;
+        #endregion
+
+        #region Ctor
+        public GeoCountryLookup(IWebHelper webHelper)
+        {
+            this._webHelper = webHelper;
+        }
         #endregion
 
         #region Utilities
@@ -67,11 +75,7 @@ namespace Nop.Services.Directory
             try
             {
                 //you can download the latest GeoIP database here http://www.maxmind.com/app/free
-                string fileName = string.Empty;
-                if (HttpContext.Current != null && HttpContext.Current.Request != null)
-                {
-                    fileName = String.Format("{0}App_Data\\GeoIP.dat", HttpContext.Current.Request.PhysicalApplicationPath);
-                }
+                string fileName = _webHelper.MapPath("~/App_Data/GeoIP.dat");
                 using (var fileInput = new FileStream(fileName, FileMode.Open, FileAccess.Read))
                 {
                     fileInput.Seek(6 * offset, 0);
@@ -141,7 +145,7 @@ namespace Nop.Services.Directory
             string code = (_countryCode[(int)SeekCountry(0, AddrToNum(addr), 31)]);
             if (code == "--")
                 code = string.Empty;
-            return string.Empty;
+            return code;
         }
 
         public virtual string LookupCountryName(string str)

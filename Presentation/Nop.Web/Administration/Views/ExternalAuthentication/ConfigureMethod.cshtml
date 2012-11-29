@@ -1,22 +1,20 @@
 ﻿@model AuthenticationMethodModel
-
-@using (Html.BeginForm())
-{
-    @Html.ValidationSummary(true)
-    @Html.HiddenFor(model => model.SystemName)
-    <div class="section-header">
-        <div class="title">
-            <img src="@Url.Content("~/Administration/Content/images/ico-configuration.png")" alt="" />
-            @T("Admin.Configuration.ExternalAuthenticationMethods.Configure") - @Model.FriendlyName @Html.ActionLink("(" + T("Admin.Configuration.ExternalAuthenticationMethods.BackToList") + ")", "Methods")
-        </div>
+@{
+    //page title
+    ViewBag.Title = @T("Admin.Configuration.ExternalAuthenticationMethods.Configure").Text + " - " + @Model.FriendlyName;
+}
+<div class="section-header">
+    <div class="title">
+        <img src="@Url.Content("~/Administration/Content/images/ico-configuration.png")" alt="" />
+        @T("Admin.Configuration.ExternalAuthenticationMethods.Configure") - @Model.FriendlyName
+        @Html.ActionLink("(" + T("Admin.Configuration.ExternalAuthenticationMethods.BackToList") + ")", "Methods")
     </div>
-    
-    if (!String.IsNullOrEmpty(Model.ConfigurationActionName))
-    {
-        @Html.Action(Model.ConfigurationActionName, Model.ConfigurationControllerName, Model.ConfigurationRouteValues);
-    }
-    else
-    {
-        <text>Configuration is not required</text>
-    }
+</div>
+@if (!String.IsNullOrEmpty(Model.ConfigurationActionName))
+{
+    @Html.Action(Model.ConfigurationActionName, Model.ConfigurationControllerName, Model.ConfigurationRouteValues);
+}
+else
+{
+    @T("Admin.Common.ConfigurationNotRequired")
 }

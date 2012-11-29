@@ -1,8 +1,8 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Web.Mvc;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Services.Catalog;
@@ -13,12 +13,16 @@ using Nop.Web.Framework.UI.Paging;
 
 namespace Nop.Web.Models.Catalog
 {
-    public class CatalogPagingFilteringModel : BasePageableModel
+    public partial class CatalogPagingFilteringModel : BasePageableModel
     {
         #region Constructors
 
         public CatalogPagingFilteringModel()
         {
+            this.AvailableSortOptions = new List<SelectListItem>();
+            this.AvailableViewModes = new List<SelectListItem>();
+            this.PageSizeOptions = new List<SelectListItem>();
+
             this.PriceRangeFilter = new PriceRangeFilterModel();
             this.SpecificationFilter = new SpecificationFilterModel();
         }
@@ -26,10 +30,6 @@ namespace Nop.Web.Models.Catalog
         #endregion
 
         #region Properties
-
-        public int CategoryId { get; set; }
-
-        public int ManufacturerId { get; set; }
 
         /// <summary>
         /// Price range filter model
@@ -40,6 +40,15 @@ namespace Nop.Web.Models.Catalog
         /// Specification filter model
         /// </summary>
         public SpecificationFilterModel SpecificationFilter { get; set; }
+
+        public bool AllowProductSorting { get; set; }
+        public IList<SelectListItem> AvailableSortOptions { get; set; }
+
+        public bool AllowProductViewModeChanging { get; set; }
+        public IList<SelectListItem> AvailableViewModes { get; set; }
+
+        public bool AllowCustomersToSelectPageSize { get; set; }
+        public IList<SelectListItem> PageSizeOptions { get; set; }
 
         /// <summary>
         /// Order by
@@ -58,7 +67,7 @@ namespace Nop.Web.Models.Catalog
 
         #region Nested classes
 
-        public class PriceRangeFilterModel : BaseNopModel
+        public partial class PriceRangeFilterModel : BaseNopModel
         {
             #region Const
 
@@ -208,7 +217,7 @@ namespace Nop.Web.Models.Catalog
             #endregion
         }
 
-        public class PriceRangeFilterItem : BaseNopModel
+        public partial class PriceRangeFilterItem : BaseNopModel
         {
             public string From { get; set; }
             public string To { get; set; }
@@ -216,7 +225,7 @@ namespace Nop.Web.Models.Catalog
             public bool Selected { get; set; }
         }
 
-        public class SpecificationFilterModel : BaseNopModel
+        public partial class SpecificationFilterModel : BaseNopModel
         {
             #region Const
 
@@ -250,57 +259,7 @@ namespace Nop.Web.Models.Catalog
 
                 return url;
             }
-
-            protected virtual IList<SpecificationAttributeOptionFilter> GetAlreadyFilteredSpecs(ISpecificationAttributeService specificationAttributeService, 
-                IWebHelper webHelper, IWorkContext workContext)
-            {
-                var result = new List<SpecificationAttributeOptionFilter>();
-
-                var optionIds = GetAlreadyFilteredSpecOptionIds(webHelper);
-                foreach (var id in optionIds)
-                {
-                    var sao = specificationAttributeService.GetSpecificationAttributeOptionById(id);
-                    if (sao != null)
-                    {
-                        var sa = sao.SpecificationAttribute;
-                        if (sa != null)
-                        {
-                            result.Add(new SpecificationAttributeOptionFilter
-                            {
-                                SpecificationAttributeId = sa.Id,
-                                SpecificationAttributeName = sa.GetLocalized(x => x.Name),
-                                DisplayOrder = sa.DisplayOrder,
-                                SpecificationAttributeOptionId = sao.Id,
-                                SpecificationAttributeOptionName = sao.GetLocalized(x => x.Name)
-                            });
-                        }
-                    }
-                }
-
-                return result;
-            }
-
-            protected virtual IList<SpecificationAttributeOptionFilter> GetNotFilteredSpecs(int categoryId, 
-                ISpecificationAttributeService specificationAttributeService, IWebHelper webHelper, IWorkContext workContext)
-            {
-                //get all
-                var result = specificationAttributeService.GetSpecificationAttributeOptionFilter(categoryId, workContext);
-
-                //remove already filtered
-                var alreadyFilteredOptions = GetAlreadyFilteredSpecs(specificationAttributeService, webHelper, workContext);
-                foreach (var saof1 in alreadyFilteredOptions)
-                {
-                    var query = from s in result
-                                where s.SpecificationAttributeId == saof1.SpecificationAttributeId
-                                select s;
-
-                    var toRemove = query.ToList();
-                    foreach (var saof2 in toRemove)
-                        result.Remove(saof2);
-                }
-                return result;
-            }
-
+            
             protected virtual string GenerateFilteredSpecQueryParam(IList<int> optionIds)
             {
                 string result = "";
@@ -339,17 +298,62 @@ namespace Nop.Web.Models.Catalog
                 return result;
             }
 
-            public virtual void LoadSpecsFilters(Category category, 
-                ISpecificationAttributeService specificationAttributeService, IWebHelper webHelper, 
+            public virtual void PrepareSpecsFilters(IList<int> alreadyFilteredSpecOptionIds,
+                IList<int> filterableSpecificationAttributeOptionIds,
+                ISpecificationAttributeService specificationAttributeService, 
+                IWebHelper webHelper,
                 IWorkContext workContext)
             {
-                if (category == null)
-                    throw new ArgumentNullException("category");
+                var allFilters = new List<SpecificationAttributeOptionFilter>();
+                if (filterableSpecificationAttributeOptionIds != null)
+                    foreach (var saoId in filterableSpecificationAttributeOptionIds)
+                    {
+                        var sao = specificationAttributeService.GetSpecificationAttributeOptionById(saoId);
+                        if (sao != null)
+                        {
+                            var sa = sao.SpecificationAttribute;
+                            if (sa != null)
+                            {
+                                allFilters.Add(new SpecificationAttributeOptionFilter
+                                {
+                                    SpecificationAttributeId = sa.Id,
+                                    SpecificationAttributeName = sa.GetLocalized(x => x.Name, workContext.WorkingLanguage.Id),
+                                    SpecificationAttributeDisplayOrder = sa.DisplayOrder,
+                                    SpecificationAttributeOptionId = sao.Id,
+                                    SpecificationAttributeOptionName = sao.GetLocalized(x => x.Name, workContext.WorkingLanguage.Id),
+                                    SpecificationAttributeOptionDisplayOrder = sao.DisplayOrder
+                                });
+                            }
+                        }
+                    }
 
-                var alreadyFilteredOptions = GetAlreadyFilteredSpecs(specificationAttributeService, webHelper, workContext);
-                var notFilteredOptions = GetNotFilteredSpecs(category.Id, 
-                    specificationAttributeService, webHelper, workContext);
+                //sort loaded options
+                allFilters = allFilters.OrderBy(saof => saof.SpecificationAttributeDisplayOrder)
+                    .ThenBy(saof => saof.SpecificationAttributeOptionDisplayOrder)
+                    .ThenBy(saof => saof.SpecificationAttributeName)
+                    .ThenBy(saof => saof.SpecificationAttributeOptionName).ToList();
+                
+                //get already filtered specification options
+                var alreadyFilteredOptions = allFilters
+                    .Where(x => alreadyFilteredSpecOptionIds.Contains(x.SpecificationAttributeOptionId))
+                    .Select(x => x)
+                    .ToList();
 
+                //get not filtered specification options
+                var notFilteredOptions = new List<SpecificationAttributeOptionFilter>();
+                foreach (var saof in allFilters)
+                {
+                    //do not add already filtered specification options
+                    if (alreadyFilteredOptions
+                        .Where(x => x.SpecificationAttributeId == saof.SpecificationAttributeId)
+                        .FirstOrDefault() != null)
+                        continue;
+
+                    //else add it
+                    notFilteredOptions.Add(saof);
+                }
+
+                //prepare the model properties
                 if (alreadyFilteredOptions.Count > 0 || notFilteredOptions.Count > 0)
                 {
                     this.Enabled = true;
@@ -377,8 +381,7 @@ namespace Nop.Web.Models.Catalog
                         string filterUrl = webHelper.ModifyQueryString(webHelper.GetThisPageUrl(true), QUERYSTRINGPARAM + "=" + newQueryParam, null);
                         filterUrl = ExcludeQueryStringParams(filterUrl, webHelper);
                         item.FilterUrl = filterUrl;
-
-
+                        
                         return item;
                     }).ToList();
 
@@ -405,7 +408,7 @@ namespace Nop.Web.Models.Catalog
             #endregion
         }
 
-        public class SpecificationFilterItem : BaseNopModel
+        public partial class SpecificationFilterItem : BaseNopModel
         {
             public string SpecificationAttributeName { get; set; }
             public string SpecificationAttributeOptionName { get; set; }

@@ -5,6 +5,7 @@ using Nop.Core.Domain.Forums;
 using Nop.Core.Domain.Messages;
 using Nop.Core.Domain.News;
 using Nop.Core.Domain.Orders;
+using Nop.Core.Domain.Shipping;
 
 namespace Nop.Services.Messages
 {
@@ -65,20 +66,20 @@ namespace Nop.Services.Messages
         int SendOrderPlacedCustomerNotification(Order order, int languageId);
 
         /// <summary>
-        /// Sends an order shipped notification to a customer
+        /// Sends a shipment sent notification to a customer
         /// </summary>
-        /// <param name="order">Order instance</param>
+        /// <param name="shipment">Shipment</param>
         /// <param name="languageId">Message language identifier</param>
         /// <returns>Queued email identifier</returns>
-        int SendOrderShippedCustomerNotification(Order order, int languageId);
+        int SendShipmentSentCustomerNotification(Shipment shipment, int languageId);
 
         /// <summary>
-        /// Sends an order delivered notification to a customer
+        /// Sends a shipment delivered notification to a customer
         /// </summary>
-        /// <param name="order">Order instance</param>
+        /// <param name="shipment">Shipment</param>
         /// <param name="languageId">Message language identifier</param>
         /// <returns>Queued email identifier</returns>
-        int SendOrderDeliveredCustomerNotification(Order order, int languageId);
+        int SendShipmentDeliveredCustomerNotification(Shipment shipment, int languageId);
 
         /// <summary>
         /// Sends an order completed notification to a customer
@@ -96,6 +97,22 @@ namespace Nop.Services.Messages
         /// <returns>Queued email identifier</returns>
         int SendOrderCancelledCustomerNotification(Order order, int languageId);
 
+        /// <summary>
+        /// Sends a new order note added notification to a customer
+        /// </summary>
+        /// <param name="orderNote">Order note</param>
+        /// <param name="languageId">Message language identifier</param>
+        /// <returns>Queued email identifier</returns>
+        int SendNewOrderNoteAddedCustomerNotification(OrderNote orderNote, int languageId);
+
+        /// <summary>
+        /// Sends a "Recurring payment cancelled" notification to a store owner
+        /// </summary>
+        /// <param name="recurringPayment">Recurring payment</param>
+        /// <param name="languageId">Message language identifier</param>
+        /// <returns>Queued email identifier</returns>
+        int SendRecurringPaymentCancelledStoreOwnerNotification(RecurringPayment recurringPayment, int languageId);
+        
         #endregion
 
         #region Newsletter workflow
@@ -155,6 +172,7 @@ namespace Nop.Services.Messages
         /// Sends 'New Return Request' message to a store owner
         /// </summary>
         /// <param name="returnRequest">Return request</param>
+        /// <param name="opv">Order product variant</param>
         /// <param name="languageId">Message language identifier</param>
         /// <returns>Queued email identifier</returns>
         int SendNewReturnRequestStoreOwnerNotification(ReturnRequest returnRequest,  OrderProductVariant opv, int languageId);
@@ -164,6 +182,7 @@ namespace Nop.Services.Messages
         /// Sends 'Return Request status changed' message to a customer
         /// </summary>
         /// <param name="returnRequest">Return request</param>
+        /// <param name="opv">Order product variant</param>
         /// <param name="languageId">Message language identifier</param>
         /// <returns>Queued email identifier</returns>
         int SendReturnRequestStatusChangedCustomerNotification(ReturnRequest returnRequest, OrderProductVariant opv, int languageId);
@@ -190,11 +209,13 @@ namespace Nop.Services.Messages
         /// <param name="forumPost">Forum post</param>
         /// <param name="forumTopic">Forum Topic</param>
         /// <param name="forum">Forum</param>
+        /// <param name="friendlyForumTopicPageIndex">Friendly (starts with 1) forum topic page to use for URL generation</param>
         /// <param name="languageId">Message language identifier</param>
         /// <returns>Queued email identifier</returns>
         int SendNewForumPostMessage(Customer customer,
             ForumPost forumPost, ForumTopic forumTopic,
-            Forum forum, int languageId);
+            Forum forum, int friendlyForumTopicPageIndex, 
+            int languageId);
 
         /// <summary>
         /// Sends a private message notification
@@ -261,6 +282,14 @@ namespace Nop.Services.Messages
         /// <param name="languageId">Message language identifier</param>
         /// <returns>Queued email identifier</returns>
         int SendNewsCommentNotificationMessage(NewsComment newsComment, int languageId);
+
+        /// <summary>
+        /// Sends a 'Back in stock' notification message to a customer
+        /// </summary>
+        /// <param name="subscription">Subscription</param>
+        /// <param name="languageId">Message language identifier</param>
+        /// <returns>Queued email identifier</returns>
+        int SendBackInStockNotification(BackInStockSubscription subscription, int languageId);
 
         #endregion
     }

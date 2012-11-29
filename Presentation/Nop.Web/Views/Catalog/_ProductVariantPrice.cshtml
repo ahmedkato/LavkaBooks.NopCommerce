@@ -1,11 +1,10 @@
-﻿@model Nop.Web.Models.Catalog.ProductModel.ProductVariantModel.ProductVariantPriceModel
+﻿@model ProductDetailsModel.ProductVariantModel.ProductVariantPriceModel
 @using Nop.Web.Models.Catalog;
 @using Nop.Core.Domain.Catalog;
 @using Nop.Core.Infrastructure;
 @using Nop.Core;
 @using System.Text;
 @using System.Globalization;
-@using Nop.Web.Framework;
 @using Nop.Services.Customers;
 @using System.Text.RegularExpressions;
 @{
@@ -14,26 +13,25 @@
 }
 @if (Model.DynamicPriceUpdate)
 {
-    <script type="text/javascript">    
-//<![CDATA[
-        var priceValForDynUpd_@(Model.ProductVariantId) = @(((float)(Model.PriceValue != Model.PriceWithDiscountValue ? Model.PriceWithDiscountValue : Model.PriceValue)).ToString());//]]>
-    </script>
+    <script type="text/javascript">
+        var priceValForDynUpd_@(Model.ProductVariantId) = @(((float)(Model.PriceValue != Model.PriceWithDiscountValue ? Model.PriceWithDiscountValue : Model.PriceValue)).ToString(new CultureInfo("en-US")));
+    </script>
 }
-<div class="price">
+<div class="prices">
     @if (Model.CustomerEntersPrice)
     {
         /*display nothing*/
     }
     else if (Model.CallForPrice)
     {
-        <span class="productPrice">@T("Products.CallForPrice")</span>
+        <span class="product-price">@T("Products.CallForPrice")</span>
     }
     else
     {
         if (!String.IsNullOrWhiteSpace(Model.OldPrice))
         {
         @T("Products.Price.OldPrice")<text>:</text>
-        <span class="oldProductPrice">@Model.OldPrice</span>
+        <span class="old-product-price">@Model.OldPrice</span>
         <br />
         }
         if (!String.IsNullOrWhiteSpace(Model.OldPrice) ||
@@ -46,7 +44,7 @@
         <span 
         @if (String.IsNullOrWhiteSpace(Model.PriceWithDiscount))
         {
-            <text>class="productPrice"</text>
+            <text>class="product-price"</text>
         }
         >
             @if (Model.DynamicPriceUpdate && !Model.HidePrices && String.IsNullOrWhiteSpace(Model.PriceWithDiscount))
@@ -65,7 +63,7 @@
             {
         <br />
         @T("Products.Price.WithDiscount")<text>:</text>
-        <span class="productPrice">
+        <span class="product-price">
             @if (Model.DynamicPriceUpdate && !Model.HidePrices)
             {
                 @Html.Raw(Regex.Replace(Model.PriceWithDiscount, pattern, replacement))

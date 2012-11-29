@@ -1,7 +1,9 @@
 ﻿@model MediaSettingsModel
-
-
 @using Telerik.Web.Mvc.UI;
+@{
+    //page title
+    ViewBag.Title = @T("Admin.Configuration.Settings.Media").Text;
+}
 @using (Html.BeginForm())
 {
     <div class="section-header">
@@ -10,7 +12,7 @@
             @T("Admin.Configuration.Settings.Media")
         </div>
         <div class="options">
-            <button type="submit" name="save" value="save" class="t-button">@T("Admin.Common.Save")</button>
+            <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
         </div>
     </div>
 @Html.ValidationSummary(false)
@@ -29,7 +31,7 @@
                     @T("Admin.Configuration.Settings.Media.PicturesStoredIntoDatabase.FileSystem")
                 }
                 
-            <button type="submit" name="change-picture-storage" value="change-picture-storage" class="t-button">@T("Admin.Configuration.Settings.Media.PicturesStoredIntoDatabase.Change")</button>
+            <input type="submit" name="change-picture-storage" class="t-button" onclick="return confirm('@T("Admin.Common.AreYouSure")');" value="@T("Admin.Configuration.Settings.Media.PicturesStoredIntoDatabase.Change")" />
             NOTE: Do not forget to backup your database before changing this option.
             </td>
         </tr>
@@ -58,6 +60,15 @@
             <td class="adminData">
                 @Html.EditorFor(model => model.ProductDetailsPictureSize)
                 @Html.ValidationMessageFor(model => model.ProductDetailsPictureSize)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.ProductThumbPictureSizeOnProductDetailsPage):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.ProductThumbPictureSizeOnProductDetailsPage)
+                @Html.ValidationMessageFor(model => model.ProductThumbPictureSizeOnProductDetailsPage)
             </td>
         </tr>
         <tr>
@@ -94,6 +105,15 @@
             <td class="adminData">
                 @Html.EditorFor(model => model.CartThumbPictureSize)
                 @Html.ValidationMessageFor(model => model.CartThumbPictureSize)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.MiniCartThumbPictureSize):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.MiniCartThumbPictureSize)
+                @Html.ValidationMessageFor(model => model.MiniCartThumbPictureSize)
             </td>
         </tr>
         <tr>

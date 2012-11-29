@@ -9,15 +9,15 @@ using Nop.Services.Directory;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Orders;
+using Nop.Services.Security;
 using Nop.Services.Tax;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
 
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class CheckoutAttributeController : BaseNopController
+    public partial class CheckoutAttributeController : BaseNopController
     {
         #region Fields
 
@@ -65,7 +65,7 @@ namespace Nop.Admin.Controllers
         #region Utilities
 
         [NonAction]
-        public void UpdateAttributeLocales(CheckoutAttribute checkoutAttribute, CheckoutAttributeModel model)
+        protected void UpdateAttributeLocales(CheckoutAttribute checkoutAttribute, CheckoutAttributeModel model)
         {
             foreach (var localized in model.Locales)
             {
@@ -82,7 +82,7 @@ namespace Nop.Admin.Controllers
         }
 
         [NonAction]
-        public void UpdateValueLocales(CheckoutAttributeValue checkoutAttributeValue, CheckoutAttributeValueModel model)
+        protected void UpdateValueLocales(CheckoutAttributeValue checkoutAttributeValue, CheckoutAttributeValueModel model)
         {
             foreach (var localized in model.Locales)
             {
@@ -94,7 +94,7 @@ namespace Nop.Admin.Controllers
         }
 
         [NonAction]
-        private void PrepareCheckoutAttributeModel(CheckoutAttributeModel model, CheckoutAttribute checkoutAttribute, bool excludeProperties)
+        protected void PrepareCheckoutAttributeModel(CheckoutAttributeModel model, CheckoutAttribute checkoutAttribute, bool excludeProperties)
         {
             if (model == null)
                 throw new ArgumentNullException("model");
@@ -171,7 +171,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Create(CheckoutAttributeModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
@@ -203,7 +203,9 @@ namespace Nop.Admin.Controllers
 
             var checkoutAttribute = _checkoutAttributeService.GetCheckoutAttributeById(id);
             if (checkoutAttribute == null)
-                throw new ArgumentException("No checkout attribute found with the specified id", "id");
+                //No checkout attribute found with the specified id
+                return RedirectToAction("List");
+
             var model = checkoutAttribute.ToModel();
             //locales
             AddLocales(_languageService, model.Locales, (locale, languageId) =>
@@ -216,7 +218,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Edit(CheckoutAttributeModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
@@ -224,7 +226,9 @@ namespace Nop.Admin.Controllers
 
             var checkoutAttribute = _checkoutAttributeService.GetCheckoutAttributeById(model.Id);
             if (checkoutAttribute == null)
-                throw new ArgumentException("No checkout attribute found with the specified id");
+                //No checkout attribute found with the specified id
+                return RedirectToAction("List");
+
             if (ModelState.IsValid)
             {
                 checkoutAttribute = model.ToEntity(checkoutAttribute);
@@ -245,8 +249,8 @@ namespace Nop.Admin.Controllers
         }
 
         //delete
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
@@ -317,7 +321,8 @@ namespace Nop.Admin.Controllers
 
             var checkoutAttribute = _checkoutAttributeService.GetCheckoutAttributeById(model.CheckoutAttributeId);
             if (checkoutAttribute == null)
-                throw new ArgumentException("No checkout attribute found with the specified id");
+                //No checkout attribute found with the specified id
+                return RedirectToAction("List");
 
             model.PrimaryStoreCurrencyCode = _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId).CurrencyCode;
             model.BaseWeightIn = _measureService.GetMeasureWeightById(_measureSettings.BaseWeightId).Name;
@@ -347,7 +352,9 @@ namespace Nop.Admin.Controllers
 
             var cav = _checkoutAttributeService.GetCheckoutAttributeValueById(id);
             if (cav == null)
-                throw new ArgumentException("No checkout attribute value found with the specified id", "id");
+                //No checkout attribute value found with the specified id
+                return RedirectToAction("List");
+
             var model = cav.ToModel();
             model.PrimaryStoreCurrencyCode = _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId).CurrencyCode;
             model.BaseWeightIn = _measureService.GetMeasureWeightById(_measureSettings.BaseWeightId).Name;
@@ -369,7 +376,9 @@ namespace Nop.Admin.Controllers
 
             var cav = _checkoutAttributeService.GetCheckoutAttributeValueById(model.Id);
             if (cav == null)
-                throw new ArgumentException("No checkout attribute value found with the specified id");
+                //No checkout attribute value found with the specified id
+                return RedirectToAction("List");
+
             model.PrimaryStoreCurrencyCode = _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId).CurrencyCode;
             model.BaseWeightIn = _measureService.GetMeasureWeightById(_measureSettings.BaseWeightId).Name;
 
@@ -398,6 +407,8 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var cav = _checkoutAttributeService.GetCheckoutAttributeValueById(valueId);
+            if (cav == null)
+                throw new ArgumentException("No checkout attribute value found with the specified id");
             _checkoutAttributeService.DeleteCheckoutAttributeValue(cav);
 
             return ValueList(checkoutAttributeId, command);

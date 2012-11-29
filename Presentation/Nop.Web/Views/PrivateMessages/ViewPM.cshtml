@@ -1,21 +1,22 @@
-﻿@model Nop.Web.Models.PrivateMessages.PrivateMessageModel
+﻿@model PrivateMessageModel
+@using Nop.Web.Models.PrivateMessages;
 @{
     Layout = "~/Views/Shared/_ColumnsOne.cshtml";
 
     Html.AddTitleParts(T("PageTitle.ViewPM").Text);
 }
-<div class="privatemessageview">
-    <div class="title">
+<div class="page private-message-view-page">
+    <div class="page-title">
         @T("PrivateMessages.View.ViewMessage")
     </div>
-    <div class="wrapper">
-        <table class="viewmessage">
+    <div class="page-body">
+        <table class="view-message">
             <tr>
                 <td class="fieldname">
                     @T("PrivateMessages.View.From")
                 </td>
                 <td>
-                    @Model.customerFromName
+                    @Model.CustomerFromName
                 </td>
             </tr>
             <tr>
@@ -23,7 +24,7 @@
                     @T("PrivateMessages.View.To")
                 </td>
                 <td>
-                    @Model.customerToName
+                    @Model.CustomerToName
                 </td>
             </tr>
             <tr>
@@ -31,7 +32,7 @@
                     @T("PrivateMessages.View.Subject")
                 </td>
                 <td>
-                    @Html.Raw(@Model.Subject)
+                    @Model.Subject
                 </td>
             </tr>
             <tr>
@@ -44,11 +45,11 @@
             </tr>
             <tr>
                 <td colspan="2" class="options">
-                    <input type="button" class="replypmbutton" value="@T("PrivateMessages.View.ReplyButton")" 
-                        onclick="setLocation('@Url.RouteUrl("SendPMReply", new { toCustomerId = @Model.ToCustomerId, replyToMessageId = @Model.Id })')" />
-                    <input type="button" class="deletepmbutton" value="@T("PrivateMessages.View.DeleteButton")" 
+                    <input type="button" class="button-1 reply-pm-button" value="@T("PrivateMessages.View.ReplyButton")" 
+                        onclick="setLocation('@Url.RouteUrl("SendPMReply", new { toCustomerId = @Model.FromCustomerId, replyToMessageId = @Model.Id })')" />
+                    <input type="button" class="button-2 delete-pm-button" value="@T("PrivateMessages.View.DeleteButton")" 
                         onclick="setLocation('@Url.RouteUrl("DeletePM", new { privateMessageId = @Model.Id })')" />
-                    <input type="button" class="backpmbutton" value="@T("PrivateMessages.View.BackButton")" 
+                    <input type="button" class="button-2 back-pm-button" value="@T("PrivateMessages.View.BackButton")" 
                         onclick="setLocation('@Url.RouteUrl("PrivateMessages")')" />
                 </td>
             </tr>

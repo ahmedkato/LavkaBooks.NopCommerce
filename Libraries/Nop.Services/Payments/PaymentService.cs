@@ -43,8 +43,9 @@ namespace Nop.Services.Payments
         /// <summary>
         /// Load active payment methods
         /// </summary>
+        /// <param name="filterByCustomerId">Filter payment methods by customer; null to load all records</param>
         /// <returns>Payment methods</returns>
-        public virtual IList<IPaymentMethod> LoadActivePaymentMethods()
+        public virtual IList<IPaymentMethod> LoadActivePaymentMethods(int? filterByCustomerId = null)
         {
             return LoadAllPaymentMethods()
                    .Where(provider => _paymentSettings.ActivePaymentMethodSystemNames.Contains(provider.PluginDescriptor.SystemName, StringComparer.InvariantCultureIgnoreCase))
@@ -93,6 +94,12 @@ namespace Nop.Services.Payments
             }
             else
             {
+                //We should strip out any white space or dash in the CC number entered.
+                if (!String.IsNullOrWhiteSpace(processPaymentRequest.CreditCardNumber))
+                {
+                    processPaymentRequest.CreditCardNumber = processPaymentRequest.CreditCardNumber.Replace(" ", "");
+                    processPaymentRequest.CreditCardNumber = processPaymentRequest.CreditCardNumber.Replace("-", "");
+                }
                 var paymentMethod = LoadPaymentMethodBySystemName(processPaymentRequest.PaymentMethodSystemName);
                 if (paymentMethod == null)
                     throw new NopException("Payment method couldn't be loaded");

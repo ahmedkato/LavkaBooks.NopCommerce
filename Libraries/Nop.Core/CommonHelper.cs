@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Configuration;
 using System.Globalization;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -17,6 +18,23 @@ namespace Nop.Core
     /// </summary>
     public partial class CommonHelper
     {
+        /// <summary>
+        /// Ensures the subscriber email or throw.
+        /// </summary>
+        /// <param name="email">The email.</param>
+        /// <returns></returns>
+        public static string EnsureSubscriberEmailOrThrow(string email) {
+            string output = EnsureNotNull(email);
+            output = output.Trim();
+            output = EnsureMaximumLength(output, 255);
+
+            if(!IsValidEmail(output)) {
+                throw new NopException("Email is not valid.");
+            }
+
+            return output;
+        }
+
         /// <summary>
         /// Verifies that a string is in valid e-mail format
         /// </summary>
@@ -230,6 +248,8 @@ namespace Nop.Core
                 return new GenericListTypeConverter<string>();
             if (type == typeof(ShippingOption))
                 return new ShippingOptionTypeConverter();
+            if (type == typeof(List<ShippingOption>) || type == typeof(IList<ShippingOption>))
+                return new ShippingOptionListTypeConverter();
 
             return TypeDescriptor.GetConverter(type);
         }
@@ -301,7 +321,14 @@ namespace Nop.Core
             return result;
         }
 
-        //TODO move this property to NopConfig
-        public static bool OneToManyCollectionWrapperEnabled { get; set; }
+        public static bool OneToManyCollectionWrapperEnabled
+        {
+            get
+            {
+                bool enabled = !String.IsNullOrEmpty(ConfigurationManager.AppSettings["OneToManyCollectionWrapperEnabled"]) &&
+                   Convert.ToBoolean(ConfigurationManager.AppSettings["OneToManyCollectionWrapperEnabled"]);
+                return enabled;
+            }
+        }
     }
 }

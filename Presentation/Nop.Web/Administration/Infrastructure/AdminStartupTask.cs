@@ -1,6 +1,4 @@
-﻿using Nop.Core.Data;
-using Nop.Core.Infrastructure;
-using Nop.Core.Tasks;
+﻿using Nop.Core.Infrastructure;
 
 namespace Nop.Admin.Infrastructure
 {
@@ -8,9 +6,6 @@ namespace Nop.Admin.Infrastructure
     {
         public void Execute()
         {
-            if (!DataSettingsHelper.DatabaseIsInstalled())
-                return;
-
             //set localization service for telerik
             Telerik.Web.Mvc.Infrastructure.DI.Current.Register(
                 () => EngineContext.Current.Resolve<Telerik.Web.Mvc.Infrastructure.ILocalizationServiceFactory>());

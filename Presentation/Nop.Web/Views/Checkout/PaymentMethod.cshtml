@@ -1,16 +1,15 @@
-﻿@model Nop.Web.Models.Checkout.CheckoutPaymentMethodModel
-@using Nop.Core.Domain.Orders
-@using Nop.Web.Models.Checkout
-@using Nop.Web.Models.Common
-@using Nop.Web.Framework.UI
+﻿@model CheckoutPaymentMethodModel
+@using Nop.Core.Domain.Orders;
+@using Nop.Web.Models.Checkout;
+@using Nop.Web.Models.Common;
 @{
     Layout = "~/Views/Shared/_ColumnsOne.cshtml";
 
     //title
     Html.AddTitleParts(T("PageTitle.Checkout").Text);
 }
-<div class="checkout-page">
-    @Html.Partial("~/Views/Checkout/CheckoutProgress.cshtml", new CheckoutProgressModel() { CheckoutProgressStep = CheckoutProgressStep.Payment }, new ViewDataDictionary())
+<div class="page checkout-page">
+    @Html.Action("CheckoutProgress", "Checkout", new { step = CheckoutProgressStep.Payment })
     <div class="clear">
     </div>
     <div class="page-title">
@@ -18,18 +17,18 @@
     </div>
     <div class="clear">
     </div>
-    <div class="checkout-data">
+    <div class="page-body checkout-data">
         @using (Html.BeginRouteForm("CheckoutPaymentMethod", FormMethod.Post))
         {
+            @Html.Widget("checkout_payment_method_top")
             if (Model.DisplayRewardPoints && Model.PaymentMethods.Count > 0)
             {
-            <div class="userewardpoints">
+            <div class="use-reward-points">
                 @Html.EditorFor(model => model.UseRewardPoints)
                 @string.Format(T("Checkout.UseRewardPoints").Text, Model.RewardPointsBalance, Model.RewardPointsAmount)
             </div>
             <div class="clear">
             </div>
-            <br />
             }
             <div class="payment-methods">
                 @if (Model.PaymentMethods.Count > 0)
@@ -40,7 +39,7 @@
                             var paymentMethod = Model.PaymentMethods[i];
                             <div class="payment-method-item">
                                 <div class="option-name">
-                                    <input id="paymentmethod_@(i)" type="radio" name="paymentmethod" value="@(paymentMethod.PaymentMethodSystemName)"  @(i == 0 ? " checked=\"checked\"" : null) />
+                                    <input id="paymentmethod_@(i)" type="radio" name="paymentmethod" value="@(paymentMethod.PaymentMethodSystemName)"  @(paymentMethod.Selected ? Html.Raw(" checked=\"checked\"") : null) />
                                     <label for="paymentmethod_@(i)">@paymentMethod.Name</label>
                                     @if (!String.IsNullOrEmpty(paymentMethod.Fee))
                                     {
@@ -54,7 +53,7 @@
                         <div class="clear">
                         </div>
                         <div class="select-button">
-                            <input type="submit" name="nextstep" value="@T("Checkout.NextButton")" id="nextstep" class="paymentmethodnextstepbutton" />
+                            <input type="submit" name="nextstep" value="@T("Checkout.NextButton")" class="button-1 payment-method-next-step-button" />
                         </div>
                     </div>
                 }
@@ -62,13 +61,12 @@
                 {
                     <div class="clear">
                     </div>
-                    <div class="error-block">
-                        <div class="message-error">
-                            @T("Checkout.NoPaymentMethods")
-                        </div>
+                    <div class="message-error">
+                        @T("Checkout.NoPaymentMethods")
                     </div>
                 }
             </div>
+            @Html.Widget("checkout_payment_method_bottom")
         }
         <div class="clear">
         </div>
@@ -78,7 +76,7 @@
         <div class="clear">
         </div>
         <div class="order-summary-body">
-            @Html.Action("OrderSummary", "ShoppingCart", new { isEditable = false })
+            @Html.Action("OrderSummary", "ShoppingCart")
         </div>
     </div>
 </div>

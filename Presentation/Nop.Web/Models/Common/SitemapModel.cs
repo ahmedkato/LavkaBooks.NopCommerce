@@ -5,16 +5,16 @@ using Nop.Web.Models.Topics;
 
 namespace Nop.Web.Models.Common
 {
-    public class SitemapModel : BaseNopModel
+    public partial class SitemapModel : BaseNopModel
     {
         public SitemapModel()
         {
-            Products = new List<ProductModel>();
+            Products = new List<ProductOverviewModel>();
             Categories = new List<CategoryModel>();
             Manufacturers = new List<ManufacturerModel>();
             Topics = new List<TopicModel>();
         }
-        public IList<ProductModel> Products { get; set; }
+        public IList<ProductOverviewModel> Products { get; set; }
         public IList<CategoryModel> Categories { get; set; }
         public IList<ManufacturerModel> Manufacturers { get; set; }
         public IList<TopicModel> Topics { get; set; }

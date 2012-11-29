@@ -10,7 +10,9 @@ using Nop.Core.Domain.Shipping;
 using Nop.Core.Plugins;
 using Nop.Services.Configuration;
 using Nop.Services.Directory;
+using Nop.Services.Localization;
 using Nop.Services.Shipping;
+using Nop.Services.Shipping.Tracking;
 
 namespace Nop.Plugin.Shipping.AustraliaPost
 {
@@ -159,12 +161,56 @@ namespace Nop.Plugin.Shipping.AustraliaPost
                 throw new NopException(err_msg);
             }
 
-            shippingOption.Name = serviceType;
+            var serviceName = GetServiceNameByType(serviceType);
+            if (serviceName != null && !serviceName.StartsWith("Australia Post.", StringComparison.InvariantCultureIgnoreCase))
+                serviceName = string.Format("Australia Post. {0}", serviceName);
+            shippingOption.Name = serviceName;
             shippingOption.Description = String.Format("{0} Days", rspParams["days"]);
             shippingOption.Rate = Decimal.Parse(rspParams["charge"]);
 
             return shippingOption;
         }
+        
+        private string GetServiceNameByType(string type)
+        {
+            if (String.IsNullOrEmpty(type))
+                return type;
+
+            var serviceName = "";
+            switch (type)
+            {
+                case "Standard":
+                    serviceName = "Regular Parcels";
+                    break;
+                case "Express":
+                    serviceName = "Express Parcels";
+                    break;
+                case "EXP_PLT":
+                    serviceName = "Express Parcels Platinum";
+                    break;
+                case "Air":
+                    serviceName = "Air Mail";
+                    break;
+                case "Sea":
+                    serviceName = "Sea Mail";
+                    break;
+                case "ECI_D":
+                    serviceName = "Express Courier International Document";
+                    break;
+                case "ECI_M":
+                    serviceName = "Express Courier International Merchandise";
+                    break;
+                case "EPI":
+                    serviceName = "Express Post International";
+                    break;
+                default:
+                    //not found. return service type
+                    serviceName = type;
+                    break;
+            }
+            return serviceName;
+        }
+
         #endregion
 
         #region Methods
@@ -250,11 +296,13 @@ namespace Nop.Plugin.Shipping.AustraliaPost
                 switch (country.ThreeLetterIsoCode)
                 {
                     case "AUS":
+                        //domestic services
                         response.ShippingOptions.Add(RequestShippingOption(zipPostalCodeFrom, zipPostalCodeTo, country.TwoLetterIsoCode, "Standard", weight, length, width, height, totalPackages));
                         response.ShippingOptions.Add(RequestShippingOption(zipPostalCodeFrom, zipPostalCodeTo, country.TwoLetterIsoCode, "Express", weight, length, width, height, totalPackages));
                         response.ShippingOptions.Add(RequestShippingOption(zipPostalCodeFrom, zipPostalCodeTo, country.TwoLetterIsoCode, "EXP_PLT", weight, length, width, height, totalPackages));
                         break;
                     default:
+                        //international services
                         response.ShippingOptions.Add(RequestShippingOption(zipPostalCodeFrom, zipPostalCodeTo, country.TwoLetterIsoCode, "Air", weight, length, width, height, totalPackages));
                         response.ShippingOptions.Add(RequestShippingOption(zipPostalCodeFrom, zipPostalCodeTo, country.TwoLetterIsoCode, "Sea", weight, length, width, height, totalPackages));
                         response.ShippingOptions.Add(RequestShippingOption(zipPostalCodeFrom, zipPostalCodeTo, country.TwoLetterIsoCode, "ECI_D", weight, length, width, height, totalPackages));
@@ -303,15 +351,39 @@ namespace Nop.Plugin.Shipping.AustraliaPost
         /// </summary>
         public override void Install()
         {
+            //settings
             var settings = new AustraliaPostSettings()
             {
                 GatewayUrl = "http://drc.edeliver.com.au/ratecalc.asp",
             };
             _settingService.SaveSetting(settings);
 
+            //locales
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.GatewayUrl", "Gateway URL");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.GatewayUrl.Hint", "Specify gateway URL");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.AdditionalHandlingCharge", "Additional handling charge.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.AdditionalHandlingCharge.Hint", "Enter additional handling fee to charge your customers.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.ShippedFromZipPostalCode", "Shipped from zip");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.ShippedFromZipPostalCode.Hint", "Specify origin zip code.");
+            
             base.Install();
         }
 
+        public override void Uninstall()
+        {
+            //settings
+            _settingService.DeleteSetting<AustraliaPostSettings>();
+
+            //locales
+            this.DeletePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.GatewayUrl");
+            this.DeletePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.GatewayUrl.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.AdditionalHandlingCharge");
+            this.DeletePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.AdditionalHandlingCharge.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.ShippedFromZipPostalCode");
+            this.DeletePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.ShippedFromZipPostalCode.Hint");
+            
+            base.Uninstall();
+        }
         #endregion
 
         #region Properties
@@ -325,6 +397,14 @@ namespace Nop.Plugin.Shipping.AustraliaPost
             {
                 return ShippingRateComputationMethodType.Realtime;
             }
+        }
+
+        /// <summary>
+        /// Gets a shipment tracker
+        /// </summary>
+        public IShipmentTracker ShipmentTracker 
+        { 
+            get { return null; }
         }
 
         #endregion

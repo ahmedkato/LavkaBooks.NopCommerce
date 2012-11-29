@@ -1,6 +1,9 @@
 ﻿@model NewsSettingsModel
-
 @using Telerik.Web.Mvc.UI;
+@{
+    //page title
+    ViewBag.Title = @T("Admin.Configuration.Settings.News").Text;
+}
 @using (Html.BeginForm())
 {
     <div class="section-header">
@@ -9,7 +12,7 @@
             @T("Admin.Configuration.Settings.News")
         </div>
         <div class="options">
-            <button type="submit" name="save" value="save" class="t-button">@T("Admin.Common.Save")</button>
+            <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
         </div>
     </div>
 @Html.ValidationSummary(false)

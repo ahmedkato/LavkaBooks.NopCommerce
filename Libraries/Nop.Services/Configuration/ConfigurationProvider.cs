@@ -1,8 +1,9 @@
 ﻿using System;
-using System.ComponentModel;
+using System.Collections.Generic;
 using System.Linq;
 using Nop.Core;
 using Nop.Core.Configuration;
+using Nop.Core.Domain.Configuration;
 
 namespace Nop.Services.Configuration
 {
@@ -28,6 +29,7 @@ namespace Nop.Services.Configuration
                              let setting = _settingService.GetSettingByKey<string>(typeof(TSettings).Name + "." + prop.Name)
                              where setting != null
                              where CommonHelper.GetNopCustomTypeConverter(prop.PropertyType).CanConvertFrom(typeof(string))
+                             where CommonHelper.GetNopCustomTypeConverter(prop.PropertyType).IsValid(setting)
                              let value = CommonHelper.GetNopCustomTypeConverter(prop.PropertyType).ConvertFromInvariantString(setting)
                              select new { prop, value };
 
@@ -60,6 +62,25 @@ namespace Nop.Services.Configuration
             _settingService.ClearCache();
 
             this.Settings = settings;
+        }
+
+        public void DeleteSettings()
+        {
+            var properties = from prop in typeof(TSettings).GetProperties()
+                             select prop;
+
+            var settingList = new List<Setting>();
+            foreach (var prop in properties)
+            {
+                string key = typeof(TSettings).Name + "." + prop.Name;
+                var setting = _settingService.GetSettingByKey(key);
+                if (setting != null)
+                    settingList.Add(setting);
+            }
+
+            foreach (var setting in settingList)
+                _settingService.DeleteSetting(setting);
+
         }
     }
 }

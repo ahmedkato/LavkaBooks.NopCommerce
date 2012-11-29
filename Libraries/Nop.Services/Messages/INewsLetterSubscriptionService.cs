@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using Nop.Core;
 using Nop.Core.Domain.Messages;
 
@@ -11,19 +10,22 @@ namespace Nop.Services.Messages
         /// Inserts a newsletter subscription
         /// </summary>
         /// <param name="newsLetterSubscription">NewsLetter subscription</param>
-        void InsertNewsLetterSubscription(NewsLetterSubscription newsLetterSubscription);
+        /// <param name="publishSubscriptionEvents">if set to <c>true</c> [publish subscription events].</param>
+        void InsertNewsLetterSubscription(NewsLetterSubscription newsLetterSubscription, bool publishSubscriptionEvents = true);
 
         /// <summary>
         /// Updates a newsletter subscription
         /// </summary>
         /// <param name="newsLetterSubscription">NewsLetter subscription</param>
-        void UpdateNewsLetterSubscription(NewsLetterSubscription newsLetterSubscription);
+        /// <param name="publishSubscriptionEvents">if set to <c>true</c> [publish subscription events].</param>
+        void UpdateNewsLetterSubscription(NewsLetterSubscription newsLetterSubscription, bool publishSubscriptionEvents = true);
 
         /// <summary>
         /// Deletes a newsletter subscription
         /// </summary>
         /// <param name="newsLetterSubscription">NewsLetter subscription</param>
-        void DeleteNewsLetterSubscription(NewsLetterSubscription newsLetterSubscription);
+        /// <param name="publishSubscriptionEvents">if set to <c>true</c> [publish subscription events].</param>
+        void DeleteNewsLetterSubscription(NewsLetterSubscription newsLetterSubscription, bool publishSubscriptionEvents = true);
 
         /// <summary>
         /// Gets a newsletter subscription by newsletter subscription identifier

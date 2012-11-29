@@ -6,10 +6,11 @@ using Nop.Core.Data;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Localization;
-using Nop.Core.Events;
 using Nop.Services.Catalog;
 using Nop.Services.Directory;
+using Nop.Services.Events;
 using Nop.Services.Localization;
+using Nop.Services.Media;
 using Nop.Services.Tax;
 using Nop.Tests;
 using NUnit.Framework;
@@ -33,6 +34,8 @@ namespace Nop.Services.Tests.Catalog
         ILocalizationService _localizationService;
         ITaxService _taxService;
         IPriceFormatter _priceFormatter;
+        IDownloadService _downloadService;
+        IWebHelper _webHelper;
         IProductAttributeFormatter _productAttributeFormatter;
 
         ProductAttribute pa1, pa2, pa3;
@@ -185,6 +188,8 @@ namespace Nop.Services.Tests.Catalog
             _localizationService.Expect(x => x.GetResource("GiftCardAttribute.From")).Return("From: {0}");
             _taxService = MockRepository.GenerateMock<ITaxService>();
             _priceFormatter = MockRepository.GenerateMock<IPriceFormatter>();
+            _downloadService = MockRepository.GenerateMock<IDownloadService>();
+            _webHelper = MockRepository.GenerateMock<IWebHelper>();
 
             _productAttributeFormatter = new ProductAttributeFormatter(_workContext,
                 _productAttributeService,
@@ -192,7 +197,9 @@ namespace Nop.Services.Tests.Catalog
                 _currencyService,
                 _localizationService,
                 _taxService,
-                _priceFormatter);
+                _priceFormatter,
+                _downloadService,
+                _webHelper);
         }
         
         [Test]

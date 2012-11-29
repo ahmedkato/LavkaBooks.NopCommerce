@@ -1,6 +1,4 @@
 ﻿@model EstimateShippingModel
-@using Nop.Web.Framework.UI;
-@using Nop.Web.Framework;
 @using Nop.Web.Models.ShoppingCart;
 @if (Model.Enabled)
 {
@@ -15,10 +13,10 @@
                 var estimateProgress = $("#estimate-shipping-loading-progress");
                 estimateProgress.show();                
                 $.ajax({
-                    cache:false,
+                    cache: false,
                     type: "GET",
-                    url: "@(Url.Action("GetStatesByCountryId", "Country"))",
-                    data: "countryId=" + selectedItem + "&addEmptyStateIfRequired=true",
+                    url: "@(Url.RouteUrl("GetStatesByCountryId"))",
+                    data: { "countryId": selectedItem, "addEmptyStateIfRequired": "true" },
                     success: function (data) {
                         ddlStates.html('');
                         $.each(data, function(id, option) {
@@ -36,8 +34,10 @@
             </script>
             
             <div class="estimate-shipping">
-                <b>@T("ShoppingCart.EstimateShipping")</b>
-                <br />@T("ShoppingCart.EstimateShipping.Tooltip")<br />
+                <div class="title">
+                    <strong>@T("ShoppingCart.EstimateShipping")</strong>
+                </div>
+                <div class="hint">@T("ShoppingCart.EstimateShipping.Tooltip")</div>
                 <div class="shipping-options">
                     <div>
                         <table>
@@ -46,7 +46,7 @@
                                     @Html.LabelFor(model => model.CountryId):
                                 </td>
                                 <td>
-                                    @Html.DropDownListFor(model => model.CountryId, Model.AvailableCountries, new { style = "width:137px;" })
+                                    @Html.DropDownListFor(model => model.CountryId, Model.AvailableCountries, new { @class = "country-input" })
                                     @Html.ValidationMessageFor(model => model.CountryId)
                                 </td>
                             </tr>
@@ -55,7 +55,7 @@
                                     @Html.LabelFor(model => model.StateProvinceId):
                                 </td>
                                 <td>
-                                    @Html.DropDownListFor(model => model.StateProvinceId, Model.AvailableStates, new { style = "width:137px;" })
+                                    @Html.DropDownListFor(model => model.StateProvinceId, Model.AvailableStates, new { @class = "state-input" })
                                     <span id="estimate-shipping-loading-progress" style="display: none;">
                                         <img src='@Url.Content("~/Content/Images/ajax_loader_small.gif")' alt="@T("Common.Wait...")" />
                                     </span>
@@ -67,7 +67,7 @@
                                     @Html.LabelFor(model => model.ZipPostalCode):
                                 </td>
                                 <td>
-                                    @Html.EditorFor(model => model.ZipPostalCode)
+                                    @Html.TextBoxFor(model => model.ZipPostalCode, new { @class = "zip-input" })
                                     @Html.ValidationMessageFor(model => model.ZipPostalCode)
                                 </td>
                             </tr>
@@ -75,7 +75,7 @@
                                 <td>
                                 </td>
                                 <td>
-                                    <input type="submit" name="estimateshipping" value="@T("ShoppingCart.EstimateShipping.Button")" id="estimateshipping" class="estimateshippingbutton" />                                    
+                                    <input type="submit" name="estimateshipping" value="@T("ShoppingCart.EstimateShipping.Button")" class="button-2 estimate-shipping-button" />
                                 </td>
                             </tr>
                         </table>
@@ -99,17 +99,13 @@
                     </div>
                     @if (Model.Warnings.Count > 0)
                     {
-                        <div class="warning-box">
-                            <div class="warning-text">
+                        <div class="message-error">
+                            <ul>
                                 @for (int i = 0; i < Model.Warnings.Count; i++)
                                 {
-                                    @Model.Warnings[i]
-                               if (i != Model.Warnings.Count - 1)
-                               {
-                                    <br />
-                               }
+                                    <li>@Model.Warnings[i]</li>
                                 }
-                            </div>
+                            </ul>
                         </div>
                     }
                 </div>

@@ -2,15 +2,15 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.ServiceModel.Syndication;
-using System.Text;
 using System.Web.Mvc;
-using System.Xml;
 using Nop.Core;
+using Nop.Core.Caching;
 using Nop.Core.Domain;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Localization;
 using Nop.Core.Domain.Media;
 using Nop.Core.Domain.News;
+using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
@@ -20,11 +20,15 @@ using Nop.Services.News;
 using Nop.Services.Seo;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
+using Nop.Web.Framework.Security;
+using Nop.Web.Framework.UI.Captcha;
+using Nop.Web.Infrastructure.Cache;
 using Nop.Web.Models.News;
 
 namespace Nop.Web.Controllers
 {
-    public class NewsController : BaseNopController
+    [NopHttpsRequirement(SslRequirement.No)]
+    public partial class NewsController : BaseNopController
     {
 		#region Fields
 
@@ -36,12 +40,14 @@ namespace Nop.Web.Controllers
         private readonly IDateTimeHelper _dateTimeHelper;
         private readonly IWorkflowMessageService _workflowMessageService;
         private readonly IWebHelper _webHelper;
+        private readonly ICacheManager _cacheManager;
 
         private readonly MediaSettings _mediaSettings;
         private readonly NewsSettings _newsSettings;
         private readonly LocalizationSettings _localizationSettings;
         private readonly CustomerSettings _customerSettings;
         private readonly StoreInformationSettings _storeInformationSettings;
+        private readonly CaptchaSettings _captchaSettings;
         
         #endregion
 
@@ -51,9 +57,10 @@ namespace Nop.Web.Controllers
             IWorkContext workContext, IPictureService pictureService, ILocalizationService localizationService,
             ICustomerContentService customerContentService, IDateTimeHelper dateTimeHelper,
             IWorkflowMessageService workflowMessageService, IWebHelper webHelper,
+            ICacheManager cacheManager,
             MediaSettings mediaSettings, NewsSettings newsSettings,
             LocalizationSettings localizationSettings, CustomerSettings customerSettings,
-            StoreInformationSettings storeInformationSettings)
+            StoreInformationSettings storeInformationSettings, CaptchaSettings captchaSettings)
         {
             this._newsService = newsService;
             this._workContext = workContext;
@@ -63,12 +70,14 @@ namespace Nop.Web.Controllers
             this._dateTimeHelper = dateTimeHelper;
             this._workflowMessageService = workflowMessageService;
             this._webHelper = webHelper;
+            this._cacheManager = cacheManager;
 
             this._mediaSettings = mediaSettings;
             this._newsSettings = newsSettings;
             this._localizationSettings = localizationSettings;
             this._customerSettings = customerSettings;
             this._storeInformationSettings = storeInformationSettings;
+            this._captchaSettings = captchaSettings;
         }
 
         #endregion
@@ -76,7 +85,7 @@ namespace Nop.Web.Controllers
         #region Utilities
 
         [NonAction]
-        private void PrepareNewsItemModel(NewsItemModel model, NewsItem newsItem, bool prepareComments)
+        protected void PrepareNewsItemModel(NewsItemModel model, NewsItem newsItem, bool prepareComments)
         {
             if (newsItem == null)
                 throw new ArgumentNullException("newsItem");
@@ -91,10 +100,11 @@ namespace Nop.Web.Controllers
             model.Full = newsItem.Full;
             model.AllowComments = newsItem.AllowComments;
             model.CreatedOn = _dateTimeHelper.ConvertToUserTime(newsItem.CreatedOnUtc, DateTimeKind.Utc);
-            model.NumberOfComments = newsItem.NewsComments.Count;
+            model.NumberOfComments = newsItem.ApprovedCommentCount;
+            model.AddNewComment.DisplayCaptcha = _captchaSettings.Enabled && _captchaSettings.ShowOnNewsCommentPage;
             if (prepareComments)
             {
-                var newsComments = newsItem.NewsComments.Where(pr => pr.IsApproved).OrderBy(pr => pr.CreatedOnUtc);
+                var newsComments = newsItem.NewsComments.Where(n => n.IsApproved).OrderBy(pr => pr.CreatedOnUtc);
                 foreach (var nc in newsComments)
                 {
                     var commentModel = new NewsCommentModel()
@@ -128,29 +138,38 @@ namespace Nop.Web.Controllers
         {
             if (!_newsSettings.Enabled || !_newsSettings.ShowNewsOnMainPage)
                 return Content("");
-
-            var model = new NewsItemListModel();
-            model.WorkingLanguageId = _workContext.WorkingLanguage.Id;
-
-            var newsItems = _newsService.GetAllNews(_workContext.WorkingLanguage.Id,
-                    null, null, 0, _newsSettings.MainPageNewsCount);
-
-            model.NewsItems = newsItems
-                .Select(x =>
+            
+            var cacheKey = string.Format(ModelCacheEventConsumer.HOMEPAGE_NEWSMODEL_KEY, _workContext.WorkingLanguage.Id);
+            var cachedModel = _cacheManager.Get(cacheKey, () =>
+            {
+                var newsItems = _newsService.GetAllNews(_workContext.WorkingLanguage.Id, 0, _newsSettings.MainPageNewsCount);
+                return new HomePageNewsItemsModel()
                 {
-                    var newsModel = new NewsItemModel();
-                    PrepareNewsItemModel(newsModel, x, false);
-                    return newsModel;
-                })
-                .ToList();
+                    WorkingLanguageId = _workContext.WorkingLanguage.Id,
+                    NewsItems = newsItems
+                        .Select(x =>
+                                    {
+                                        var newsModel = new NewsItemModel();
+                                        PrepareNewsItemModel(newsModel, x, false);
+                                        return newsModel;
+                                    })
+                        .ToList()
+                };
+            });
 
+            //"Comments" property of "NewsItemModel" object depends on the current customer.
+            //Furthermore, we just don't need it for home page news. So let's update reset it.
+            //But first we need to clone the cached model (the updated one should not be cached)
+            var model = (HomePageNewsItemsModel)cachedModel.Clone();
+            foreach (var newsItemModel in model.NewsItems)
+                newsItemModel.Comments.Clear();
             return PartialView(model);
         }
 
         public ActionResult List(NewsPagingFilteringModel command)
         {
             if (!_newsSettings.Enabled)
-                return RedirectToAction("Index", "Home");
+                return RedirectToRoute("HomePage");
 
             var model = new NewsItemListModel();
             model.WorkingLanguageId = _workContext.WorkingLanguage.Id;
@@ -159,7 +178,7 @@ namespace Nop.Web.Controllers
             if (command.PageNumber <= 0) command.PageNumber = 1;
 
             var newsItems = _newsService.GetAllNews(_workContext.WorkingLanguage.Id,
-                    null, null, command.PageNumber - 1, command.PageSize);
+                command.PageNumber - 1, command.PageSize);
             model.PagingFilteringContext.LoadPagedList(newsItems);
 
             model.NewsItems = newsItems
@@ -187,8 +206,7 @@ namespace Nop.Web.Controllers
                 return new RssActionResult() { Feed = feed };
 
             var items = new List<SyndicationItem>();
-            var newsItems = _newsService.GetAllNews(languageId,
-                null, null, 0, int.MaxValue);
+            var newsItems = _newsService.GetAllNews(languageId, 0, int.MaxValue);
             foreach (var n in newsItems)
             {
                 string newsUrl = Url.RouteUrl("NewsItem", new { newsItemId = n.Id, SeName = n.GetSeName() }, "http");
@@ -201,11 +219,14 @@ namespace Nop.Web.Controllers
         public ActionResult NewsItem(int newsItemId)
         {
             if (!_newsSettings.Enabled)
-                return RedirectToAction("Index", "Home");
+                return RedirectToRoute("HomePage");
 
             var newsItem = _newsService.GetNewsById(newsItemId);
-            if (newsItem == null || !newsItem.Published)
-                return RedirectToAction("Index", "Home");
+            if (newsItem == null || 
+                !newsItem.Published ||
+                (newsItem.StartDateUtc.HasValue && newsItem.StartDateUtc.Value >= DateTime.UtcNow) ||
+                (newsItem.EndDateUtc.HasValue && newsItem.EndDateUtc.Value <= DateTime.UtcNow))
+                return RedirectToRoute("HomePage");
 
             var model = new NewsItemModel();
             PrepareNewsItemModel(model, newsItem, true);
@@ -215,48 +236,55 @@ namespace Nop.Web.Controllers
 
         [HttpPost, ActionName("NewsItem")]
         [FormValueRequired("add-comment")]
-        public ActionResult NewsCommentAdd(int newsItemId, NewsItemModel model)
+        [CaptchaValidator]
+        public ActionResult NewsCommentAdd(int newsItemId, NewsItemModel model, bool captchaValid)
         {
             if (!_newsSettings.Enabled)
-                return RedirectToAction("Index", "Home");
+                return RedirectToRoute("HomePage");
 
             var newsItem = _newsService.GetNewsById(newsItemId);
             if (newsItem == null || !newsItem.Published || !newsItem.AllowComments)
-                return RedirectToAction("Index", "Home");
+                return RedirectToRoute("HomePage");
+
+            //validate CAPTCHA
+            if (_captchaSettings.Enabled && _captchaSettings.ShowOnNewsCommentPage && !captchaValid)
+            {
+                ModelState.AddModelError("", _localizationService.GetResource("Common.WrongCaptcha"));
+            }
+
+            if (_workContext.CurrentCustomer.IsGuest() && !_newsSettings.AllowNotRegisteredUsersToLeaveComments)
+            {
+                ModelState.AddModelError("", _localizationService.GetResource("News.Comments.OnlyRegisteredUsersLeaveComments"));
+            }
 
             if (ModelState.IsValid)
             {
-                if (_workContext.CurrentCustomer.IsGuest() && !_newsSettings.AllowNotRegisteredUsersToLeaveComments)
+                var comment = new NewsComment()
                 {
-                    ModelState.AddModelError("", _localizationService.GetResource("News.Comments.OnlyRegisteredUsersLeaveComments"));
-                }
-                else
-                {
-                    var comment = new NewsComment()
-                    {
-                        NewsItemId = newsItem.Id,
-                        CustomerId = _workContext.CurrentCustomer.Id,
-                        IpAddress = _webHelper.GetCurrentIpAddress(),
-                        CommentTitle = model.AddNewComment.CommentTitle,
-                        CommentText = model.AddNewComment.CommentText,
-                        IsApproved = true,
-                        CreatedOnUtc = DateTime.UtcNow,
-                        UpdatedOnUtc = DateTime.UtcNow,
-                    };
-                    _customerContentService.InsertCustomerContent(comment);
+                    NewsItemId = newsItem.Id,
+                    CustomerId = _workContext.CurrentCustomer.Id,
+                    IpAddress = _webHelper.GetCurrentIpAddress(),
+                    CommentTitle = model.AddNewComment.CommentTitle,
+                    CommentText = model.AddNewComment.CommentText,
+                    IsApproved = true,
+                    CreatedOnUtc = DateTime.UtcNow,
+                    UpdatedOnUtc = DateTime.UtcNow,
+                };
+                _customerContentService.InsertCustomerContent(comment);
 
-                    //notify store owner
-                    if (_newsSettings.NotifyAboutNewNewsComments)
-                        _workflowMessageService.SendNewsCommentNotificationMessage(comment, _localizationSettings.DefaultAdminLanguageId);
+                //update totals
+                _newsService.UpdateCommentTotals(newsItem);
 
+                //notify store owner);
+                if (_newsSettings.NotifyAboutNewNewsComments)
+                    _workflowMessageService.SendNewsCommentNotificationMessage(comment, _localizationSettings.DefaultAdminLanguageId);
 
-                    PrepareNewsItemModel(model, newsItem, true);
-                    model.AddNewComment.CommentText = null;
-                    model.AddNewComment.Result = _localizationService.GetResource("News.Comments.SuccessfullyAdded");
-
-                    return View(model);
-                }
+                //The text boxes should be cleared after a comment has been posted
+                //That' why we reload the page
+                TempData["nop.news.addcomment.result"] = _localizationService.GetResource("News.Comments.SuccessfullyAdded");
+                return RedirectToRoute("NewsItem", new { newsItemId = newsItem.Id, SeName = newsItem.GetSeName() });
             }
+
 
             //If we got this far, something failed, redisplay form
             PrepareNewsItemModel(model, newsItem, true);

@@ -1,6 +1,10 @@
 ﻿@model OrderSettingsModel
 @using Telerik.Web.Mvc.UI;
 @using Nop.Core.Domain.Orders;
+@{
+    //page title
+    ViewBag.Title = @T("Admin.Configuration.Settings.Order").Text;
+}
 @using (Html.BeginForm())
 {
     <div class="section-header">
@@ -9,17 +13,20 @@
             @T("Admin.Configuration.Settings.Order")
         </div>
         <div class="options">
-            <button type="submit" name="save" value="save" class="t-button">@T("Admin.Common.Save")</button>
+            <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
         </div>
     </div>
     @Html.ValidationSummary(false)
 
     
      
-    @Html.Telerik().TabStrip().Name("customersettings-edit").Items(x =>
+    @Html.Telerik().TabStrip().Name("ordersettings-edit").Items(x =>
 {
     x.Add().Text(T("Admin.Configuration.Settings.Order.OrderSettings").Text).Content(TabOrderSettings().ToHtmlString()).Selected(true);
     x.Add().Text(T("Admin.Configuration.Settings.Order.ReturnRequestSettings").Text).Content(TabReturnRequestSettings().ToHtmlString());
+    
+    //generate an event
+    EngineContext.Current.Resolve<IEventPublisher>().Publish(new AdminTabStripCreated(x, "ordersettings-edit"));
 })
 }
 @helper TabOrderSettings()

@@ -1,10 +1,10 @@
 ﻿CREATE FUNCTION [dbo].[nop_splitstring_to_table]
 (
-    @string NVARCHAR(1000),
+    @string NVARCHAR(MAX),
     @delimiter CHAR(1)
 )
 RETURNS @output TABLE(
-    data NVARCHAR(256)
+    data NVARCHAR(MAX)
 )
 BEGIN
     DECLARE @start INT, @end INT
@@ -44,53 +44,325 @@ GO
 
 
 
-CREATE PROCEDURE [dbo].[ProductLoadAllPaged]
+CREATE FUNCTION [dbo].[nop_getprimarykey_indexname]
 (
-	@CategoryId			int = 0,
+    @table_name nvarchar(1000) = null
+)
+RETURNS nvarchar(1000)
+AS
+BEGIN
+	DECLARE @index_name nvarchar(1000)
+
+    SELECT @index_name = i.name
+	FROM sys.tables AS tbl
+	INNER JOIN sys.indexes AS i ON (i.index_id > 0 and i.is_hypothetical = 0) AND (i.object_id=tbl.object_id)
+	WHERE (i.is_unique=1 and i.is_disabled=0) and (tbl.name=@table_name)
+
+    RETURN @index_name
+END
+GO
+
+
+CREATE PROCEDURE [ProductLoadAllPaged]
+(
+	@CategoryIds		nvarchar(MAX) = null,	--a list of category IDs (comma-separated list). e.g. 1,2,3
 	@ManufacturerId		int = 0,
 	@ProductTagId		int = 0,
 	@FeaturedProducts	bit = null,	--0 featured only , 1 not featured only, null - load all products
 	@PriceMin			decimal(18, 4) = null,
 	@PriceMax			decimal(18, 4) = null,
-	@Keywords			nvarchar(MAX) = null,
-	@SearchDescriptions bit = 0,
-	@FilteredSpecs		nvarchar(300) = null,	--filter by attributes (comma-separated list). e.g. 14,15,16
+	@Keywords			nvarchar(4000) = null,
+	@SearchDescriptions bit = 0, --a value indicating whether to search by a specified "keyword" in product descriptions
+	@SearchProductTags  bit = 0, --a value indicating whether to search by a specified "keyword" in product tags
+	@UseFullTextSearch  bit = 0,
+	@FullTextMode		int = 0, --0 using CONTAINS with <prefix_term>, 5 - using CONTAINS and OR with <prefix_term>, 10 - using CONTAINS and AND with <prefix_term>
+	@FilteredSpecs		nvarchar(MAX) = null,	--filter by attributes (comma-separated list). e.g. 14,15,16
 	@LanguageId			int = 0,
-	@OrderBy			int = 0, --0 position, 5 - Name, 10 - Price, 15 - creation date
+	@OrderBy			int = 0, --0 position, 5 - Name: A to Z, 6 - Name: Z to A, 10 - Price: Low to High, 11 - Price: High to Low, 15 - creation date
 	@PageIndex			int = 0, 
 	@PageSize			int = 2147483644,
 	@ShowHidden			bit = 0,
+	@LoadFilterableSpecificationAttributeOptionIds bit = 0, --a value indicating whether we should load the specification attribute option identifiers applied to loaded products (all pages)
+	@FilterableSpecificationAttributeOptionIds nvarchar(MAX) = null OUTPUT, --the specification attribute option identifiers applied to loaded products (all pages). returned as a comma separated list of identifiers
 	@TotalRecords		int = null OUTPUT
 )
 AS
 BEGIN
 	
-	--init
-	DECLARE @SearchKeywords bit
-	SET @SearchKeywords = 1
-	IF (@Keywords IS NULL OR @Keywords = N'')
-		SET @SearchKeywords = 0
+	/* Products that filtered by keywords */
+	CREATE TABLE #KeywordProducts
+	(
+		[ProductId] int NOT NULL
+	)
 
+	DECLARE
+		@SearchKeywords bit,
+		@sql nvarchar(max),
+		@sql_orderby nvarchar(max)
+
+	SET NOCOUNT ON
+	
+	--filter by keywords
 	SET @Keywords = isnull(@Keywords, '')
-	SET @Keywords = '%' + rtrim(ltrim(@Keywords)) + '%'
+	SET @Keywords = rtrim(ltrim(@Keywords))
+	IF ISNULL(@Keywords, '') != ''
+	BEGIN
+		SET @SearchKeywords = 1
+		
+		IF @UseFullTextSearch = 1
+		BEGIN
+			--full-text search
+			IF @FullTextMode = 0 
+			BEGIN
+				--0 - using CONTAINS with <prefix_term>
+				SET @Keywords = ' "' + @Keywords + '*" '
+			END
+			ELSE
+			BEGIN
+				--5 - using CONTAINS and OR with <prefix_term>
+				--10 - using CONTAINS and AND with <prefix_term>
+
+				--remove wrong chars (' ")
+				SET @Keywords = REPLACE(@Keywords, '''', '')
+				SET @Keywords = REPLACE(@Keywords, '"', '')
+				--clean multiple spaces
+				WHILE CHARINDEX('  ', @Keywords) > 0 
+					SET @Keywords = REPLACE(@Keywords, '  ', ' ')
+
+				DECLARE @concat_term nvarchar(100)				
+				IF @FullTextMode = 5 --5 - using CONTAINS and OR with <prefix_term>
+				BEGIN
+					SET @concat_term = 'OR'
+				END 
+				IF @FullTextMode = 10 --10 - using CONTAINS and AND with <prefix_term>
+				BEGIN
+					SET @concat_term = 'AND'
+				END
+
+				--now let's build search string
+				declare @fulltext_keywords nvarchar(4000)
+				set @fulltext_keywords = N''
+				declare @index int		
+		
+				set @index = CHARINDEX(' ', @Keywords, 0)
+
+				-- if index = 0, then only one field was passed
+				IF(@index = 0)
+					set @fulltext_keywords = ' "' + @Keywords + '*" '
+				ELSE
+				BEGIN		
+					DECLARE @first BIT
+					SET  @first = 1			
+					WHILE @index > 0
+					BEGIN
+						IF (@first = 0)
+							SET @fulltext_keywords = @fulltext_keywords + ' ' + @concat_term + ' '
+						ELSE
+							SET @first = 0
+
+						SET @fulltext_keywords = @fulltext_keywords + '"' + SUBSTRING(@Keywords, 1, @index - 1) + '*"'					
+						SET @Keywords = SUBSTRING(@Keywords, @index + 1, LEN(@Keywords) - @index)						
+						SET @index = CHARINDEX(' ', @Keywords, 0)
+					end
+					
+					-- add the last field
+					IF LEN(@fulltext_keywords) > 0
+						SET @fulltext_keywords = @fulltext_keywords + ' ' + @concat_term + ' ' + '"' + SUBSTRING(@Keywords, 1, LEN(@Keywords)) + '*"'	
+				END
+				SET @Keywords = @fulltext_keywords
+			END
+		END
+		ELSE
+		BEGIN
+			--usual search by PATINDEX
+			SET @Keywords = '%' + @Keywords + '%'
+		END
+		--PRINT @Keywords
+
+		--product name
+		SET @sql = '
+		INSERT INTO #KeywordProducts ([ProductId])
+		SELECT p.Id
+		FROM Product p with (NOLOCK)
+		WHERE '
+		IF @UseFullTextSearch = 1
+			SET @sql = @sql + 'CONTAINS(p.[Name], @Keywords) '
+		ELSE
+			SET @sql = @sql + 'PATINDEX(@Keywords, p.[Name]) > 0 '
+
+
+		--product variant name
+		SET @sql = @sql + '
+		UNION
+		SELECT pv.ProductId
+		FROM ProductVariant pv with (NOLOCK)
+		WHERE '
+		IF @UseFullTextSearch = 1
+			SET @sql = @sql + 'CONTAINS(pv.[Name], @Keywords) '
+		ELSE
+			SET @sql = @sql + 'PATINDEX(@Keywords, pv.[Name]) > 0 '
+
+
+		--SKU
+		SET @sql = @sql + '
+		UNION
+		SELECT pv.ProductId
+		FROM ProductVariant pv with (NOLOCK)
+		WHERE '
+		IF @UseFullTextSearch = 1
+			SET @sql = @sql + 'CONTAINS(pv.[Sku], @Keywords) '
+		ELSE
+			SET @sql = @sql + 'PATINDEX(@Keywords, pv.[Sku]) > 0 '
+
+
+		--localized product name
+		SET @sql = @sql + '
+		UNION
+		SELECT lp.EntityId
+		FROM LocalizedProperty lp with (NOLOCK)
+		WHERE
+			lp.LocaleKeyGroup = N''Product''
+			AND lp.LanguageId = ' + ISNULL(CAST(@LanguageId AS nvarchar(max)), '0') + '
+			AND lp.LocaleKey = N''Name'''
+		IF @UseFullTextSearch = 1
+			SET @sql = @sql + ' AND CONTAINS(lp.[LocaleValue], @Keywords) '
+		ELSE
+			SET @sql = @sql + ' AND PATINDEX(@Keywords, lp.[LocaleValue]) > 0 '
+	
+
+		IF @SearchDescriptions = 1
+		BEGIN
+			--product short description
+			SET @sql = @sql + '
+			UNION
+			SELECT p.Id
+			FROM Product p with (NOLOCK)
+			WHERE '
+			IF @UseFullTextSearch = 1
+				SET @sql = @sql + 'CONTAINS(p.[ShortDescription], @Keywords) '
+			ELSE
+				SET @sql = @sql + 'PATINDEX(@Keywords, p.[ShortDescription]) > 0 '
+
+
+			--product full description
+			SET @sql = @sql + '
+			UNION
+			SELECT p.Id
+			FROM Product p with (NOLOCK)
+			WHERE '
+			IF @UseFullTextSearch = 1
+				SET @sql = @sql + 'CONTAINS(p.[FullDescription], @Keywords) '
+			ELSE
+				SET @sql = @sql + 'PATINDEX(@Keywords, p.[FullDescription]) > 0 '
+
+
+			--product variant description
+			SET @sql = @sql + '
+			UNION
+			SELECT pv.ProductId
+			FROM ProductVariant pv with (NOLOCK)
+			WHERE '
+			IF @UseFullTextSearch = 1
+				SET @sql = @sql + 'CONTAINS(pv.[Description], @Keywords) '
+			ELSE
+				SET @sql = @sql + 'PATINDEX(@Keywords, pv.[Description]) > 0 '
+
+
+			--localized product short description
+			SET @sql = @sql + '
+			UNION
+			SELECT lp.EntityId
+			FROM LocalizedProperty lp with (NOLOCK)
+			WHERE
+				lp.LocaleKeyGroup = N''Product''
+				AND lp.LanguageId = ' + ISNULL(CAST(@LanguageId AS nvarchar(max)), '0') + '
+				AND lp.LocaleKey = N''ShortDescription'''
+			IF @UseFullTextSearch = 1
+				SET @sql = @sql + ' AND CONTAINS(lp.[LocaleValue], @Keywords) '
+			ELSE
+				SET @sql = @sql + ' AND PATINDEX(@Keywords, lp.[LocaleValue]) > 0 '
+				
+
+			--localized product full description
+			SET @sql = @sql + '
+			UNION
+			SELECT lp.EntityId
+			FROM LocalizedProperty lp with (NOLOCK)
+			WHERE
+				lp.LocaleKeyGroup = N''Product''
+				AND lp.LanguageId = ' + ISNULL(CAST(@LanguageId AS nvarchar(max)), '0') + '
+				AND lp.LocaleKey = N''FullDescription'''
+			IF @UseFullTextSearch = 1
+				SET @sql = @sql + ' AND CONTAINS(lp.[LocaleValue], @Keywords) '
+			ELSE
+				SET @sql = @sql + ' AND PATINDEX(@Keywords, lp.[LocaleValue]) > 0 '
+		END
+
+
+
+		IF @SearchProductTags = 1
+		BEGIN
+			--product tag
+			SET @sql = @sql + '
+			UNION
+			SELECT pptm.Product_Id
+			FROM Product_ProductTag_Mapping pptm with(NOLOCK) INNER JOIN ProductTag pt with(NOLOCK) ON pt.Id = pptm.ProductTag_Id
+			WHERE '
+			IF @UseFullTextSearch = 1
+				SET @sql = @sql + 'CONTAINS(pt.[Name], @Keywords) '
+			ELSE
+				SET @sql = @sql + 'PATINDEX(@Keywords, pt.[Name]) > 0 '
+
+			--localized product tag
+			SET @sql = @sql + '
+			UNION
+			SELECT pptm.Product_Id
+			FROM LocalizedProperty lp with (NOLOCK) INNER JOIN Product_ProductTag_Mapping pptm with(NOLOCK) ON lp.EntityId = pptm.ProductTag_Id
+			WHERE
+				lp.LocaleKeyGroup = N''ProductTag''
+				AND lp.LanguageId = ' + ISNULL(CAST(@LanguageId AS nvarchar(max)), '0') + '
+				AND lp.LocaleKey = N''Name'''
+			IF @UseFullTextSearch = 1
+				SET @sql = @sql + ' AND CONTAINS(lp.[LocaleValue], @Keywords) '
+			ELSE
+				SET @sql = @sql + ' AND PATINDEX(@Keywords, lp.[LocaleValue]) > 0 '
+		END
+
+		--PRINT (@sql)
+		EXEC sp_executesql @sql, N'@Keywords nvarchar(4000)', @Keywords
+
+	END
+	ELSE
+	BEGIN
+		SET @SearchKeywords = 0
+	END
+
+	--filter by category IDs
+	SET @CategoryIds = isnull(@CategoryIds, '')	
+	CREATE TABLE #FilteredCategoryIds
+	(
+		CategoryId int not null
+	)
+	INSERT INTO #FilteredCategoryIds (CategoryId)
+	SELECT CAST(data as int) FROM [nop_splitstring_to_table](@CategoryIds, ',')	
+	DECLARE @CategoryIdsCount int	
+	SET @CategoryIdsCount = (SELECT COUNT(1) FROM #FilteredCategoryIds)
 
 	--filter by attributes
-	SET @FilteredSpecs = isnull(@FilteredSpecs, '')
+	SET @FilteredSpecs = isnull(@FilteredSpecs, '')	
 	CREATE TABLE #FilteredSpecs
 	(
 		SpecificationAttributeOptionId int not null
 	)
 	INSERT INTO #FilteredSpecs (SpecificationAttributeOptionId)
-	SELECT CAST(data as int) FROM dbo.[nop_splitstring_to_table](@FilteredSpecs, ',');
-	
+	SELECT CAST(data as int) FROM [nop_splitstring_to_table](@FilteredSpecs, ',')	
 	DECLARE @SpecAttributesCount int	
-	SELECT @SpecAttributesCount = COUNT(1) FROM #FilteredSpecs
+	SET @SpecAttributesCount = (SELECT COUNT(1) FROM #FilteredSpecs)
 
 	--paging
 	DECLARE @PageLowerBound int
 	DECLARE @PageUpperBound int
 	DECLARE @RowsToReturn int
-	
 	SET @RowsToReturn = @PageSize * (@PageIndex + 1)	
 	SET @PageLowerBound = @PageSize * @PageIndex
 	SET @PageUpperBound = @PageLowerBound + @PageSize + 1
@@ -101,110 +373,193 @@ BEGIN
 		[ProductId] int NOT NULL
 	)
 
+	SET @sql = '
 	INSERT INTO #DisplayOrderTmp ([ProductId])
 	SELECT p.Id
-	FROM Product p with (NOLOCK) 
-	LEFT OUTER JOIN Product_Category_Mapping pcm with (NOLOCK) ON p.Id=pcm.ProductId
-	LEFT OUTER JOIN Product_Manufacturer_Mapping pmm with (NOLOCK) ON p.Id=pmm.ProductId
-	LEFT OUTER JOIN Product_ProductTag_Mapping pptm with (NOLOCK) ON p.Id=pptm.Product_Id
-	LEFT OUTER JOIN ProductVariant pv with (NOLOCK) ON p.Id = pv.ProductId
-	--searching of the localized values
-	--comment the line below if you don't use it. It'll improve the performance
-	LEFT OUTER JOIN LocalizedProperty lp with (NOLOCK) ON p.Id = lp.EntityId AND lp.LanguageId = @LanguageId AND lp.LocaleKeyGroup = N'Product'
-	WHERE 
-		(
-		   (
-				@CategoryId IS NULL OR @CategoryId=0
-				OR (pcm.CategoryId=@CategoryId AND (@FeaturedProducts IS NULL OR pcm.IsFeaturedProduct=@FeaturedProducts))
-			)
+	FROM
+		Product p with (NOLOCK)'
+	
+	IF @CategoryIdsCount > 0
+	BEGIN
+		SET @sql = @sql + '
+		LEFT JOIN Product_Category_Mapping pcm with (NOLOCK)
+			ON p.Id = pcm.ProductId'
+	END
+	
+	IF @ManufacturerId > 0
+	BEGIN
+		SET @sql = @sql + '
+		LEFT JOIN Product_Manufacturer_Mapping pmm with (NOLOCK)
+			ON p.Id = pmm.ProductId'
+	END
+	
+	IF ISNULL(@ProductTagId, 0) != 0
+	BEGIN
+		SET @sql = @sql + '
+		LEFT JOIN Product_ProductTag_Mapping pptm with (NOLOCK)
+			ON p.Id = pptm.Product_Id'
+	END
+	
+	IF @ShowHidden = 0
+	OR @PriceMin > 0
+	OR @PriceMax > 0
+	OR @OrderBy = 10 /* Price: Low to High */
+	OR @OrderBy = 11 /* Price: High to Low */
+	BEGIN
+		SET @sql = @sql + '
+		LEFT JOIN ProductVariant pv with (NOLOCK)
+			ON p.Id = pv.ProductId'
+	END
+	
+	--searching by keywords
+	IF @SearchKeywords = 1
+	BEGIN
+		SET @sql = @sql + '
+		JOIN #KeywordProducts kp
+			ON  p.Id = kp.ProductId'
+	END
+	
+	SET @sql = @sql + '
+	WHERE
+		p.Deleted = 0'
+	
+	--filter by category
+	IF @CategoryIdsCount > 0
+	BEGIN
+		SET @sql = @sql + '
+		AND pcm.CategoryId IN (SELECT CategoryId FROM #FilteredCategoryIds)'
+		
+		IF @FeaturedProducts IS NOT NULL
+		BEGIN
+			SET @sql = @sql + '
+		AND pcm.IsFeaturedProduct = ' + CAST(@FeaturedProducts AS nvarchar(max))
+		END
+	END
+	
+	--filter by manufacturer
+	IF @ManufacturerId > 0
+	BEGIN
+		SET @sql = @sql + '
+		AND pmm.ManufacturerId = ' + CAST(@ManufacturerId AS nvarchar(max))
+		
+		IF @FeaturedProducts IS NOT NULL
+		BEGIN
+			SET @sql = @sql + '
+		AND pmm.IsFeaturedProduct = ' + CAST(@FeaturedProducts AS nvarchar(max))
+		END
+	END
+	
+	--filter by product tag
+	IF ISNULL(@ProductTagId, 0) != 0
+	BEGIN
+		SET @sql = @sql + '
+		AND pptm.ProductTag_Id = ' + CAST(@ProductTagId AS nvarchar(max))
+	END
+	
+	IF @ShowHidden = 0
+	BEGIN
+		SET @sql = @sql + '
+		AND p.Published = 1
+		AND pv.Published = 1
+		AND pv.Deleted = 0
+		AND (getutcdate() BETWEEN ISNULL(pv.AvailableStartDateTimeUtc, ''1/1/1900'') and ISNULL(pv.AvailableEndDateTimeUtc, ''1/1/2999''))'
+	END
+	
+	--min price
+	IF @PriceMin > 0
+	BEGIN
+		SET @sql = @sql + '
 		AND (
-				@ManufacturerId IS NULL OR @ManufacturerId=0
-				OR (pmm.ManufacturerId=@ManufacturerId AND (@FeaturedProducts IS NULL OR pmm.IsFeaturedProduct=@FeaturedProducts))
-			)
-		AND (
-				@ProductTagId IS NULL OR @ProductTagId=0
-				OR pptm.ProductTag_Id=@ProductTagId
-			)
-		AND	(
-				@ShowHidden = 1 OR p.Published = 1
-			)
-		AND 
-			(
-				p.Deleted=0
-			)
-		AND 
-			(
-				@ShowHidden = 1 OR pv.Published = 1
-			)
-		AND 
-			(
-				@ShowHidden = 1 OR pv.Deleted = 0
-			)
-		AND (
-				@PriceMin IS NULL OR @PriceMin=0
-				OR pv.Price >= @PriceMin	
-			)
-		AND (
-				@PriceMax IS NULL OR @PriceMax=2147483644 -- max value
-				OR pv.Price <= @PriceMax
-			)
-		AND	(
-				@SearchKeywords = 0 or 
 				(
-					-- search standard content
-					patindex(@Keywords, p.name) > 0
-					or patindex(@Keywords, pv.name) > 0
-					or patindex(@Keywords, pv.sku) > 0
-					or (@SearchDescriptions = 1 and patindex(@Keywords, p.ShortDescription) > 0)
-					or (@SearchDescriptions = 1 and patindex(@Keywords, p.FullDescription) > 0)
-					or (@SearchDescriptions = 1 and patindex(@Keywords, pv.Description) > 0)					
-					--searching of the localized values
-					--comment the lines below if you don't use it. It'll improve the performance
-					or (lp.LocaleKey = N'Name' and patindex(@Keywords, lp.LocaleValue) > 0)
-					or (@SearchDescriptions = 1 and lp.LocaleKey = N'ShortDescription' and patindex(@Keywords, lp.LocaleValue) > 0)
-					or (@SearchDescriptions = 1 and lp.LocaleKey = N'FullDescription' and patindex(@Keywords, lp.LocaleValue) > 0)
+					--special price (specified price and valid date range)
+					(pv.SpecialPrice IS NOT NULL AND (getutcdate() BETWEEN isnull(pv.SpecialPriceStartDateTimeUtc, ''1/1/1900'') AND isnull(pv.SpecialPriceEndDateTimeUtc, ''1/1/2999'')))
+					AND
+					(pv.SpecialPrice >= ' + CAST(@PriceMin AS nvarchar(max)) + ')
 				)
-			)
-		AND
-			(
-				@ShowHidden = 1
-				OR
-				(getutcdate() between isnull(pv.AvailableStartDateTimeUtc, '1/1/1900') and isnull(pv.AvailableEndDateTimeUtc, '1/1/2999'))
-			)
-		AND
-			(
-				--filter by specs
-				@SpecAttributesCount = 0
-				OR
+				OR 
 				(
-					NOT EXISTS(
-						SELECT 1 
-						FROM #FilteredSpecs [fs]
-						WHERE [fs].SpecificationAttributeOptionId NOT IN (
-							SELECT psam.SpecificationAttributeOptionId
-							FROM dbo.Product_SpecificationAttribute_Mapping psam
-							WHERE psam.AllowFiltering = 1 AND psam.ProductId = p.Id
-							)
-						)
-					
+					--regular price (price isnt specified or date range isnt valid)
+					(pv.SpecialPrice IS NULL OR (getutcdate() NOT BETWEEN isnull(pv.SpecialPriceStartDateTimeUtc, ''1/1/1900'') AND isnull(pv.SpecialPriceEndDateTimeUtc, ''1/1/2999'')))
+					AND
+					(pv.Price >= ' + CAST(@PriceMin AS nvarchar(max)) + ')
 				)
-			)
-		)
-	ORDER BY 
-		CASE WHEN @OrderBy = 0 AND @CategoryId IS NOT NULL AND @CategoryId > 0
-		THEN pcm.DisplayOrder END ASC,
-		CASE WHEN @OrderBy = 0 AND @ManufacturerId IS NOT NULL AND @ManufacturerId > 0
-		THEN pmm.DisplayOrder END ASC,
-		CASE WHEN @OrderBy = 0
-		THEN p.[Name] END ASC,
-		CASE WHEN @OrderBy = 5
-		--THEN dbo.[nop_getnotnullnotempty](pl.[Name],p.[Name]) END ASC,
-		THEN p.[Name] END ASC,
-		CASE WHEN @OrderBy = 10
-		THEN pv.Price END ASC,
-		CASE WHEN @OrderBy = 15
-		THEN p.CreatedOnUtc END DESC
+			)'
+	END
+	
+	--max price
+	IF @PriceMax > 0
+	BEGIN
+		SET @sql = @sql + '
+		AND (
+				(
+					--special price (specified price and valid date range)
+					(pv.SpecialPrice IS NOT NULL AND (getutcdate() BETWEEN isnull(pv.SpecialPriceStartDateTimeUtc, ''1/1/1900'') AND isnull(pv.SpecialPriceEndDateTimeUtc, ''1/1/2999'')))
+					AND
+					(pv.SpecialPrice <= ' + CAST(@PriceMax AS nvarchar(max)) + ')
+				)
+				OR 
+				(
+					--regular price (price isnt specified or date range isnt valid)
+					(pv.SpecialPrice IS NULL OR (getutcdate() NOT BETWEEN isnull(pv.SpecialPriceStartDateTimeUtc, ''1/1/1900'') AND isnull(pv.SpecialPriceEndDateTimeUtc, ''1/1/2999'')))
+					AND
+					(pv.Price <= ' + CAST(@PriceMax AS nvarchar(max)) + ')
+				)
+			)'
+	END
+	
+	--filter by specs
+	IF @SpecAttributesCount > 0
+	BEGIN
+		SET @sql = @sql + '
+		AND NOT EXISTS (
+			SELECT 1 
+			FROM
+				#FilteredSpecs [fs]
+			WHERE
+				[fs].SpecificationAttributeOptionId NOT IN (
+					SELECT psam.SpecificationAttributeOptionId
+					FROM Product_SpecificationAttribute_Mapping psam
+					WHERE psam.AllowFiltering = 1 AND psam.ProductId = p.Id
+				)
+			)'
+	END
+	
+	--sorting
+	SET @sql_orderby = ''	
+	IF @OrderBy = 5 /* Name: A to Z */
+		SET @sql_orderby = ' p.[Name] ASC'
+	ELSE IF @OrderBy = 6 /* Name: Z to A */
+		SET @sql_orderby = ' p.[Name] DESC'
+	ELSE IF @OrderBy = 10 /* Price: Low to High */
+		SET @sql_orderby = ' pv.[Price] ASC'
+	ELSE IF @OrderBy = 11 /* Price: High to Low */
+		SET @sql_orderby = ' pv.[Price] DESC'
+	ELSE IF @OrderBy = 15 /* creation date */
+		SET @sql_orderby = ' p.[CreatedOnUtc] DESC'
+	ELSE /* default sorting, 0 (position) */
+	BEGIN
+		--category position (display order)
+		IF @CategoryIdsCount > 0 SET @sql_orderby = ' pcm.DisplayOrder ASC'
+		
+		--manufacturer position (display order)
+		IF @ManufacturerId > 0
+		BEGIN
+			IF LEN(@sql_orderby) > 0 SET @sql_orderby = @sql_orderby + ', '
+			SET @sql_orderby = @sql_orderby + ' pmm.DisplayOrder ASC'
+		END
+		
+		--name
+		IF LEN(@sql_orderby) > 0 SET @sql_orderby = @sql_orderby + ', '
+		SET @sql_orderby = @sql_orderby + ' p.[Name] ASC'
+	END
+	
+	SET @sql = @sql + '
+	ORDER BY' + @sql_orderby
+	
+	--PRINT (@sql)
+	EXEC sp_executesql @sql
 
+	DROP TABLE #FilteredCategoryIds
 	DROP TABLE #FilteredSpecs
 
 	CREATE TABLE #PageIndex 
@@ -214,49 +569,199 @@ BEGIN
 	)
 	INSERT INTO #PageIndex ([ProductId])
 	SELECT ProductId
-	FROM #DisplayOrderTmp with (NOLOCK)
+	FROM #DisplayOrderTmp
 	GROUP BY ProductId
 	ORDER BY min([Id])
 
 	--total records
 	SET @TotalRecords = @@rowcount
-	SET ROWCOUNT @RowsToReturn
 	
 	DROP TABLE #DisplayOrderTmp
 
-	--return products (returned properties should be synchronized with 'Product' entity)
-	SELECT  
-		p.Id,
-		p.Name,
-		p.ShortDescription,
-		p.FullDescription,
-		p.AdminComment,
-		p.ProductTemplateId,
-		p.ShowOnHomePage,
-		p.MetaKeywords,
-		p.MetaDescription,
-		p.MetaTitle,
-		p.SeName,
-		p.AllowCustomerReviews,
-		p.ApprovedRatingSum,
-		p.NotApprovedRatingSum,
-		p.ApprovedTotalReviews,
-		p.NotApprovedTotalReviews,
-		p.Published,
-		p.Deleted,
-		p.CreatedOnUtc,
-		p.UpdatedOnUtc
+	--prepare filterable specification attribute option identifier (if requested)
+	IF @LoadFilterableSpecificationAttributeOptionIds = 1
+	BEGIN		
+		CREATE TABLE #FilterableSpecs 
+		(
+			[SpecificationAttributeOptionId] int NOT NULL
+		)
+		INSERT INTO #FilterableSpecs ([SpecificationAttributeOptionId])
+		SELECT DISTINCT [psam].SpecificationAttributeOptionId
+		FROM [Product_SpecificationAttribute_Mapping] [psam]
+		WHERE [psam].[AllowFiltering] = 1
+		AND [psam].[ProductId] IN (SELECT [pi].ProductId FROM #PageIndex [pi])
+
+		--build comma separated list of filterable identifiers
+		SELECT @FilterableSpecificationAttributeOptionIds = COALESCE(@FilterableSpecificationAttributeOptionIds + ',' , '') + CAST(SpecificationAttributeOptionId as nvarchar(1000))
+		FROM #FilterableSpecs
+
+		DROP TABLE #FilterableSpecs
+ 	END
+
+	--return products
+	SELECT TOP (@RowsToReturn)
+		p.*
 	FROM
 		#PageIndex [pi]
-		INNER JOIN Product p with (NOLOCK) on p.Id = [pi].[ProductId]
+		INNER JOIN Product p on p.Id = [pi].[ProductId]
 	WHERE
 		[pi].IndexId > @PageLowerBound AND 
 		[pi].IndexId < @PageUpperBound
 	ORDER BY
-		IndexId
+		[pi].IndexId
 	
-	SET ROWCOUNT 0
-
 	DROP TABLE #PageIndex
+END
+GO
+
+
+
+CREATE PROCEDURE [FullText_IsSupported]
+AS
+BEGIN	
+	EXEC('
+	SELECT CASE SERVERPROPERTY(''IsFullTextInstalled'')
+	WHEN 1 THEN 
+		CASE DatabaseProperty (DB_NAME(DB_ID()), ''IsFulltextEnabled'')
+		WHEN 1 THEN 1
+		ELSE 0
+		END
+	ELSE 0
+	END')
+END
+GO
+
+
+
+CREATE PROCEDURE [FullText_Enable]
+AS
+BEGIN
+	--create catalog
+	EXEC('
+	IF NOT EXISTS (SELECT 1 FROM sys.fulltext_catalogs WHERE [name] = ''nopCommerceFullTextCatalog'')
+		CREATE FULLTEXT CATALOG [nopCommerceFullTextCatalog] AS DEFAULT')
+	
+	--create indexes
+	DECLARE @create_index_text nvarchar(4000)
+	SET @create_index_text = '
+	IF NOT EXISTS (SELECT 1 FROM sys.fulltext_indexes WHERE object_id = object_id(''[Product]''))
+		CREATE FULLTEXT INDEX ON [Product]([Name], [ShortDescription], [FullDescription])
+		KEY INDEX [' + dbo.[nop_getprimarykey_indexname] ('Product') +  '] ON [nopCommerceFullTextCatalog] WITH CHANGE_TRACKING AUTO'
+	EXEC(@create_index_text)
+	
+	SET @create_index_text = '
+	IF NOT EXISTS (SELECT 1 FROM sys.fulltext_indexes WHERE object_id = object_id(''[ProductVariant]''))
+		CREATE FULLTEXT INDEX ON [ProductVariant]([Name], [Description], [SKU])
+		KEY INDEX [' + dbo.[nop_getprimarykey_indexname] ('ProductVariant') +  '] ON [nopCommerceFullTextCatalog] WITH CHANGE_TRACKING AUTO'
+	EXEC(@create_index_text)
+
+	SET @create_index_text = '
+	IF NOT EXISTS (SELECT 1 FROM sys.fulltext_indexes WHERE object_id = object_id(''[LocalizedProperty]''))
+		CREATE FULLTEXT INDEX ON [LocalizedProperty]([LocaleValue])
+		KEY INDEX [' + dbo.[nop_getprimarykey_indexname] ('LocalizedProperty') +  '] ON [nopCommerceFullTextCatalog] WITH CHANGE_TRACKING AUTO'
+	EXEC(@create_index_text)
+
+	SET @create_index_text = '
+	IF NOT EXISTS (SELECT 1 FROM sys.fulltext_indexes WHERE object_id = object_id(''[ProductTag]''))
+		CREATE FULLTEXT INDEX ON [ProductTag]([Name])
+		KEY INDEX [' + dbo.[nop_getprimarykey_indexname] ('ProductTag') +  '] ON [nopCommerceFullTextCatalog] WITH CHANGE_TRACKING AUTO'
+	EXEC(@create_index_text)
+END
+GO
+
+
+
+CREATE PROCEDURE [FullText_Disable]
+AS
+BEGIN
+	EXEC('
+	--drop indexes
+	IF EXISTS (SELECT 1 FROM sys.fulltext_indexes WHERE object_id = object_id(''[Product]''))
+		DROP FULLTEXT INDEX ON [Product]
+	')
+
+	EXEC('
+	IF EXISTS (SELECT 1 FROM sys.fulltext_indexes WHERE object_id = object_id(''[ProductVariant]''))
+		DROP FULLTEXT INDEX ON [ProductVariant]
+	')
+
+	EXEC('
+	IF EXISTS (SELECT 1 FROM sys.fulltext_indexes WHERE object_id = object_id(''[LocalizedProperty]''))
+		DROP FULLTEXT INDEX ON [LocalizedProperty]
+	')
+
+	EXEC('
+	IF EXISTS (SELECT 1 FROM sys.fulltext_indexes WHERE object_id = object_id(''[ProductTag]''))
+		DROP FULLTEXT INDEX ON [ProductTag]
+	')
+
+	--drop catalog
+	EXEC('
+	IF EXISTS (SELECT 1 FROM sys.fulltext_catalogs WHERE [name] = ''nopCommerceFullTextCatalog'')
+		DROP FULLTEXT CATALOG [nopCommerceFullTextCatalog]
+	')
+END
+GO
+
+
+CREATE PROCEDURE [LanguagePackImport]
+(
+	@LanguageId int,
+	@XmlPackage xml
+)
+AS
+BEGIN
+	IF EXISTS(SELECT * FROM [Language] WHERE [Id] = @LanguageId)
+	BEGIN
+		CREATE TABLE #LocaleStringResourceTmp
+			(
+				[LanguageId] [int] NOT NULL,
+				[ResourceName] [nvarchar](200) NOT NULL,
+				[ResourceValue] [nvarchar](MAX) NOT NULL
+			)
+
+		INSERT INTO #LocaleStringResourceTmp (LanguageID, ResourceName, ResourceValue)
+		SELECT	@LanguageId, nref.value('@Name', 'nvarchar(200)'), nref.value('Value[1]', 'nvarchar(MAX)')
+		FROM	@XmlPackage.nodes('//Language/LocaleResource') AS R(nref)
+
+		DECLARE @ResourceName nvarchar(200)
+		DECLARE @ResourceValue nvarchar(MAX)
+		DECLARE cur_localeresource CURSOR FOR
+		SELECT LanguageID, ResourceName, ResourceValue
+		FROM #LocaleStringResourceTmp
+		OPEN cur_localeresource
+		FETCH NEXT FROM cur_localeresource INTO @LanguageId, @ResourceName, @ResourceValue
+		WHILE @@FETCH_STATUS = 0
+		BEGIN
+			IF (EXISTS (SELECT 1 FROM [LocaleStringResource] WHERE LanguageID=@LanguageId AND ResourceName=@ResourceName))
+			BEGIN
+				UPDATE [LocaleStringResource]
+				SET [ResourceValue]=@ResourceValue
+				WHERE LanguageID=@LanguageId AND ResourceName=@ResourceName
+			END
+			ELSE 
+			BEGIN
+				INSERT INTO [LocaleStringResource]
+				(
+					[LanguageId],
+					[ResourceName],
+					[ResourceValue]
+				)
+				VALUES
+				(
+					@LanguageId,
+					@ResourceName,
+					@ResourceValue
+				)
+			END
+			
+			
+			FETCH NEXT FROM cur_localeresource INTO @LanguageId, @ResourceName, @ResourceValue
+			END
+		CLOSE cur_localeresource
+		DEALLOCATE cur_localeresource
+
+		DROP TABLE #LocaleStringResourceTmp
+	END
 END
 GO

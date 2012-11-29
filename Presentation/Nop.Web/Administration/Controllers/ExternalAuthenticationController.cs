@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
 using System.Web.Routing;
 using Nop.Admin.Models.ExternalAuthentication;
-using Nop.Admin.Models.Payments;
 using Nop.Core.Domain.Customers;
 using Nop.Services.Authentication.External;
 using Nop.Services.Configuration;
@@ -16,7 +14,7 @@ using Telerik.Web.Mvc;
 namespace Nop.Admin.Controllers
 {
 	[AdminAuthorize]
-    public class ExternalAuthenticationController : BaseNopController
+    public partial class ExternalAuthenticationController : BaseNopController
 	{
 		#region Fields
 
@@ -91,15 +89,10 @@ namespace Nop.Admin.Controllers
         }
 
         [GridAction(EnableCustomBinding = true)]
-        public ActionResult MethodUpdate(PaymentMethodModel model, GridCommand command)
+        public ActionResult MethodUpdate(AuthenticationMethodModel model, GridCommand command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageExternalAuthenticationMethods))
                 return AccessDeniedView();
-
-            if (!ModelState.IsValid)
-            {
-                return RedirectToAction("Methods");
-            }
 
             var eam = _openAuthenticationService.LoadExternalAuthenticationMethodBySystemName(model.SystemName);
             if (eam.IsMethodActive(_externalAuthenticationSettings))
@@ -130,7 +123,9 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var eam = _openAuthenticationService.LoadExternalAuthenticationMethodBySystemName(systemName);
-            if (eam == null) throw new ArgumentException("No authentication method found with the specified system name", "systemName");
+            if (eam == null)
+                //No authentication method found with the specified id
+                return RedirectToAction("Methods");
 
             var model = eam.ToModel();
             string actionName, controllerName;

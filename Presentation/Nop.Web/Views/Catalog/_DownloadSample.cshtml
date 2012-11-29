@@ -1,9 +1,10 @@
-﻿@model Nop.Web.Models.Catalog.ProductModel.ProductVariantModel
-@if (!String.IsNullOrWhiteSpace(Model.DownloadSampleUrl))
+﻿@model ProductDetailsModel.ProductVariantModel
+@using Nop.Web.Models.Catalog;
+@if (Model.HasSampleDownload)
 {
-    <div class="downloadsample">
-        <span class="downloadsamplebutton">
-            <a href="@Model.DownloadSampleUrl">@T("Products.DownloadSample")</a>
+    <div class="download-sample">
+        <span class="download-sample-button">
+            <a href="@Url.RouteUrl("GetSampleDownload", new { productvariantid = Model.Id })">@T("Products.DownloadSample")</a>
         </span>
     </div>
 }

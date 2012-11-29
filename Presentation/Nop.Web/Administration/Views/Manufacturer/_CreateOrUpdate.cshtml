@@ -9,6 +9,9 @@
     x.Add().Text(T("Admin.Catalog.Manufacturers.Info").Text).Content(TabInfo().ToHtmlString()).Selected(true);
     x.Add().Text(T("Admin.Common.SEO").Text).Content(TabSeo().ToHtmlString());
     x.Add().Text(T("Admin.Catalog.Manufacturers.Products").Text).Content(TabProducts().ToHtmlString());
+
+    //generate an event
+    EngineContext.Current.Resolve<IEventPublisher>().Publish(new AdminTabStripCreated(x, "manufacturer-edit"));
 })
 @helper TabInfo()
     { 
@@ -196,11 +199,29 @@
     <table class="adminContent">
         <tr>
             <td class="adminTitle">
+                @Html.NopLabelFor(model => model.AllowCustomersToSelectPageSize):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(x => x.AllowCustomersToSelectPageSize)
+                @Html.ValidationMessageFor(model => model.AllowCustomersToSelectPageSize)
+            </td>
+        </tr>
+        <tr id="pnlPageSize">
+            <td class="adminTitle">
                 @Html.NopLabelFor(model => model.PageSize):
             </td>
             <td class="adminData">
                 @Html.EditorFor(x => x.PageSize)
                 @Html.ValidationMessageFor(model => model.PageSize)
+            </td>
+        </tr>
+        <tr id="pnlPageSizeOptions">
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.PageSizeOptions):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(x => x.PageSizeOptions)
+                @Html.ValidationMessageFor(model => model.PageSizeOptions)
             </td>
         </tr>
     </table>
@@ -209,7 +230,7 @@
     {
     if (Model.Id > 0)
     {
-            
+        var gridPageSize = EngineContext.Current.Resolve<Nop.Core.Domain.Common.AdminAreaSettings>().GridPageSize;
             <table class="adminContent">
                 <tr>
                     <td>
@@ -244,6 +265,7 @@
                         })
                         .Width(180);
                     })
+                    .Pageable(settings => settings.PageSize(gridPageSize).Position(GridPagerPosition.Both))
                     .EnableCustomBinding(true))
                     </td>
                 </tr>
@@ -272,3 +294,20 @@
             @T("Admin.Catalog.Manufacturers.Products.SaveBeforeEdit")
     }
 }
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $("#@Html.FieldIdFor(model => model.AllowCustomersToSelectPageSize)").click(togglePageSize);
+        togglePageSize();
+    });
+
+    function togglePageSize() {
+        if ($('#@Html.FieldIdFor(model => model.AllowCustomersToSelectPageSize)').is(':checked')) {
+            $('#pnlPageSize').hide();
+            $('#pnlPageSizeOptions').show();
+        } else {
+            $('#pnlPageSize').show();
+            $('#pnlPageSizeOptions').hide();
+        }
+    }
+</script>

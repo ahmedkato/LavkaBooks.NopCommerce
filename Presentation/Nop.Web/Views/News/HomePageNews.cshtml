@@ -1,42 +1,34 @@
-﻿@model NewsItemListModel
-@using Nop.Core.Domain.Catalog
-@using Nop.Core.Infrastructure
-@using Nop.Services.Catalog
-@using Nop.Web.Models.News
+﻿@model HomePageNewsItemsModel
+@using Nop.Core.Domain.Catalog;
+@using Nop.Core.Infrastructure;
+@using Nop.Services.Catalog;
+@using Nop.Web.Models.News;
 @if (Model.NewsItems.Count > 0)
 {
-    <div class="newslist">
+    <div class="news-list-homepage">
         <div class="page-title">
-            <table style="width: 100%;">
-                <tr>
-                    <td class="title">
-                        @T("News")
-                    </td>
-                    <td class="rss">
-                        <a href="@Url.RouteUrl("NewsRSS", new { languageId = Model.WorkingLanguageId })">
-                            <img title="@T("News.RSS.Hint")" src="@Url.Content("~/content/images/icon_rss.gif")" alt="@T("News.RSS")" style="border-width:0px;" /></a>
-                    </td>
-                </tr>
-            </table>
+            <a href="@Url.RouteUrl("NewsRSS", new { languageId = Model.WorkingLanguageId })" class="link-rss">
+                <img title="@T("News.RSS.Hint")" src="@Url.Content("~/content/images/icon_rss.gif")" alt="@T("News.RSS")" /></a>
+            <h4>@T("News")</h4>
         </div>
         <div class="clear">
         </div>
-        <div class="newsitems">
+        <div class="news-items">
             @foreach (var item in Model.NewsItems)
             {
                 <div class="item">
-                    <a class="newstitle" href="@Url.RouteUrl("NewsItem", new { newsItemId = item.Id, SeName = item.SeName })">
-                        @item.Title</a> <span class="newsdate">-
+                    <a class="news-title" href="@Url.RouteUrl("NewsItem", new { newsItemId = item.Id, SeName = item.SeName })">
+                        @item.Title</a> <span class="news-date">-
                             @item.CreatedOn.ToString("D")
                         </span>
-                    <div class="newsdetails">
+                    <div class="news-details">
                         @Html.Raw(item.Short)
                     </div>
-                    <a href="@Url.RouteUrl("NewsItem", new { newsItemId = item.Id, SeName = item.SeName })" class="readmore">
+                    <a href="@Url.RouteUrl("NewsItem", new { newsItemId = item.Id, SeName = item.SeName })" class="read-more">
                         @T("News.MoreInfo")</a>
                 </div>
             }
-            <div class="viewall">
+            <div class="view-all">
                 <a href="@Url.RouteUrl("NewsArchive")">
                     @T("News.ViewAll")</a>
             </div>

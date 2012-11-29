@@ -3,18 +3,17 @@ using System.Collections.Generic;
 using System.Web.Mvc;
 using FluentValidation.Attributes;
 using Nop.Admin.Validators.Forums;
-using Nop.Core.Domain.Forums;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Models.Forums
 {
     [Validator(typeof(ForumValidator))]
-    public class ForumModel : BaseNopEntityModel
+    public partial class ForumModel : BaseNopEntityModel
     {
         public ForumModel()
         {
-            ForumGroups = new List<ForumGroup>();
+            ForumGroups = new List<ForumGroupModel>();
         }
 
         [NopResourceDisplayName("Admin.ContentManagement.Forums.Forum.Fields.ForumGroupId")]
@@ -34,6 +33,6 @@ namespace Nop.Admin.Models.Forums
         [NopResourceDisplayName("Admin.ContentManagement.Forums.Forum.Fields.CreatedOn")]
         public DateTime CreatedOn { get; set; }
 
-        public List<ForumGroup> ForumGroups { get; set; }
+        public List<ForumGroupModel> ForumGroups { get; set; }
     }
 }

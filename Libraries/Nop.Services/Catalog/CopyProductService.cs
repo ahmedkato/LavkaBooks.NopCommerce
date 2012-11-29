@@ -24,6 +24,7 @@ namespace Nop.Services.Catalog
         private readonly ISpecificationAttributeService _specificationAttributeService;
         private readonly IDownloadService _downloadService;
         private readonly IProductAttributeParser _productAttributeParser;
+        private readonly IProductTagService _productTagService;
 
         #endregion
 
@@ -34,7 +35,7 @@ namespace Nop.Services.Catalog
             ILocalizedEntityService localizedEntityService, IPictureService pictureService,
             ICategoryService categoryService, IManufacturerService manufacturerService,
             ISpecificationAttributeService specificationAttributeService, IDownloadService downloadService,
-            IProductAttributeParser productAttributeParser)
+            IProductAttributeParser productAttributeParser, IProductTagService productTagService)
         {
             this._productService = productService;
             this._productAttributeService = productAttributeService;
@@ -46,6 +47,7 @@ namespace Nop.Services.Catalog
             this._specificationAttributeService = specificationAttributeService;
             this._downloadService = downloadService;
             this._productAttributeParser = productAttributeParser;
+            this._productTagService = productTagService;
         }
 
         #endregion
@@ -125,14 +127,29 @@ namespace Nop.Services.Catalog
                         _localizedEntityService.SaveLocalizedValue(productCopy, x => x.SeName, seName, lang.Id);
                 }
 
+                //product tags
+                foreach (var productTag in product.ProductTags)
+                {
+                    productCopy.ProductTags.Add(productTag);
+                }
+                //ensure product is saved before updating totals
+                _productService.UpdateProduct(product);
+                foreach (var productTag in product.ProductTags)
+                {
+                    _productTagService.UpdateProductTagTotals(productTag);
+                }
+
                 // product pictures
                 if (copyImages)
                 {
                     foreach (var productPicture in product.ProductPictures)
                     {
                         var picture = productPicture.Picture;
-
-                        var pictureCopy = _pictureService.InsertPicture(picture.PictureBinary, picture.MimeType, _pictureService.GetPictureSeName(newName), true);
+                        var pictureCopy = _pictureService.InsertPicture(
+                            _pictureService.LoadPictureBinary(picture),
+                            picture.MimeType, 
+                            _pictureService.GetPictureSeName(newName), 
+                            true);
                         _productService.InsertProductPicture(new ProductPicture()
                         {
                             ProductId = productCopy.Id,
@@ -218,7 +235,11 @@ namespace Nop.Services.Catalog
                         var picture = _pictureService.GetPictureById(productVariant.PictureId);
                         if (picture != null)
                         {
-                            var pictureCopy = _pictureService.InsertPicture(picture.PictureBinary, picture.MimeType, _pictureService.GetPictureSeName(productVariant.Name), true);
+                            var pictureCopy = _pictureService.InsertPicture(
+                                _pictureService.LoadPictureBinary(picture), 
+                                picture.MimeType, 
+                                _pictureService.GetPictureSeName(productVariant.Name),
+                                true);
                             pictureId = pictureCopy.Id;
                         }
                     }
@@ -233,6 +254,7 @@ namespace Nop.Services.Catalog
                         {
                             var downloadCopy = new Download()
                             {
+                                DownloadGuid = Guid.NewGuid(),
                                 UseDownloadUrl = download.UseDownloadUrl,
                                 DownloadUrl = download.DownloadUrl,
                                 DownloadBinary = download.DownloadBinary,
@@ -252,6 +274,7 @@ namespace Nop.Services.Catalog
                             {
                                 var sampleDownloadCopy = new Download()
                                 {
+                                    DownloadGuid = Guid.NewGuid(),
                                     UseDownloadUrl = sampleDownload.UseDownloadUrl,
                                     DownloadUrl = sampleDownload.DownloadUrl,
                                     DownloadBinary = sampleDownload.DownloadBinary,
@@ -275,6 +298,7 @@ namespace Nop.Services.Catalog
                         Description = productVariant.Description,
                         AdminComment = productVariant.AdminComment,
                         ManufacturerPartNumber = productVariant.ManufacturerPartNumber,
+                        Gtin = productVariant.Gtin,
                         IsGiftCard = productVariant.IsGiftCard,
                         GiftCardType = productVariant.GiftCardType,
                         RequireOtherProducts = productVariant.RequireOtherProducts,
@@ -307,14 +331,19 @@ namespace Nop.Services.Catalog
                         LowStockActivityId = productVariant.LowStockActivityId,
                         NotifyAdminForQuantityBelow = productVariant.NotifyAdminForQuantityBelow,
                         BackorderMode = productVariant.BackorderMode,
+                        AllowBackInStockSubscriptions = productVariant.AllowBackInStockSubscriptions,
                         OrderMinimumQuantity = productVariant.OrderMinimumQuantity,
                         OrderMaximumQuantity = productVariant.OrderMaximumQuantity,
+                        AllowedQuantities = productVariant.AllowedQuantities,
                         DisableBuyButton = productVariant.DisableBuyButton,
                         DisableWishlistButton = productVariant.DisableWishlistButton,
                         CallForPrice = productVariant.CallForPrice,
                         Price = productVariant.Price,
                         OldPrice = productVariant.OldPrice,
                         ProductCost = productVariant.ProductCost,
+                        SpecialPrice = productVariant.SpecialPrice,
+                        SpecialPriceStartDateTimeUtc = productVariant.SpecialPriceStartDateTimeUtc,
+                        SpecialPriceEndDateTimeUtc = productVariant.SpecialPriceEndDateTimeUtc,
                         CustomerEntersPrice = productVariant.CustomerEntersPrice,
                         MinimumCustomerEnteredPrice = productVariant.MinimumCustomerEnteredPrice,
                         MaximumCustomerEnteredPrice = productVariant.MaximumCustomerEnteredPrice,
@@ -461,6 +490,11 @@ namespace Nop.Services.Catalog
                         productVariantCopy.AppliedDiscounts.Add(discount);
                         _productService.UpdateProductVariant(productVariantCopy);
                     }
+
+
+                    //update "HasTierPrices" and "HasDiscountsApplied" properties
+                    _productService.UpdateHasTierPricesProperty(productVariantCopy);
+                    _productService.UpdateHasDiscountsApplied(productVariantCopy);
                 }
 
                 //uncomment this line to support transactions

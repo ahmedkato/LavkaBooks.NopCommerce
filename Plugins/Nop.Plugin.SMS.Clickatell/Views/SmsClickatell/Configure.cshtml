@@ -25,6 +25,15 @@
         </tr>
         <tr>
             <td class="adminTitle">
+                @Html.NopLabelFor(model => model.Enabled):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.Enabled)
+                @Html.ValidationMessageFor(model => model.Enabled)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
                 @Html.NopLabelFor(model => model.PhoneNumber):
             </td>
             <td class="adminData">
@@ -61,8 +70,7 @@
         </tr>
         <tr>
             <td colspan="2" width="100%">
-                <button type="submit" name="save" value="save" class="t-button">
-                    Save</button>
+                <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
             </td>
         </tr>
         <tr class="adminSeparator">
@@ -73,7 +81,7 @@
         <tr>
             <td colspan="2">
                 <p>
-                    <strong>Send test message<strong>
+                    <strong>@T("Plugins.Sms.Clickatell.SendTest.Hint")</strong>
                 </p>
             </td>
         </tr>
@@ -88,8 +96,7 @@
         </tr>
         <tr>
             <td colspan="2" width="100%">
-                <button type="submit" name="test-sms" value="test-sms" class="t-button">
-                    Send</button>
+                <input type="submit" name="test-sms" class="t-button" value="@T("Plugins.Sms.Clickatell.SendTest")" />
             </td>
         </tr>
         @if (!String.IsNullOrEmpty(Model.TestSmsResult))

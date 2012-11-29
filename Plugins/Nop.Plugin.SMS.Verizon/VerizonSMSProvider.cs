@@ -4,7 +4,9 @@ using System.Web.Routing;
 using Nop.Core.Domain;
 using Nop.Core.Domain.Messages;
 using Nop.Core.Plugins;
+using Nop.Services.Common;
 using Nop.Services.Configuration;
+using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Messages;
 
@@ -13,7 +15,7 @@ namespace Nop.Plugin.SMS.Verizon
     /// <summary>
     /// Represents the Verizon SMS provider
     /// </summary>
-    public class VerizonSmsProvider : BasePlugin, ISmsProvider
+    public class VerizonSmsProvider : BasePlugin, IMiscPlugin
     {
         private readonly VerizonSettings _verizonSettings;
         private readonly IQueuedEmailService _queuedEmailService;
@@ -93,14 +95,49 @@ namespace Nop.Plugin.SMS.Verizon
         /// </summary>
         public override void Install()
         {
+            //settings
             var settings = new VerizonSettings()
             {
                 Email = "yournumber@vtext.com",
             };
             _settingService.SaveSetting(settings);
 
+            //locales
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Verizon.TestFailed", "Test message sending failed");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Verizon.TestSuccess", "Test message was sent (queued)");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Verizon.Fields.Enabled", "Enabled");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Verizon.Fields.Enabled.Hint", "Check to enable SMS provider");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Verizon.Fields.Email", "Email");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Verizon.Fields.Email.Hint", "Verizon email address(e.g. your_phone_number@vtext.com)");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Verizon.Fields.TestMessage", "Message text");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Verizon.Fields.TestMessage.Hint", "Text of the test message");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Verizon.SendTest", "Send");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Sms.Verizon.SendTest.Hint", "Send test message");
+
             base.Install();
         }
 
+        /// <summary>
+        /// Uninstall plugin
+        /// </summary>
+        public override void Uninstall()
+        {
+            //settings
+            _settingService.DeleteSetting<VerizonSettings>();
+
+            //locales
+            this.DeletePluginLocaleResource("Plugins.Sms.Verizon.TestFailed");
+            this.DeletePluginLocaleResource("Plugins.Sms.Verizon.TestSuccess");
+            this.DeletePluginLocaleResource("Plugins.Sms.Verizon.Fields.Enabled");
+            this.DeletePluginLocaleResource("Plugins.Sms.Verizon.Fields.Enabled.Hint");
+            this.DeletePluginLocaleResource("Plugins.Sms.Verizon.Fields.Email");
+            this.DeletePluginLocaleResource("Plugins.Sms.Verizon.Fields.Email.Hint");
+            this.DeletePluginLocaleResource("Plugins.Sms.Verizon.Fields.TestMessage");
+            this.DeletePluginLocaleResource("Plugins.Sms.Verizon.Fields.TestMessage.Hint");
+            this.DeletePluginLocaleResource("Plugins.Sms.Verizon.SendTest");
+            this.DeletePluginLocaleResource("Plugins.Sms.Verizon.SendTest.Hint");
+
+            base.Uninstall();
+        }
     }
 }

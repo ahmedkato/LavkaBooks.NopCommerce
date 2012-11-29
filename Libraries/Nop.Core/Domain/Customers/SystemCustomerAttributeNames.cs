@@ -1,7 +1,7 @@
 
 namespace Nop.Core.Domain.Customers
 {
-    public static class SystemCustomerAttributeNames
+    public static partial class SystemCustomerAttributeNames
     {
         //Form fields
         public static string FirstName { get { return "FirstName"; } }
@@ -35,6 +35,8 @@ namespace Nop.Core.Domain.Customers
 
         public static string LastShippingOption { get { return "LastShippingOption"; } }
 
+        public static string OfferedShippingOptions { get { return "OfferedShippingOptions"; } }
+
         public static string ForumPostCount { get { return "ForumPostCount"; } }
 
         public static string Signature { get { return "Signature"; } }
@@ -49,8 +51,13 @@ namespace Nop.Core.Domain.Customers
 
         public static string LastVisitedPage { get { return "LastVisitedPage"; } }
 
-        public static string WorkingThemeName { get { return "WorkingThemeName"; } }
+        public static string WorkingDesktopThemeName { get { return "WorkingDesktopThemeName"; } }
 
         public static string ImpersonatedCustomerId { get { return "ImpersonatedCustomerId"; } }
+
+        /// <summary>
+        /// Indicates whether customer decided to don't use mobile version of the site (prefer to use full desktop version)
+        /// </summary>
+        public static string DontUseMobileVersion { get { return "DontUseMobileVersion"; } }
     }
 }

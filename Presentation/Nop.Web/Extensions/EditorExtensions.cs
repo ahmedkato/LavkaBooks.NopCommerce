@@ -4,7 +4,7 @@ using System.Web.Mvc;
 using Nop.Core;
 using Nop.Core.Infrastructure;
 
-namespace Nop.Web
+namespace Nop.Web.Extensions
 {
     public static class EditorExtensions
     {
@@ -13,18 +13,18 @@ namespace Nop.Web
             var sb = new StringBuilder();
             
             var storeLocation = EngineContext.Current.Resolve<IWebHelper>().GetStoreLocation();
-            string BBEditorWebRoot = String.Format("{0}Content/", storeLocation);
-            
-            sb.Append("<script src=\"/Content/editors/BBEditor/ed.js\" type=\"text/javascript\"></script>");
-            sb.Append(System.Environment.NewLine);
+            string bbEditorWebRoot = String.Format("{0}Content/", storeLocation);
+
+            sb.AppendFormat("<script src=\"{0}Content/editors/BBEditor/ed.js\" type=\"text/javascript\"></script>", storeLocation);
+            sb.Append(Environment.NewLine);
             sb.Append("<script language=\"javascript\" type=\"text/javascript\">");
-            sb.Append(System.Environment.NewLine);
-            sb.AppendFormat("    var webRoot = '{0}';", BBEditorWebRoot);
-            sb.Append(System.Environment.NewLine);
+            sb.Append(Environment.NewLine);
+            sb.AppendFormat("    var webRoot = '{0}';", bbEditorWebRoot);
+            sb.Append(Environment.NewLine);
             sb.AppendFormat("    edToolbar('{0}');", name);
-            sb.Append(System.Environment.NewLine);
+            sb.Append(Environment.NewLine);
             sb.Append("</script>");
-            sb.Append(System.Environment.NewLine);
+            sb.Append(Environment.NewLine);
 
             return MvcHtmlString.Create(sb.ToString());
         }

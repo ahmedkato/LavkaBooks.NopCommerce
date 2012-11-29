@@ -1,7 +1,9 @@
 ﻿@model Telerik.Web.Mvc.GridModel<SettingModel>
-
 @{
     var gridPageSize = EngineContext.Current.Resolve<Nop.Core.Domain.Common.AdminAreaSettings>().GridPageSize;
+    
+    //page title
+    ViewBag.Title = @T("Admin.Configuration.Settings.AllSettings").Text;
 }
 @using Telerik.Web.Mvc.UI;
 @using System.Linq;
@@ -12,6 +14,11 @@
     </div>
 </div>
 <table class="adminContent">
+    <tr>
+        <td>
+            @T("Admin.Configuration.Settings.AllSettings.Description")
+        </td>
+    </tr>
     <tr>
         <td>
             @(Html.Telerik().Grid(Model.Data)
@@ -45,7 +52,14 @@
                             .Delete("SettingDelete", "Setting")
                             .Insert("SettingAdd", "Setting");
                     })
+                    .ClientEvents(x => x.OnError("grid_onError"))
                     .EnableCustomBinding(true))
+            <script type="text/javascript">
+                function grid_onError(e) {
+                    alert(e.XMLHttpRequest.responseText);
+                    e.preventDefault();
+                }
+            </script>
         </td>
     </tr>
 </table>

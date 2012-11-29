@@ -15,12 +15,18 @@ namespace Nop.Services.Catalog
     /// </summary>
     public partial class PriceCalculationService : IPriceCalculationService
     {
+        #region Fields
+
         private readonly IWorkContext _workContext;
         private readonly IDiscountService _discountService;
         private readonly ICategoryService _categoryService;
         private readonly IProductAttributeParser _productAttributeParser;
         private readonly ShoppingCartSettings _shoppingCartSettings;
         private readonly CatalogSettings _catalogSettings;
+
+        #endregion
+
+        #region Ctor
 
         public PriceCalculationService(IWorkContext workContext,
             IDiscountService discountService, ICategoryService categoryService,
@@ -35,6 +41,8 @@ namespace Nop.Services.Catalog
             this._catalogSettings = catalogSettings;
         }
         
+        #endregion
+
         #region Utilities
 
         /// <summary>
@@ -43,19 +51,23 @@ namespace Nop.Services.Catalog
         /// <param name="productVariant">Product variant</param>
         /// <param name="customer">Customer</param>
         /// <returns>Discounts</returns>
-        protected IList<Discount> GetAllowedDiscounts(ProductVariant productVariant, 
+        protected virtual IList<Discount> GetAllowedDiscounts(ProductVariant productVariant, 
             Customer customer)
         {
             var allowedDiscounts = new List<Discount>();
             if (_catalogSettings.IgnoreDiscounts)
                 return allowedDiscounts;
 
-            foreach (var discount in productVariant.AppliedDiscounts)
+            if (productVariant.HasDiscountsApplied)
             {
-                if (_discountService.IsDiscountValid(discount, customer) &&
-                    discount.DiscountType == DiscountType.AssignedToSkus &&
-                    !allowedDiscounts.ContainsDiscount(discount))
-                    allowedDiscounts.Add(discount);
+                //we use this property ("HasDiscountsApplied") for performance optimziation to avoid unnecessary database calls
+                foreach (var discount in productVariant.AppliedDiscounts)
+                {
+                    if (_discountService.IsDiscountValid(discount, customer) &&
+                        discount.DiscountType == DiscountType.AssignedToSkus &&
+                        !allowedDiscounts.ContainsDiscount(discount))
+                        allowedDiscounts.Add(discount);
+                }
             }
 
             var productCategories = _categoryService.GetProductCategoriesByProductId(productVariant.ProductId);
@@ -63,13 +75,19 @@ namespace Nop.Services.Catalog
             {
                 foreach (var productCategory in productCategories)
                 {
-                    var categoryDiscounts = productCategory.Category.AppliedDiscounts;
-                    foreach (var discount in categoryDiscounts)
+                    var category = productCategory.Category;
+
+                    if (category.HasDiscountsApplied)
                     {
-                        if (_discountService.IsDiscountValid(discount, customer) &&
-                            discount.DiscountType == DiscountType.AssignedToCategories &&
-                            !allowedDiscounts.ContainsDiscount(discount))
-                            allowedDiscounts.Add(discount);
+                        //we use this property ("HasDiscountsApplied") for performance optimziation to avoid unnecessary database calls
+                        var categoryDiscounts = category.AppliedDiscounts;
+                        foreach (var discount in categoryDiscounts)
+                        {
+                            if (_discountService.IsDiscountValid(discount, customer) &&
+                                discount.DiscountType == DiscountType.AssignedToCategories &&
+                                !allowedDiscounts.ContainsDiscount(discount))
+                                allowedDiscounts.Add(discount);
+                        }
                     }
                 }
             }
@@ -84,7 +102,7 @@ namespace Nop.Services.Catalog
         /// <param name="additionalCharge">Additional charge</param>
         /// <param name="quantity">Product quantity</param>
         /// <returns>Preferred discount</returns>
-        protected Discount GetPreferredDiscount(ProductVariant productVariant,
+        protected virtual Discount GetPreferredDiscount(ProductVariant productVariant,
             Customer customer, decimal additionalCharge = decimal.Zero, int quantity = 1)
         {
             if (_catalogSettings.IgnoreDiscounts)
@@ -103,18 +121,19 @@ namespace Nop.Services.Catalog
         /// <param name="customer">Customer</param>
         /// <param name="quantity">Quantity</param>
         /// <returns>Price</returns>
-        protected decimal GetTierPrice(ProductVariant productVariant, Customer customer, int quantity)
+        protected virtual decimal? GetMinimumTierPrice(ProductVariant productVariant, Customer customer, int quantity)
         {
-            if (_catalogSettings.IgnoreTierPrices)
+            if (!productVariant.HasTierPrices)
                 return decimal.Zero;
 
             var tierPrices = productVariant.TierPrices
                 .OrderBy(tp => tp.Quantity)
                 .ToList()
-                .FilterForCustomer(customer);
+                .FilterForCustomer(customer)
+                .RemoveDuplicatedQuantities();
 
             int previousQty = 1;
-            decimal previousPrice = productVariant.Price;
+            decimal? previousPrice = null;
             foreach (var tierPrice in tierPrices)
             {
                 //check quantity
@@ -134,6 +153,74 @@ namespace Nop.Services.Catalog
         #endregion
 
         #region Methods
+
+        /// <summary>
+        /// Gets a product variant with minimal price
+        /// </summary>
+        /// <param name="variants">Product variants</param>
+        /// <param name="customer">The customer</param>
+        /// <param name="includeDiscounts">A value indicating whether include discounts or not for final price computation</param>
+        /// <param name="quantity">Quantity</param>
+        /// <param name="minPrice">Calcualted minimal price</param>
+        /// <returns>A product variant with minimal price</returns>
+        public virtual ProductVariant GetProductVariantWithMinimalPrice(IList<ProductVariant> variants,
+            Customer customer, bool includeDiscounts, int quantity, out decimal? minPrice)
+        {
+            minPrice = null;
+            if (variants == null)
+                throw new ArgumentNullException("variants");
+
+            if (variants.Count == 0)
+                return null;
+
+            ProductVariant minPriceVariant = null;
+            foreach (var variant in variants)
+            {
+                var finalPrice = GetFinalPrice(variant, customer, decimal.Zero, includeDiscounts, quantity);
+                if (!minPrice.HasValue || finalPrice < minPrice.Value)
+                {
+                    minPriceVariant = variant;
+                    minPrice = finalPrice;
+                }
+            }
+            return minPriceVariant;
+            //previous implementation (compares only Price property but much faster)
+            //var tmp1 = variants.ToList();
+            //tmp1.Sort(new GenericComparer<ProductVariant>("Price", GenericComparer<ProductVariant>.SortOrder.Ascending));
+            //return tmp1.Count > 0 ? tmp1[0] : null;
+        }
+
+        /// <summary>
+        /// Get product variant special price (is valid)
+        /// </summary>
+        /// <param name="productVariant">Product variant</param>
+        /// <returns>Product variant special price</returns>
+        public virtual decimal? GetSpecialPrice(ProductVariant productVariant)
+        {
+            if (productVariant == null)
+                throw new ArgumentNullException("productVariant");
+
+            if (!productVariant.SpecialPrice.HasValue)
+                return null;
+
+            //check date range
+            DateTime now = DateTime.UtcNow;
+            if (productVariant.SpecialPriceStartDateTimeUtc.HasValue)
+            {
+                DateTime startDate = DateTime.SpecifyKind(productVariant.SpecialPriceStartDateTimeUtc.Value, DateTimeKind.Utc);
+                if (startDate.CompareTo(now) > 0)
+                    return null;
+            }
+            if (productVariant.SpecialPriceEndDateTimeUtc.HasValue)
+            {
+                DateTime endDate = DateTime.SpecifyKind(productVariant.SpecialPriceEndDateTimeUtc.Value, DateTimeKind.Utc);
+                if (endDate.CompareTo(now) < 0)
+                    return null;
+            }
+
+            return productVariant.SpecialPrice.Value;
+        }
+
         /// <summary>
         /// Gets the final price
         /// </summary>
@@ -193,16 +280,20 @@ namespace Nop.Services.Catalog
             bool includeDiscounts, 
             int quantity)
         {
-            decimal result = decimal.Zero;
-
             //initial price
-            decimal initialPrice = productVariant.Price;
+            decimal result = productVariant.Price;
+
+            //special price
+            var specialPrice = GetSpecialPrice(productVariant);
+            if (specialPrice.HasValue)
+                result = specialPrice.Value;
 
             //tier prices
-            if (!_catalogSettings.IgnoreTierPrices && productVariant.TierPrices.Count > 0)
+            if (productVariant.HasTierPrices)
             {
-                decimal tierPrice = GetTierPrice(productVariant, customer, quantity);
-                initialPrice = Math.Min(initialPrice, tierPrice);
+                decimal? tierPrice = GetMinimumTierPrice(productVariant, customer, quantity);
+                if (tierPrice.HasValue)
+                    result = Math.Min(result, tierPrice.Value);
             }
 
             //discount + additional charge
@@ -210,11 +301,11 @@ namespace Nop.Services.Catalog
             {
                 Discount appliedDiscount = null;
                 decimal discountAmount = GetDiscountAmount(productVariant, customer, additionalCharge, quantity, out appliedDiscount);
-                result = initialPrice + additionalCharge - discountAmount;
+                result = result + additionalCharge - discountAmount;
             }
             else
             {
-                result = initialPrice + additionalCharge;
+                result = result + additionalCharge;
             }
             if (result < decimal.Zero)
                 result = decimal.Zero;

@@ -1,25 +1,26 @@
-﻿@model Nop.Web.Models.ShoppingCart.ShoppingCartModel
-@using Nop.Core.Domain.Orders
-@using Nop.Web.Framework;
+﻿@model ShoppingCartModel
+@using Nop.Core.Domain.Orders;
+@using Nop.Web.Models.ShoppingCart;
 <div class="order-summary-content">
+    @Html.Widget("order_summary_content_before")
+    @Html.Partial("_OrderReviewData", Model.OrderReviewData)
+    <div class="clear">
+    </div>
     @if (Model.Items.Count > 0)
     {
         if (Model.Warnings.Count > 0)
         {
-        <div class="warning-box">
-            <div class="warning-text">
+        <div class="message-error">
+            <ul>
                 @for (int i = 0; i < Model.Warnings.Count; i++)
                 {
-                    @Model.Warnings[i]
-               if (i != Model.Warnings.Count - 1)
-               {
-                    <br />
-               }
+                    <li>@Model.Warnings[i]</li>
                 }
-            </div>
+            </ul>
         </div>
         }
-        using (Html.BeginRouteForm("ShoppingCart", FormMethod.Post))
+@*we add enctype = "multipart/form-data" because "File upload" attribute control type requries it*@
+        using (Html.BeginRouteForm("ShoppingCart", FormMethod.Post, new { enctype = "multipart/form-data" }))
         {
         <table class="cart">
             @if (Model.IsEditable)
@@ -78,75 +79,87 @@
                         @if (Model.IsEditable)
                         {
                             <td>
-                                <input id="removefromcart" type="checkbox" name="removefromcart" value="@(item.Id)" />
+                                <input type="checkbox" name="removefromcart" value="@(item.Id)" />
                             </td>
                         }
                         @if (Model.ShowSku)
                         {
-                            <td style="white-space: nowrap;">
+                            <td class="nobr">
                                 @item.Sku
                             </td>
                         }
                         @if (Model.ShowProductImages)
                         {
                             <td class="productpicture">
-                                <img style="border-width: 0px;" alt="@item.Picture.AlternateText" src="@item.Picture.ImageUrl" title="@item.Picture.Title" />
+                                <img alt="@item.Picture.AlternateText" src="@item.Picture.ImageUrl" title="@item.Picture.Title" />
                             </td>
                         }
                         <td class="product">
                             <a href="@Url.RouteUrl("Product", new { productId = item.ProductId, SeName = item.ProductSeName })" title="View details">@item.ProductName</a>
                             @if (!String.IsNullOrEmpty(item.AttributeInfo))
                             {
-                                <br />
-                                @Html.Raw(item.AttributeInfo)
+                                <div class="attributes">
+                                    @Html.Raw(item.AttributeInfo)
+                                </div>
                             }
                             @if (!String.IsNullOrEmpty(item.RecurringInfo))
                             {
-                                <br />
-                                @Html.Raw(item.RecurringInfo)
+                                <div class="recurring-info">
+                                    @Html.Raw(item.RecurringInfo)
+                                </div>
                             }
                             @if (item.Warnings.Count > 0)
                             {
-                                <div class="warning-box">
-                                    <div class="warning-text">
+                                <div class="message-error">
+                                    <ul>
                                         @for (int i = 0; i < item.Warnings.Count; i++)
                                         {
-                                            @item.Warnings[i]
-                                       if (i != item.Warnings.Count - 1)
-                                       {
-                                            <br />
-                                       }
+                                            <li>@item.Warnings[i]</li>
                                         }
-                                    </div>
+                                    </ul>
                                 </div>
                             }
                         </td>
-                        <td style="white-space: nowrap;">
-                            <span class="productPrice">@item.UnitPrice</span>
+                        <td class="nobr">
+                            <span class="product-unit-price">@item.UnitPrice</span>
                         </td>
-                        <td style="white-space: nowrap;">
+                        <td class="nobr">
                             @if (Model.IsEditable)
                             {
-                                <input name="itemquantity@(item.Id)" type="text" value="@(item.Quantity)" id="itemquantity@(item.Id)" class="shoppingcartquantitytext" size="4" />
+                                if (item.AllowedQuantities.Count > 0)
+                                {
+                                <select name="itemquantity@(item.Id)" class="qty-dropdown">
+                                    @foreach (var qty in item.AllowedQuantities)
+                                    {
+                                        <option @(qty.Selected ? Html.Raw(" selected=\"selected\"") : null) value="@qty.Value">@qty.Value</option>
+                                    }
+                                </select>
+                                }
+                                else
+                                {
+                                <input name="itemquantity@(item.Id)" type="text" value="@(item.Quantity)" class="qty-input" />
+                                }
+
                             }
                             else
                             {
                                 <span>@item.Quantity</span>
                             }
                         </td>
-                        <td style="white-space: nowrap;" class="end">
-                            <span class="productPrice">@item.SubTotal</span>
+                        <td class="nobr end">
+                            <span class="product-subtotal">@item.SubTotal</span>
                             @if (!String.IsNullOrEmpty(item.Discount))
                             {
-                                <br />
-                                @T("ShoppingCart.ItemYouSave")<text>:</text>
-                                <text>&nbsp; &nbsp;</text>@item.Discount
+                                <div class="discount">
+                                    @T("ShoppingCart.ItemYouSave")<text>:</text>
+                                    <text>&nbsp; &nbsp;</text>@item.Discount
+                                </div>
                             }
                         </td>
                     </tr>
                 }
             </tbody>
-        </table>                
+        </table>
         <div class="clear">
         </div>
                 if (!String.IsNullOrEmpty(Model.CheckoutAttributeInfo))
@@ -161,8 +174,8 @@
             @if (Model.IsEditable)
             {
                 <div class="common-buttons">
-                    <input type="submit" name="updatecart" value="@T("ShoppingCart.UpdateCart")" id="updatecart" class="updatecartbutton" />
-                    <input type="submit" name="continueshopping" value="@T("ShoppingCart.ContinueShopping")" id="continueshopping" class="continueshoppingbutton" />
+                    <input type="submit" name="updatecart" value="@T("ShoppingCart.UpdateCart")" class="button-2 update-cart-button" />
+                    <input type="submit" name="continueshopping" value="@T("ShoppingCart.ContinueShopping")" class="button-2 continue-shopping-button" />
                     <input type="submit" name="startcheckout" value="startcheckout" id="startcheckout"
                         style="display: none;" />
                 </div>                    
@@ -200,18 +213,37 @@
                     {
                     <script language="javascript" type="text/javascript">
                         function accepttermsofservice() {
-                            if (!document.getElementById('termsofservice').checked) {
-                                alert('@T("Checkout.TermsOfService.PleaseAccept")');
+                            if (!$('#termsofservice').is(':checked')) {
+                                $("#terms-of-service-warning-box").dialog();
                                 return false;
                             }
                             else
                                 return true;
                         }
                     </script>
+                    <div id="terms-of-service-warning-box" title="@T("Checkout.TermsOfService")" style="display:none;">
+                        <p>@T("Checkout.TermsOfService.PleaseAccept")</p>
+                    </div>
                     <div class="terms-of-service">
                         <input id="termsofservice" type="checkbox" name="termsofservice" />
                         @T("Checkout.TermsOfService.IAccept")
-                        <span class="read" onclick="javascript:OpenWindow('@Url.RouteUrl("TopicPopup", new { SystemName = "conditionsofUse" })', 450, 500, true)">@T("Checkout.TermsOfService.Read")</span>
+                        @*uncomment below to how simple pop-up*@ @*<span class="read" onclick="javascript:OpenWindow('@Url.RouteUrl("TopicPopup", new { SystemName = "conditionsofUse" })', 450, 500, true)">@T("Checkout.TermsOfService.Read")</span>*@
+                        @*use fancybox to how nice pop-up*@
+                        @{
+                        Html.AddScriptParts(@Url.Content("~/Scripts/jquery.fancybox-1.3.4.pack.js"));
+                        Html.AddCssFileParts(@Url.Content("~/Content/fancybox/jquery.fancybox-1.3.4.css"));
+                        }
+                        <a class="read" href='@Url.RouteUrl("TopicPopup", new { SystemName = "conditionsofUse" })'>@T("Checkout.TermsOfService.Read")</a>
+                        <script type="text/javascript">
+                            $(".terms-of-service .read").fancybox({
+                                'speedIn': 600,
+                                'speedOut': 200,
+                                'width': 450,
+                                'height': 500,
+                                'type': 'iframe',
+                                'centerOnScroll': true
+                            });
+                        </script>
                     </div>
                     }
                             
@@ -236,18 +268,12 @@
                                             }
                                         }
                             </script>
-                            <input type="submit" name="checkout" value="@T("Checkout")" id="checkout" class="checkoutbutton" onclick="startcheckout()" />
+                            <input type="submit" name="checkout" value="@T("Checkout.Button")" id="checkout" class="button-1 checkout-button" onclick="startcheckout()" />
                         }
                     </div>
                     <div class="addon-buttons">
                         @*Payment method buttons (e.g. GoogleCheckoutButton, Paypal Express)*@
-                        @if (Model.ButtonPaymentMethodActionNames != null && Model.ButtonPaymentMethodActionNames.Count > 0)
-                        {
-                            for (int i = 0; i < Model.ButtonPaymentMethodActionNames.Count; i++)
-                            {
-                                @Html.Action(Model.ButtonPaymentMethodActionNames[i], Model.ButtonPaymentMethodControllerNames[i], Model.ButtonPaymentMethodRouteValues[i])
-                            }
-                        }
+                        @Html.Partial("_ButtonPaymentMethod", Model)
                     </div>
                 }
             </div>
@@ -255,59 +281,24 @@
                 @if (Model.IsEditable)
                 {
                     <div class="deals">
-                        @if (Model.ShowDiscountBox)
-                        {
-                            using (Html.BeginRouteForm("ShoppingCart", FormMethod.Post))
-                            {
-                            <div class="coupon-box">
-                                <b>@T("ShoppingCart.DiscountCouponCode")</b>
-                                <br />@T("ShoppingCart.DiscountCouponCode.Tooltip")<br />
-                                <input name="discountcouponcode" type="text" id="discountcouponcode" style="width: 125px;" />&nbsp;
-                                <input type="submit" name="applydiscountcouponcode" value="@T("ShoppingCart.DiscountCouponCode.Button")" id="applydiscountcouponcode" class="applycouponcodebutton" />
-                                @if (!String.IsNullOrEmpty(Model.DiscountMessage))
-                                {
-                                    <div class="warning-box">
-                                        <div class="warning-text">
-                                            <br />
-                                            @Model.DiscountMessage
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                            }
-                        }
-                        @if (Model.ShowGiftCardBox)
-                        {
-                            using (Html.BeginRouteForm("ShoppingCart", FormMethod.Post))
-                            {
-                            <div class="giftcard-box">
-                                <b>@T("ShoppingCart.GiftCardCouponCode")</b>
-                                <br />@T("ShoppingCart.GiftCardCouponCode.Tooltip")<br />
-                                <input name="giftcardcouponcode" type="text" id="giftcardcouponcode" style="width: 125px;" />&nbsp;
-                                <input type="submit" name="applygiftcardcouponcode" value="@T("ShoppingCart.GiftCardCouponCode.Button")" id="applygiftcardcouponcode" class="applycouponcodebutton" />
-                                @if (!String.IsNullOrEmpty(Model.GiftCardMessage))
-                                {
-                                    <div class="warning-box">
-                                        <div class="warning-text">
-                                            <br />
-                                            @Model.GiftCardMessage
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                            }
-                        }
+                        @Html.Partial("_DiscountBox", Model.DiscountBox)
+                        @Html.Partial("_GiftCardBox", Model.GiftCardBox)
+                        @Html.Widget("order_summary_content_deals")
                     </div>
                     @Html.Partial("EstimateShipping", Model.EstimateShipping)
                 }
             </div>
             <div class="clear">
             </div>
-            @Html.Action("CrossSellProducts", "Catalog")
+            @if (Model.IsEditable)
+            {
+                @Html.Action("CrossSellProducts", "Catalog")
+            }
         </div>
     }
     else
     {
         @T("ShoppingCart.CartIsEmpty")
     }
+    @Html.Widget("order_summary_content_after")
 </div>

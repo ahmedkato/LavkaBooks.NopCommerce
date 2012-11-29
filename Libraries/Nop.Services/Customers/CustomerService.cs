@@ -1,17 +1,17 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using Nop.Core;
 using Nop.Core.Caching;
 using Nop.Core.Data;
+using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Shipping;
-using Nop.Core.Events;
-using Nop.Services.Messages;
-using Nop.Services.Security;
+using Nop.Services.Common;
+using Nop.Services.Events;
 
 namespace Nop.Services.Customers
 {
@@ -32,12 +32,9 @@ namespace Nop.Services.Customers
 
         private readonly IRepository<Customer> _customerRepository;
         private readonly IRepository<CustomerRole> _customerRoleRepository;
-        private readonly IRepository<CustomerAttribute> _customerAttributeRepository;
-        private readonly IEncryptionService _encryptionService;
+        private readonly IRepository<GenericAttribute> _gaRepository;
+        private readonly IGenericAttributeService _genericAttributeService;
         private readonly ICacheManager _cacheManager;
-        private readonly INewsLetterSubscriptionService _newsLetterSubscriptionService;
-        private readonly RewardPointsSettings _rewardPointsSettings;
-        private readonly CustomerSettings _customerSettings;
         private readonly IEventPublisher _eventPublisher;
 
         #endregion
@@ -50,29 +47,22 @@ namespace Nop.Services.Customers
         /// <param name="cacheManager">Cache manager</param>
         /// <param name="customerRepository">Customer repository</param>
         /// <param name="customerRoleRepository">Customer role repository</param>
-        /// <param name="customerAttributeRepository">Customer attribute repository</param>
-        /// <param name="encryptionService">Encryption service</param>
-        /// <param name="newsLetterSubscriptionService">Newsletter subscription service</param>
-        /// <param name="rewardPointsSettings">Reward points settings</param>
-        /// <param name="customerSettings">Customer settings</param>
-        /// <param name="eventPublisher"></param>
+        /// <param name="gaRepository">Generic attribute repository</param>
+        /// <param name="genericAttributeService">Generic attribute service</param>
+        /// <param name="eventPublisher">Event published</param>
         public CustomerService(ICacheManager cacheManager,
             IRepository<Customer> customerRepository,
             IRepository<CustomerRole> customerRoleRepository,
-            IRepository<CustomerAttribute> customerAttributeRepository,
-            IEncryptionService encryptionService, INewsLetterSubscriptionService newsLetterSubscriptionService,
-            RewardPointsSettings rewardPointsSettings, CustomerSettings customerSettings,
+            IRepository<GenericAttribute> gaRepository,
+            IGenericAttributeService genericAttributeService,
             IEventPublisher eventPublisher)
         {
-            _cacheManager = cacheManager;
-            _customerRepository = customerRepository;
-            _customerRoleRepository = customerRoleRepository;
-            _customerAttributeRepository = customerAttributeRepository;
-            _encryptionService = encryptionService;
-            _newsLetterSubscriptionService = newsLetterSubscriptionService;
-            _rewardPointsSettings = rewardPointsSettings;
-            _customerSettings = customerSettings;
-            _eventPublisher = eventPublisher;
+            this._cacheManager = cacheManager;
+            this._customerRepository = customerRepository;
+            this._customerRoleRepository = customerRoleRepository;
+            this._gaRepository = gaRepository;
+            this._genericAttributeService = genericAttributeService;
+            this._eventPublisher = eventPublisher;
         }
 
         #endregion
@@ -91,6 +81,11 @@ namespace Nop.Services.Customers
         /// <param name="username">Username; null to load all customers</param>
         /// <param name="firstName">First name; null to load all customers</param>
         /// <param name="lastName">Last name; null to load all customers</param>
+        /// <param name="dayOfBirth">Day of birth; 0 to load all customers</param>
+        /// <param name="monthOfBirth">Month of birth; 0 to load all customers</param>
+        /// <param name="company">Company; null to load all customers</param>
+        /// <param name="phone">Phone; null to load all customers</param>
+        /// <param name="zipPostalCode">Phone; null to load all customers</param>
         /// <param name="loadOnlyWithShoppingCart">Value indicating whther to load customers only with shopping cart</param>
         /// <param name="sct">Value indicating what shopping cart type to filter; userd when 'loadOnlyWithShoppingCart' param is 'true'</param>
         /// <param name="pageIndex">Page index</param>
@@ -98,7 +93,8 @@ namespace Nop.Services.Customers
         /// <returns>Customer collection</returns>
         public virtual IPagedList<Customer> GetAllCustomers(DateTime? registrationFrom,
             DateTime? registrationTo, int[] customerRoleIds, string email, string username,
-            string firstName, string lastName, 
+            string firstName, string lastName, int dayOfBirth, int monthOfBirth,
+            string company, string phone, string zipPostalCode,
             bool loadOnlyWithShoppingCart, ShoppingCartType? sct, int pageIndex, int pageSize)
         {
             var query = _customerRepository.Table;
@@ -114,9 +110,101 @@ namespace Nop.Services.Customers
             if (!String.IsNullOrWhiteSpace(username))
                 query = query.Where(c => c.Username.Contains(username));
             if (!String.IsNullOrWhiteSpace(firstName))
-                query = query.Where(c => c.CustomerAttributes.Where(ca => ca.Key == SystemCustomerAttributeNames.FirstName && ca.Value.Contains(firstName)).Count() > 0);
+            {
+                query = query
+                    .Join(_gaRepository.Table, x => x.Id, y => y.EntityId, (x, y) => new { Customer = x, Attribute = y })
+                    .Where((z => z.Attribute.KeyGroup == "Customer" &&
+                        z.Attribute.Key == SystemCustomerAttributeNames.FirstName &&
+                        z.Attribute.Value.Contains(firstName)))
+                    .Select(z => z.Customer);
+            }
             if (!String.IsNullOrWhiteSpace(lastName))
-                query = query.Where(c => c.CustomerAttributes.Where(ca => ca.Key == SystemCustomerAttributeNames.LastName && ca.Value.Contains(lastName)).Count() > 0);
+            {
+                query = query
+                    .Join(_gaRepository.Table, x => x.Id, y => y.EntityId, (x, y) => new { Customer = x, Attribute = y })
+                    .Where((z => z.Attribute.KeyGroup == "Customer" &&
+                        z.Attribute.Key == SystemCustomerAttributeNames.LastName &&
+                        z.Attribute.Value.Contains(lastName)))
+                    .Select(z => z.Customer);
+            }
+            //date of birth is stored as a string into database.
+            //we also know that date of birth is stored in the following format YYYY-MM-DD (for example, 1983-02-18).
+            //so let's search it as a string
+            if (dayOfBirth > 0 && monthOfBirth > 0)
+            {
+                //both are specified
+                string dateOfBirthStr = monthOfBirth.ToString("00", CultureInfo.InvariantCulture) + "-" + dayOfBirth.ToString("00", CultureInfo.InvariantCulture);
+                //EndsWith is not supported by SQL Server Compact
+                //so let's use the following workaround http://social.msdn.microsoft.com/Forums/is/sqlce/thread/0f810be1-2132-4c59-b9ae-8f7013c0cc00
+                
+                //we also cannot use Length function in SQL Server Compact (not supported in this context)
+                //z.Attribute.Value.Length - dateOfBirthStr.Length = 5
+                //dateOfBirthStr.Length = 5
+                query = query
+                    .Join(_gaRepository.Table, x => x.Id, y => y.EntityId, (x, y) => new { Customer = x, Attribute = y })
+                    .Where((z => z.Attribute.KeyGroup == "Customer" &&
+                        z.Attribute.Key == SystemCustomerAttributeNames.DateOfBirth &&
+                        z.Attribute.Value.Substring(5, 5) == dateOfBirthStr))
+                    .Select(z => z.Customer);
+            }
+            else if (dayOfBirth > 0)
+            {
+                //only day is specified
+                string dateOfBirthStr = dayOfBirth.ToString("00", CultureInfo.InvariantCulture);
+                //EndsWith is not supported by SQL Server Compact
+                //so let's use the following workaround http://social.msdn.microsoft.com/Forums/is/sqlce/thread/0f810be1-2132-4c59-b9ae-8f7013c0cc00
+                
+                //we also cannot use Length function in SQL Server Compact (not supported in this context)
+                //z.Attribute.Value.Length - dateOfBirthStr.Length = 8
+                //dateOfBirthStr.Length = 2
+                query = query
+                    .Join(_gaRepository.Table, x => x.Id, y => y.EntityId, (x, y) => new { Customer = x, Attribute = y })
+                    .Where((z => z.Attribute.KeyGroup == "Customer" &&
+                        z.Attribute.Key == SystemCustomerAttributeNames.DateOfBirth &&
+                        z.Attribute.Value.Substring(8, 2) == dateOfBirthStr))
+                    .Select(z => z.Customer);
+            }
+            else if (monthOfBirth > 0)
+            {
+                //only month is specified
+                string dateOfBirthStr = "-" + monthOfBirth.ToString("00", CultureInfo.InvariantCulture) + "-";
+                query = query
+                    .Join(_gaRepository.Table, x => x.Id, y => y.EntityId, (x, y) => new { Customer = x, Attribute = y })
+                    .Where((z => z.Attribute.KeyGroup == "Customer" &&
+                        z.Attribute.Key == SystemCustomerAttributeNames.DateOfBirth &&
+                        z.Attribute.Value.Contains(dateOfBirthStr)))
+                    .Select(z => z.Customer);
+            }
+            //search by company
+            if (!String.IsNullOrWhiteSpace(company))
+            {
+                query = query
+                    .Join(_gaRepository.Table, x => x.Id, y => y.EntityId, (x, y) => new { Customer = x, Attribute = y })
+                    .Where((z => z.Attribute.KeyGroup == "Customer" &&
+                        z.Attribute.Key == SystemCustomerAttributeNames.Company &&
+                        z.Attribute.Value.Contains(company)))
+                    .Select(z => z.Customer);
+            }
+            //search by phone
+            if (!String.IsNullOrWhiteSpace(phone))
+            {
+                query = query
+                    .Join(_gaRepository.Table, x => x.Id, y => y.EntityId, (x, y) => new { Customer = x, Attribute = y })
+                    .Where((z => z.Attribute.KeyGroup == "Customer" &&
+                        z.Attribute.Key == SystemCustomerAttributeNames.Phone &&
+                        z.Attribute.Value.Contains(phone)))
+                    .Select(z => z.Customer);
+            }
+            //search by zip
+            if (!String.IsNullOrWhiteSpace(zipPostalCode))
+            {
+                query = query
+                    .Join(_gaRepository.Table, x => x.Id, y => y.EntityId, (x, y) => new { Customer = x, Attribute = y })
+                    .Where((z => z.Attribute.KeyGroup == "Customer" &&
+                        z.Attribute.Key == SystemCustomerAttributeNames.ZipPostalCode &&
+                        z.Attribute.Value.Contains(zipPostalCode)))
+                    .Select(z => z.Customer);
+            }
 
             if (loadOnlyWithShoppingCart)
             {
@@ -132,6 +220,22 @@ namespace Nop.Services.Customers
             query = query.OrderByDescending(c => c.CreatedOnUtc);
 
             var customers = new PagedList<Customer>(query, pageIndex, pageSize);
+            return customers;
+        }
+
+        /// <summary>
+        /// Gets all customers by customer format (including deleted ones)
+        /// </summary>
+        /// <param name="passwordFormat">Password format</param>
+        /// <returns>Customers</returns>
+        public virtual IList<Customer> GetAllCustomersByPasswordFormat(PasswordFormat passwordFormat)
+        {
+            int passwordFormatId = (int)passwordFormat;
+
+            var query = _customerRepository.Table;
+            query = query.Where(c => c.PasswordFormatId == passwordFormatId);
+            query = query.OrderByDescending(c => c.CreatedOnUtc);
+            var customers = query.ToList();
             return customers;
         }
 
@@ -208,6 +312,31 @@ namespace Nop.Services.Customers
         }
 
         /// <summary>
+        /// Get customers by identifiers
+        /// </summary>
+        /// <param name="customerIds">Customer identifiers</param>
+        /// <returns>Customers</returns>
+        public virtual IList<Customer> GetCustomersByIds(int[] customerIds)
+        {
+            if (customerIds == null || customerIds.Length == 0)
+                return new List<Customer>();
+
+            var query = from c in _customerRepository.Table
+                        where customerIds.Contains(c.Id)
+                        select c;
+            var customers = query.ToList();
+            //sort by passed identifiers
+            var sortedCustomers = new List<Customer>();
+            foreach (int id in customerIds)
+            {
+                var customer = customers.Find(x => x.Id == id);
+                if (customer != null)
+                    sortedCustomers.Add(customer);
+            }
+            return sortedCustomers;
+        }
+
+        /// <summary>
         /// Gets a customer by GUID
         /// </summary>
         /// <param name="customerGuid">Customer GUID</param>
@@ -280,332 +409,37 @@ namespace Nop.Services.Customers
         }
 
         /// <summary>
-        /// Validate customer
+        /// Get customers by language identifier
         /// </summary>
-        /// <param name="usernameOrEmail">Username or email</param>
-        /// <param name="password">Password</param>
-        /// <returns>Result</returns>
-        public virtual bool ValidateCustomer(string usernameOrEmail, string password)
+        /// <param name="languageId">Language identifier</param>
+        /// <returns>Customers</returns>
+        public virtual IList<Customer> GetCustomersByLanguageId(int languageId)
         {
-            Customer customer = null;
-            if (_customerSettings.UsernamesEnabled)
-                customer = GetCustomerByUsername(usernameOrEmail);
+            var query = _customerRepository.Table;
+            if (languageId > 0)
+                query = query.Where(c => c.LanguageId.HasValue && c.LanguageId.Value == languageId);
             else
-                customer = GetCustomerByEmail(usernameOrEmail);
-
-            if (customer == null || customer.Deleted || !customer.Active)
-                return false;
-
-            //only registered can login
-            if (!customer.IsRegistered())
-                return false;
-
-            string pwd = string.Empty;
-            switch (customer.PasswordFormat)
-            {
-                case PasswordFormat.Encrypted:
-                    pwd = _encryptionService.EncryptText(password);
-                    break;
-                case PasswordFormat.Hashed:
-                    pwd = _encryptionService.CreatePasswordHash(password, customer.PasswordSalt, _customerSettings.HashedPasswordFormat);
-                    break;
-                default:
-                    pwd = password;
-                    break;
-            }
-
-            bool isValid = pwd == customer.Password;
-
-            //save last login date
-            if (isValid)
-            {
-                customer.LastLoginDateUtc = DateTime.UtcNow;
-                UpdateCustomer(customer);
-            }
-            //else
-            //{
-            //    customer.FailedPasswordAttemptCount++;
-            //    UpdateCustomer(customer);
-            //}
-
-            return isValid;
+                query = query.Where(c => !c.LanguageId.HasValue);
+            query = query.OrderBy(c => c.Id);
+            var customers = query.ToList();
+            return customers;
         }
 
         /// <summary>
-        /// Register customer
+        /// Get customers by currency identifier
         /// </summary>
-        /// <param name="request">Request</param>
-        /// <returns>Result</returns>
-        public virtual CustomerRegistrationResult RegisterCustomer(CustomerRegistrationRequest request)
+        /// <param name="currencyId">Currency identifier</param>
+        /// <returns>Customers</returns>
+        public virtual IList<Customer> GetCustomersByCurrencyId(int currencyId)
         {
-            var result = new CustomerRegistrationResult();
-            //validation
-            if (request == null)
-            {
-                result.AddError("The registration request was not valid.");
-                return result;
-            }
-            if (request.Customer == null)
-            {
-                result.AddError("Can't load current customer");
-                return result;
-            }
-            if (request.Customer.IsSearchEngineAccount())
-            {
-                result.AddError("Search engine can't be registered");
-                return result;
-            }
-            if (request.Customer.IsRegistered())
-            {
-                result.AddError("Current customer is already registered");
-                return result;
-            }
-            if (String.IsNullOrEmpty(request.Email))
-            {
-                result.AddError("Email is not provided");
-                return result;
-            }
-            if (!CommonHelper.IsValidEmail(request.Email))
-            {
-                result.AddError("Invalid email");
-                return result;
-            }
-            if (String.IsNullOrWhiteSpace(request.Password))
-            {
-                result.AddError("Password is not provided");
-                return result;
-            }
-            if (_customerSettings.UsernamesEnabled)
-            {
-                if (String.IsNullOrEmpty(request.Username))
-                {
-                    result.AddError("Username is not provided");
-                    return result;
-                }
-            }
-
-            //validate unique user
-            if (GetCustomerByEmail(request.Email) != null)
-            {
-                result.AddError("The specified email already exists");
-                return result;
-            }
-            if (_customerSettings.UsernamesEnabled)
-            {
-                if (GetCustomerByUsername(request.Username) != null)
-                {
-                    result.AddError("The specified username already exists");
-                    return result;
-                }
-            }
-
-            //at this point request is valid
-            request.Customer.Username = request.Username;
-            request.Customer.Email = request.Email;
-            request.Customer.PasswordFormat = request.PasswordFormat;
-
-            switch (request.PasswordFormat)
-            {
-                case PasswordFormat.Clear:
-                    {
-                        request.Customer.Password = request.Password;
-                    }
-                    break;
-                case PasswordFormat.Encrypted:
-                    {
-                        request.Customer.Password = _encryptionService.EncryptText(request.Password);
-                    }
-                    break;
-                case PasswordFormat.Hashed:
-                    {
-                        string saltKey = _encryptionService.CreateSaltKey(5);
-                        request.Customer.PasswordSalt = saltKey;
-                        request.Customer.Password = _encryptionService.CreatePasswordHash(request.Password, saltKey, _customerSettings.HashedPasswordFormat);
-                    }
-                    break;
-                default:
-                    break;
-            }
-
-            request.Customer.Active = request.IsApproved;
-            
-            //add to 'Registered' role
-            var registeredRole = GetCustomerRoleBySystemName(SystemCustomerRoleNames.Registered);
-            if (registeredRole == null)
-                throw new NopException("'Registered' role could not be loaded");
-            request.Customer.CustomerRoles.Add(registeredRole);
-            //remove from 'Guests' role
-            var guestRole = request.Customer.CustomerRoles.FirstOrDefault(cr => cr.SystemName == SystemCustomerRoleNames.Guests);
-            if (guestRole != null)
-                request.Customer.CustomerRoles.Remove(guestRole);
-
-            //Add reward points for customer registration (if enabled)
-            if (_rewardPointsSettings.Enabled &&
-                _rewardPointsSettings.PointsForRegistration > 0)
-                request.Customer.AddRewardPointsHistoryEntry(_rewardPointsSettings.PointsForRegistration, "Registered as customer");
-
-            UpdateCustomer(request.Customer);
-            return result;
-        }
-        
-        /// <summary>
-        /// Change password
-        /// </summary>
-        /// <param name="request">Request</param>
-        /// <returns>Result</returns>
-        public virtual PasswordChangeResult ChangePassword(ChangePasswordRequest request)
-        {
-            var result = new PasswordChangeResult();
-            if (request == null)
-            {
-                result.AddError("The change password request was not valid.");
-                return result;
-            }
-            if (String.IsNullOrWhiteSpace(request.Email))
-            {
-                result.AddError("The email is not entered");
-                return result;
-            }
-            if (String.IsNullOrWhiteSpace(request.NewPassword))
-            {
-                result.AddError("The password is not entered");
-                return result;
-            }
-
-            var customer = GetCustomerByEmail(request.Email);
-            if (customer == null)
-            {
-                result.AddError("The specified email could not be found");
-                return result;
-            }
-
-
-            var requestIsValid = false;
-            if (request.ValidateRequest)
-            {
-                //password
-                string oldPwd = string.Empty;
-                switch (customer.PasswordFormat)
-                {
-                    case PasswordFormat.Encrypted:
-                        oldPwd = _encryptionService.EncryptText(request.OldPassword);
-                        break;
-                    case PasswordFormat.Hashed:
-                        oldPwd = _encryptionService.CreatePasswordHash(request.OldPassword, customer.PasswordSalt, _customerSettings.HashedPasswordFormat);
-                        break;
-                    default:
-                        oldPwd = request.OldPassword;
-                        break;
-                }
-
-                bool oldPasswordIsValid = oldPwd == customer.Password;
-                if (!oldPasswordIsValid)
-                    result.AddError("Old password doesn't match");
-
-                if (oldPasswordIsValid)
-                    requestIsValid = true;
-            }
+            var query = _customerRepository.Table;
+            if (currencyId > 0)
+                query = query.Where(c => c.CurrencyId.HasValue && c.CurrencyId.Value == currencyId);
             else
-                requestIsValid = true;
-
-
-            //at this point request is valid
-            if (requestIsValid)
-            {
-                switch (request.NewPasswordFormat)
-                {
-                    case PasswordFormat.Clear:
-                        {
-                            customer.Password = request.NewPassword;
-                        }
-                        break;
-                    case PasswordFormat.Encrypted:
-                        {
-                            customer.Password = _encryptionService.EncryptText(request.NewPassword);
-                        }
-                        break;
-                    case PasswordFormat.Hashed:
-                        {
-                            string saltKey = _encryptionService.CreateSaltKey(5);
-                            customer.PasswordSalt = saltKey;
-                            customer.Password = _encryptionService.CreatePasswordHash(request.NewPassword, saltKey, _customerSettings.HashedPasswordFormat);
-                        }
-                        break;
-                    default:
-                        break;
-                }
-                customer.PasswordFormat = request.NewPasswordFormat;
-                UpdateCustomer(customer);
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// Sets a user email
-        /// </summary>
-        /// <param name="customer">Customer</param>
-        /// <param name="newEmail">New email</param>
-        public virtual void SetEmail(Customer customer, string newEmail)
-        {
-            if (customer == null)
-                throw new ArgumentNullException("customer");
-
-            newEmail = newEmail.Trim();
-            string oldEmail = customer.Email;
-
-            if (!CommonHelper.IsValidEmail(newEmail))
-                throw new NopException("New email is not valid");
-
-            if (newEmail.Length > 100)
-                throw new NopException("E-mail address is too long.");
-
-            var customer2 = GetCustomerByEmail(newEmail);
-            if (customer2 != null && customer.Id != customer2.Id)
-                throw new NopException("The e-mail address is already in use.");
-
-            customer.Email = newEmail;
-            UpdateCustomer(customer);
-
-            //update newsletter subscription (if required)
-            if (!String.IsNullOrEmpty(oldEmail) && !oldEmail.Equals(newEmail, StringComparison.InvariantCultureIgnoreCase))
-            {
-                var subscriptionOld = _newsLetterSubscriptionService.GetNewsLetterSubscriptionByEmail(oldEmail);
-                if (subscriptionOld != null)
-                {
-                    subscriptionOld.Email = newEmail;
-                    _newsLetterSubscriptionService.UpdateNewsLetterSubscription(subscriptionOld);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Sets a customer username
-        /// </summary>
-        /// <param name="customer">Customer</param>
-        /// <param name="newUsername">New Username</param>
-        public virtual void SetUsername(Customer customer, string newUsername)
-        {
-            if (customer == null)
-                throw new ArgumentNullException("customer");
-
-            if (!_customerSettings.UsernamesEnabled)
-                throw new NopException("Usernames are disabled");
-
-            if (!_customerSettings.AllowUsersToChangeUsernames)
-                throw new NopException("Changing usernames is not allowed");
-
-            newUsername = newUsername.Trim();
-
-            if (newUsername.Length > 100)
-                throw new NopException("Username is too long.");
-
-            var user2 = GetCustomerByUsername(newUsername);
-            if (user2 != null && customer.Id != user2.Id)
-                throw new NopException("This username is already in use.");
-
-            customer.Username = newUsername;
-            UpdateCustomer(customer);
+                query = query.Where(c => !c.CurrencyId.HasValue);
+            query = query.OrderBy(c => c.Id);
+            var customers = query.ToList();
+            return customers;
         }
 
         /// <summary>
@@ -668,25 +502,50 @@ namespace Nop.Services.Customers
         /// </summary>
         /// <param name="customer">Customer</param>
         /// <param name="clearCouponCodes">A value indicating whether to clear coupon code</param>
-        public virtual void ResetCheckoutData(Customer customer, bool clearCouponCodes = false)
+        /// <param name="clearCheckoutAttributes">A value indicating whether to clear selected checkout attributes</param>
+        /// <param name="clearRewardPoints">A value indicating whether to clear "Use reward points" flag</param>
+        /// <param name="clearShippingMethod">A value indicating whether to clear selected shipping method</param>
+        /// <param name="clearPaymentMethod">A value indicating whether to clear selected payment method</param>
+        public virtual void ResetCheckoutData(Customer customer, 
+            bool clearCouponCodes = false, bool clearCheckoutAttributes = false,
+            bool clearRewardPoints = true, bool clearShippingMethod = true,
+            bool clearPaymentMethod = true)
         {
             if (customer == null)
                 throw new ArgumentNullException();
-
-            //clear reward points flag
-            customer.UseRewardPointsDuringCheckout = false;
-
-            //clear selected shipping and payment methods
-            SaveCustomerAttribute<ShippingOption>(customer, SystemCustomerAttributeNames.LastShippingOption, null);
-            customer.SelectedPaymentMethodSystemName = "";
-
+            
             //clear entered coupon codes
             if (clearCouponCodes)
             {
                 customer.DiscountCouponCode = "";
                 customer.GiftCardCouponCodes = "";
+            }
+
+            //clear checkout attributes
+            if (clearCheckoutAttributes)
+            {
                 customer.CheckoutAttributes = "";
             }
+
+            //clear reward points flag
+            if (clearRewardPoints)
+            {
+                customer.UseRewardPointsDuringCheckout = false;
+            }
+
+            //clear selected shipping method
+            if (clearShippingMethod)
+            {
+                _genericAttributeService.SaveAttribute<ShippingOption>(customer, SystemCustomerAttributeNames.LastShippingOption, null);
+                _genericAttributeService.SaveAttribute<ShippingOption>(customer, SystemCustomerAttributeNames.OfferedShippingOptions, null);
+            }
+
+            //clear selected payment method
+            if (clearPaymentMethod)
+            {
+                customer.SelectedPaymentMethodSystemName = "";
+            }
+            
             UpdateCustomer(customer);
         }
         
@@ -856,117 +715,6 @@ namespace Nop.Services.Customers
 
             //event notification
             _eventPublisher.EntityUpdated(customerRole);
-        }
-
-        #endregion
-
-        #region Customer attributes
-
-        /// <summary>
-        /// Deletes a customer attribute
-        /// </summary>
-        /// <param name="customerAttribute">Customer attribute</param>
-        public virtual void DeleteCustomerAttribute(CustomerAttribute customerAttribute)
-        {
-            if (customerAttribute == null)
-                throw new ArgumentNullException("customerAttribute");
-
-            _customerAttributeRepository.Delete(customerAttribute);
-
-            //event notification
-            _eventPublisher.EntityDeleted(customerAttribute);
-        }
-
-        /// <summary>
-        /// Gets a customer attribute
-        /// </summary>
-        /// <param name="customerAttributeId">Customer attribute identifier</param>
-        /// <returns>A customer attribute</returns>
-        public virtual CustomerAttribute GetCustomerAttributeById(int customerAttributeId)
-        {
-            if (customerAttributeId == 0)
-                return null;
-
-            var customerAttribute = _customerAttributeRepository.GetById(customerAttributeId);
-            return customerAttribute;
-        }
-
-        /// <summary>
-        /// Inserts a customer attribute
-        /// </summary>
-        /// <param name="customerAttribute">Customer attribute</param>
-        public virtual void InsertCustomerAttribute(CustomerAttribute customerAttribute)
-        {
-            if (customerAttribute == null)
-                throw new ArgumentNullException("customerAttribute");
-
-            _customerAttributeRepository.Insert(customerAttribute);
-
-            //event notification
-            _eventPublisher.EntityInserted(customerAttribute);
-        }
-
-        /// <summary>
-        /// Updates the customer attribute
-        /// </summary>
-        /// <param name="customerAttribute">Customer attribute</param>
-        public virtual void UpdateCustomerAttribute(CustomerAttribute customerAttribute)
-        {
-            if (customerAttribute == null)
-                throw new ArgumentNullException("customerAttribute");
-
-            _customerAttributeRepository.Update(customerAttribute);
-
-            //event notification
-            _eventPublisher.EntityUpdated(customerAttribute);
-        }
-
-        /// <summary>
-        /// Save customer attribute
-        /// </summary>
-        /// <typeparam name="T">Type</typeparam>
-        /// <param name="customer">Customer</param>
-        /// <param name="key">Key</param>
-        /// <param name="value">Value</param>
-        /// <returns>Customer attribute</returns>
-        public virtual CustomerAttribute SaveCustomerAttribute<T>(Customer customer,
-            string key, T value)
-        {
-            if (customer == null)
-                throw new ArgumentNullException("customer");
-
-            if (!CommonHelper.GetNopCustomTypeConverter(typeof(T)).CanConvertTo(typeof(string)))
-                throw new NopException("Not supported customer attribute type");
-
-            string valueStr = CommonHelper.GetNopCustomTypeConverter(typeof(T)).ConvertToInvariantString(value);
-            //use the code below in order to support all serializable types (for example, ShippingOption)
-            //or use custom TypeConverters like it's implemented for ISettings
-            //using (var tr = new StringReader(customerAttribute.Value))
-            //{
-            //    var xmlS = new XmlSerializer(typeof(T));
-            //    valueStr = (T)xmlS.Deserialize(tr);
-            //}
-            
-            var customerAttribute = customer.CustomerAttributes.FirstOrDefault(ca => ca.Key.Equals(key, StringComparison.InvariantCultureIgnoreCase));
-            if (customerAttribute != null)
-            {
-                //update
-                customerAttribute.Value = valueStr;
-                UpdateCustomerAttribute(customerAttribute);
-            }
-            else
-            {
-                //insert
-                customerAttribute = new CustomerAttribute()
-                {
-                    Customer = customer,
-                    Key = key,
-                    Value = valueStr,
-                };
-                InsertCustomerAttribute(customerAttribute);
-            }
-
-            return customerAttribute;
         }
 
         #endregion

@@ -6,14 +6,14 @@ using Nop.Core.Domain.Common;
 
 namespace Nop.Web.Framework.UI
 {
-    public class PageTitleBuilder : IPageTitleBuilder
+    public partial class PageTitleBuilder : IPageTitleBuilder
     {
         private readonly SeoSettings _seoSettings;
         private readonly List<string> _titleParts;
         private readonly List<string> _metaDescriptionParts;
         private readonly List<string> _metaKeywordParts;
-        private readonly List<string> _scriptParts;
-        private readonly List<string> _cssParts;
+        private readonly Dictionary<ResourceLocation, List<string>> _scriptParts;
+        private readonly Dictionary<ResourceLocation, List<string>> _cssParts;
         private readonly List<string> _canonicalUrlParts;
 
         public PageTitleBuilder(SeoSettings seoSettings)
@@ -22,8 +22,8 @@ namespace Nop.Web.Framework.UI
             this._titleParts = new List<string>();
             this._metaDescriptionParts = new List<string>();
             this._metaKeywordParts = new List<string>();
-            this._scriptParts = new List<string>();
-            this._cssParts = new List<string>();
+            this._scriptParts = new Dictionary<ResourceLocation, List<string>>();
+            this._cssParts = new Dictionary<ResourceLocation, List<string>>();
             this._canonicalUrlParts = new List<string>();
         }
 
@@ -41,14 +41,42 @@ namespace Nop.Web.Framework.UI
                     if (!string.IsNullOrEmpty(part))
                         _titleParts.Insert(0, part);
         }
-        public string GenerateTitle()
+        public string GenerateTitle(bool addDefaultTitle)
         {
             string result = "";
             var specificTitle = string.Join(_seoSettings.PageTitleSeparator, _titleParts.AsEnumerable().Reverse().ToArray());
             if (!String.IsNullOrEmpty(specificTitle))
-                result = string.Join(_seoSettings.PageTitleSeparator, _seoSettings.DefaultTitle, specificTitle);
+            {
+                if (addDefaultTitle)
+                {
+                    //store name + page title
+                    switch (_seoSettings.PageTitleSeoAdjustment)
+                    {
+                        case PageTitleSeoAdjustment.PagenameAfterStorename:
+                            {
+                                result = string.Join(_seoSettings.PageTitleSeparator, _seoSettings.DefaultTitle, specificTitle);
+                            }
+                            break;
+                        case PageTitleSeoAdjustment.StorenameAfterPagename:
+                        default:
+                            {
+                                result = string.Join(_seoSettings.PageTitleSeparator, specificTitle, _seoSettings.DefaultTitle);
+                            }
+                            break;
+                            
+                    }
+                }
+                else
+                {
+                    //page title only
+                    result = specificTitle;
+                }
+            }
             else
+            {
+                //store name only
                 result = _seoSettings.DefaultTitle;
+            }
             return result;
         }
 
@@ -97,24 +125,34 @@ namespace Nop.Web.Framework.UI
         }
 
 
-        public void AddScriptParts(params string[] parts)
+        public void AddScriptParts(ResourceLocation location, params string[] parts)
         {
+            if (!_scriptParts.ContainsKey(location))
+                _scriptParts.Add(location, new List<string>());
+
             if (parts != null)
                 foreach (string part in parts)
                     if (!string.IsNullOrEmpty(part))
-                        _scriptParts.Add(part);
+                        _scriptParts[location].Add(part);
         }
-        public void AppendScriptParts(params string[] parts)
+        public void AppendScriptParts(ResourceLocation location, params string[] parts)
         {
+            if (!_scriptParts.ContainsKey(location))
+                _scriptParts.Add(location, new List<string>());
+
             if (parts != null)
                 foreach (string part in parts)
                     if (!string.IsNullOrEmpty(part))
-                        _scriptParts.Insert(0, part);
+                        _scriptParts[location].Insert(0, part);
         }
-        public string GenerateScripts()
+        public string GenerateScripts(ResourceLocation location)
         {
+            if (!_scriptParts.ContainsKey(location) || _scriptParts[location] == null)
+                return "";
+
             var result = new StringBuilder();
-            foreach (var scriptPath in _scriptParts)
+            //use only distinct rows
+            foreach (var scriptPath in _scriptParts[location].Distinct())
             {
                 result.AppendFormat("<script src=\"{0}\" type=\"text/javascript\"></script>", scriptPath);
                 result.Append(Environment.NewLine);
@@ -123,24 +161,34 @@ namespace Nop.Web.Framework.UI
         }
 
 
-        public void AddCssFileParts(params string[] parts)
+        public void AddCssFileParts(ResourceLocation location, params string[] parts)
         {
+            if (!_cssParts.ContainsKey(location))
+                _cssParts.Add(location, new List<string>());
+
             if (parts != null)
                 foreach (string part in parts)
                     if (!string.IsNullOrEmpty(part))
-                        _cssParts.Add(part);
+                        _cssParts[location].Add(part);
         }
-        public void AppendCssFileParts(params string[] parts)
+        public void AppendCssFileParts(ResourceLocation location, params string[] parts)
         {
+            if (!_cssParts.ContainsKey(location))
+                _cssParts.Add(location, new List<string>());
+
             if (parts != null)
                 foreach (string part in parts)
                     if (!string.IsNullOrEmpty(part))
-                        _cssParts.Insert(0, part);
+                        _cssParts[location].Insert(0, part);
         }
-        public string GenerateCssFiles()
+        public string GenerateCssFiles(ResourceLocation location)
         {
+            if (!_cssParts.ContainsKey(location) || _cssParts[location] == null)
+                return "";
+
             var result = new StringBuilder();
-            foreach (var cssPath in _cssParts)
+            //use only distinct rows
+            foreach (var cssPath in _cssParts[location].Distinct())
             {
                 result.AppendFormat("<link href=\"{0}\" rel=\"stylesheet\" type=\"text/css\" />", cssPath);
                 result.Append(Environment.NewLine);

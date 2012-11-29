@@ -5,10 +5,10 @@ using Nop.Core.Caching;
 using Nop.Core.Data;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Discounts;
-using Nop.Core.Events;
 using Nop.Core.Infrastructure;
 using Nop.Core.Plugins;
 using Nop.Services.Discounts;
+using Nop.Services.Events;
 using Nop.Tests;
 using NUnit.Framework;
 using Rhino.Mocks;
@@ -61,7 +61,7 @@ namespace Nop.Services.Tests.Discounts
             var cacheManager = new NopNullCache();
             _discountRequirementRepo = MockRepository.GenerateMock<IRepository<DiscountRequirement>>();
             _discountUsageHistoryRepo = MockRepository.GenerateMock<IRepository<DiscountUsageHistory>>();
-            var pluginFinder = new PluginFinder(new AppDomainTypeFinder());
+            var pluginFinder = new PluginFinder();
             _discountService = new DiscountService(cacheManager, _discountRepo, _discountRequirementRepo,
                 _discountUsageHistoryRepo, pluginFinder, _eventPublisher);
         }

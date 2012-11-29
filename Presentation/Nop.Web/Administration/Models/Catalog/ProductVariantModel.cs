@@ -12,7 +12,7 @@ using Nop.Web.Framework.Mvc;
 namespace Nop.Admin.Models.Catalog
 {
     [Validator(typeof(ProductVariantValidator))]
-    public class ProductVariantModel : BaseNopEntityModel, ILocalizedModel<ProductVariantLocalizedModel>
+    public partial class ProductVariantModel : BaseNopEntityModel, ILocalizedModel<ProductVariantLocalizedModel>
     {
         public ProductVariantModel()
         {
@@ -46,6 +46,10 @@ namespace Nop.Admin.Models.Catalog
         [NopResourceDisplayName("Admin.Catalog.Products.Variants.Fields.ManufacturerPartNumber")]
         [AllowHtml]
         public string ManufacturerPartNumber { get; set; }
+
+        [NopResourceDisplayName("Admin.Catalog.Products.Variants.Fields.GTIN")]
+        [AllowHtml]
+        public virtual string Gtin { get; set; }
 
         [NopResourceDisplayName("Admin.Catalog.Products.Variants.Fields.IsGiftCard")]
         public bool IsGiftCard { get; set; }
@@ -143,21 +147,30 @@ namespace Nop.Admin.Models.Catalog
 
         [NopResourceDisplayName("Admin.Catalog.Products.Variants.Fields.NotifyAdminForQuantityBelow")]
         public int NotifyAdminForQuantityBelow { get; set; }
-
+        
         [NopResourceDisplayName("Admin.Catalog.Products.Variants.Fields.BackorderMode")]
         public int BackorderModeId { get; set; }
+
+        [NopResourceDisplayName("Admin.Catalog.Products.Variants.Fields.AllowBackInStockSubscriptions")]
+        public bool AllowBackInStockSubscriptions { get; set; }
 
         [NopResourceDisplayName("Admin.Catalog.Products.Variants.Fields.OrderMinimumQuantity")]
         public int OrderMinimumQuantity { get; set; }
 
         [NopResourceDisplayName("Admin.Catalog.Products.Variants.Fields.OrderMaximumQuantity")]
         public int OrderMaximumQuantity { get; set; }
+
+        [NopResourceDisplayName("Admin.Catalog.Products.Variants.Fields.AllowedQuantities")]
+        public string AllowedQuantities { get; set; }
         
         [NopResourceDisplayName("Admin.Catalog.Products.Variants.Fields.DisableBuyButton")]
         public bool DisableBuyButton { get; set; }
 
         [NopResourceDisplayName("Admin.Catalog.Products.Variants.Fields.DisableWishlistButton")]
         public bool DisableWishlistButton { get; set; }
+
+        [NopResourceDisplayName("Admin.Catalog.Products.Variants.Fields.AvailableForPreOrder")]
+        public bool AvailableForPreOrder { get; set; }
 
         [NopResourceDisplayName("Admin.Catalog.Products.Variants.Fields.CallForPrice")]
         public bool CallForPrice { get; set; }
@@ -170,6 +183,18 @@ namespace Nop.Admin.Models.Catalog
 
         [NopResourceDisplayName("Admin.Catalog.Products.Variants.Fields.ProductCost")]
         public decimal ProductCost { get; set; }
+
+        [NopResourceDisplayName("Admin.Catalog.Products.Variants.Fields.SpecialPrice")]
+        [UIHint("DecimalNullable")]
+        public decimal? SpecialPrice { get; set; }
+
+        [NopResourceDisplayName("Admin.Catalog.Products.Variants.Fields.SpecialPriceStartDateTimeUtc")]
+        [UIHint("DateNullable")]
+        public DateTime? SpecialPriceStartDateTimeUtc { get; set; }
+
+        [NopResourceDisplayName("Admin.Catalog.Products.Variants.Fields.SpecialPriceEndDateTimeUtc")]
+        [UIHint("DateNullable")]
+        public DateTime? SpecialPriceEndDateTimeUtc { get; set; }
 
         [NopResourceDisplayName("Admin.Catalog.Products.Variants.Fields.CustomerEntersPrice")]
         public bool CustomerEntersPrice { get; set; }
@@ -214,7 +239,7 @@ namespace Nop.Admin.Models.Catalog
 
         #region Nested classes
 
-        public class TierPriceModel : BaseNopEntityModel
+        public partial class TierPriceModel : BaseNopEntityModel
         {
             public int ProductVariantId { get; set; }
 
@@ -233,7 +258,7 @@ namespace Nop.Admin.Models.Catalog
             public decimal Price1 { get; set; }
         }
 
-        public class ProductVariantAttributeModel : BaseNopEntityModel
+        public partial class ProductVariantAttributeModel : BaseNopEntityModel
         {
             public int ProductVariantId { get; set; }
 
@@ -264,7 +289,7 @@ namespace Nop.Admin.Models.Catalog
             public string ViewEditText { get; set; }
         }
 
-        public class ProductVariantAttributeValueListModel : BaseNopModel
+        public partial class ProductVariantAttributeValueListModel : BaseNopModel
         {
             public int ProductVariantId { get; set; }
 
@@ -276,7 +301,7 @@ namespace Nop.Admin.Models.Catalog
         }
 
         [Validator(typeof(ProductVariantAttributeValueModelValidator))]
-        public class ProductVariantAttributeValueModel : BaseNopEntityModel, ILocalizedModel<ProductVariantAttributeValueLocalizedModel>
+        public partial class ProductVariantAttributeValueModel : BaseNopEntityModel, ILocalizedModel<ProductVariantAttributeValueLocalizedModel>
         {
             public ProductVariantAttributeValueModel()
             {
@@ -304,7 +329,7 @@ namespace Nop.Admin.Models.Catalog
             public IList<ProductVariantAttributeValueLocalizedModel> Locales { get; set; }
         }
         
-        public class ProductVariantAttributeValueLocalizedModel : ILocalizedModelLocal
+        public partial class ProductVariantAttributeValueLocalizedModel : ILocalizedModelLocal
         {
             public int LanguageId { get; set; }
 
@@ -313,7 +338,7 @@ namespace Nop.Admin.Models.Catalog
             public string Name { get; set; }
         }
 
-        public class ProductVariantAttributeCombinationModel : BaseNopEntityModel
+        public partial class ProductVariantAttributeCombinationModel : BaseNopEntityModel
         {
             public int ProductVariantId { get; set; }
 
@@ -362,7 +387,7 @@ namespace Nop.Admin.Models.Catalog
         public bool HideDisplayOrderProperty { get; set; }
     }
 
-    public class ProductVariantLocalizedModel : ILocalizedModelLocal
+    public partial class ProductVariantLocalizedModel : ILocalizedModelLocal
     {
         public int LanguageId { get; set; }
 

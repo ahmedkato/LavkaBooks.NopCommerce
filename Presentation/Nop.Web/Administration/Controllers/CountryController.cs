@@ -15,7 +15,7 @@ using Telerik.Web.Mvc;
 namespace Nop.Admin.Controllers
 {
 	[AdminAuthorize]
-    public class CountryController : BaseNopController
+    public partial class CountryController : BaseNopController
 	{
 		#region Fields
 
@@ -24,6 +24,8 @@ namespace Nop.Admin.Controllers
         private readonly ILocalizationService _localizationService;
 	    private readonly IAddressService _addressService;
         private readonly IPermissionService _permissionService;
+	    private readonly ILocalizedEntityService _localizedEntityService;
+	    private readonly ILanguageService _languageService;
 
 	    #endregion
 
@@ -31,16 +33,46 @@ namespace Nop.Admin.Controllers
 
         public CountryController(ICountryService countryService,
             IStateProvinceService stateProvinceService, ILocalizationService localizationService,
-            IAddressService addressService, IPermissionService permissionService)
+            IAddressService addressService, IPermissionService permissionService,
+            ILocalizedEntityService localizedEntityService, ILanguageService languageService)
 		{
             this._countryService = countryService;
             this._stateProvinceService = stateProvinceService;
             this._localizationService = localizationService;
             this._addressService = addressService;
             this._permissionService = permissionService;
+            this._localizedEntityService = localizedEntityService;
+            this._languageService = languageService;
 		}
 
 		#endregion 
+
+        #region Utilities
+        
+        [NonAction]
+        protected void UpdateLocales(Country country, CountryModel model)
+        {
+            foreach (var localized in model.Locales)
+            {
+                _localizedEntityService.SaveLocalizedValue(country,
+                                                               x => x.Name,
+                                                               localized.Name,
+                                                               localized.LanguageId);
+            }
+        }
+
+        [NonAction]
+        protected void UpdateLocales(StateProvince stateProvince, StateProvinceModel model)
+        {
+            foreach (var localized in model.Locales)
+            {
+                _localizedEntityService.SaveLocalizedValue(stateProvince,
+                                                               x => x.Name,
+                                                               localized.Name,
+                                                               localized.LanguageId);
+            }
+        }
+        #endregion
 
         #region Countries
 
@@ -88,6 +120,8 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var model = new CountryModel();
+            //locales
+            AddLocales(_languageService, model.Locales);
             //default values
             model.Published = true;
             model.AllowsBilling = true;
@@ -95,7 +129,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Create(CountryModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCountries))
@@ -105,6 +139,8 @@ namespace Nop.Admin.Controllers
             {
                 var country = model.ToEntity();
                 _countryService.InsertCountry(country);
+                //locales
+                UpdateLocales(country, model);
 
                 SuccessNotification(_localizationService.GetResource("Admin.Configuration.Countries.Added"));
                 return continueEditing ? RedirectToAction("Edit", new { id = country.Id }) : RedirectToAction("List");
@@ -121,11 +157,19 @@ namespace Nop.Admin.Controllers
 
             var country = _countryService.GetCountryById(id);
             if (country == null)
-                throw new ArgumentException("No country found with the specified id", "id");
-            return View(country.ToModel());
+                //No country found with the specified id
+                return RedirectToAction("List");
+
+            var model = country.ToModel();
+            //locales
+            AddLocales(_languageService, model.Locales, (locale, languageId) =>
+            {
+                locale.Name = country.GetLocalized(x => x.Name, languageId, false, false);
+            });
+            return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         public ActionResult Edit(CountryModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCountries))
@@ -133,12 +177,15 @@ namespace Nop.Admin.Controllers
 
             var country = _countryService.GetCountryById(model.Id);
             if (country == null)
-                throw new ArgumentException("No country found with the specified id");
+                //No country found with the specified id
+                return RedirectToAction("List");
 
             if (ModelState.IsValid)
             {
                 country = model.ToEntity(country);
                 _countryService.UpdateCountry(country);
+                //locales
+                UpdateLocales(country, model);
 
                 SuccessNotification(_localizationService.GetResource("Admin.Configuration.Countries.Updated"));
                 return continueEditing ? RedirectToAction("Edit", new { id = country.Id }) : RedirectToAction("List");
@@ -148,15 +195,16 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCountries))
                 return AccessDeniedView();
 
             var country = _countryService.GetCountryById(id);
             if (country == null)
-                throw new ArgumentException("No country found with the specified id", "id");
+                //No country found with the specified id
+                return RedirectToAction("List");
 
             try
             {
@@ -201,49 +249,95 @@ namespace Nop.Admin.Controllers
         }
 
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult StateUpdate(StateProvinceModel model, GridCommand command)
+        //create
+        public ActionResult StateCreatePopup(int countryId)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCountries))
                 return AccessDeniedView();
 
-            if (!ModelState.IsValid)
-            {
-                //TODO:Find out how telerik handles errors
-                //TODO: do the same for all other grid actions
-                //here is solution (not the best one) - http://www.telerik.com/community/forums/aspnet-mvc/grid/how-to-return-error-information-to-grid-in-ajax-editing-mode.aspx
-                return new JsonResult { Data = "error" };
-            }
-            
-            var state = _stateProvinceService.GetStateProvinceById(model.Id);
-            //ensure that country is set because it's not passed countryId is not passed
-            var countryId = state.CountryId;
-            state = model.ToEntity(state);
-            state.CountryId = countryId;
-            //ensure that country is set because it's not passed countryId is not passed
-            _stateProvinceService.UpdateStateProvince(state);
-
-            return States(state.CountryId, command);
+            var model = new StateProvinceModel();
+            model.CountryId = countryId;
+            //locales
+            AddLocales(_languageService, model.Locales);
+            return View(model);
         }
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult StateAdd(StateProvinceModel model, GridCommand command)
+        [HttpPost]
+        public ActionResult StateCreatePopup(string btnId, string formId, StateProvinceModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCountries))
                 return AccessDeniedView();
 
-            if (!ModelState.IsValid)
-            {
-                return new JsonResult { Data = "error" };
-            }
-            
-            var state = new StateProvince { CountryId = model.CountryId };
-            state = model.ToEntity(state);
-            _stateProvinceService.InsertStateProvince(state);
+            var country = _countryService.GetCountryById(model.CountryId);
+            if (country == null)
+                //No country found with the specified id
+                return RedirectToAction("List");
 
-            return States(state.CountryId, command);
+            if (ModelState.IsValid)
+            {
+                var sp = model.ToEntity();
+
+                _stateProvinceService.InsertStateProvince(sp);
+                UpdateLocales(sp, model);
+
+                ViewBag.RefreshPage = true;
+                ViewBag.btnId = btnId;
+                ViewBag.formId = formId;
+                return View(model);
+            }
+
+            //If we got this far, something failed, redisplay form
+            return View(model);
         }
 
+        //edit
+        public ActionResult StateEditPopup(int id)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageCountries))
+                return AccessDeniedView();
+
+            var sp = _stateProvinceService.GetStateProvinceById(id);
+            if (sp == null)
+                //No state found with the specified id
+                return RedirectToAction("List");
+
+            var model = sp.ToModel();
+            //locales
+            AddLocales(_languageService, model.Locales, (locale, languageId) =>
+            {
+                locale.Name = sp.GetLocalized(x => x.Name, languageId, false, false);
+            });
+
+            return View(model);
+        }
+
+        [HttpPost]
+        public ActionResult StateEditPopup(string btnId, string formId, StateProvinceModel model)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageCountries))
+                return AccessDeniedView();
+
+            var sp = _stateProvinceService.GetStateProvinceById(model.Id);
+            if (sp == null)
+                //No state found with the specified id
+                return RedirectToAction("List");
+
+            if (ModelState.IsValid)
+            {
+                sp = model.ToEntity(sp);
+                _stateProvinceService.UpdateStateProvince(sp);
+
+                UpdateLocales(sp, model);
+
+                ViewBag.RefreshPage = true;
+                ViewBag.btnId = btnId;
+                ViewBag.formId = formId;
+                return View(model);
+            }
+
+            //If we got this far, something failed, redisplay form
+            return View(model);
+        }
 
         [GridAction(EnableCustomBinding = true)]
         public ActionResult StateDelete(int id, GridCommand command)
@@ -252,9 +346,11 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var state = _stateProvinceService.GetStateProvinceById(id);
+            if (state == null)
+                throw new ArgumentException("No state found with the specified id");
 
             if (_addressService.GetAddressTotalByStateProvinceId(state.Id) > 0)
-                return Content("The state can't be deleted. It has associated addresses");
+                return Content(_localizationService.GetResource("Admin.Configuration.Countries.States.CantDeleteWithAddresses"));
 
             int countryId = state.CountryId;
             _stateProvinceService.DeleteStateProvince(state);

@@ -1,36 +1,41 @@
-﻿@model Nop.Web.Models.Boards.ForumTopicModel
+﻿@model EditForumTopicModel
 @using Nop.Core.Domain.Forums;
 @using Nop.Services.Forums;
 @using Nop.Services.Seo;
 @using Nop.Web;
+@using Nop.Web.Extensions;
+@using Nop.Web.Models.Boards;
 @using (Html.BeginForm())
 {
-    <div class="postedit">
-        @{Html.RenderPartial("_ForumBreadcrumb", Model.ForumBreadcrumbModel);}
+    <div class="page post-edit">
+        @Html.Action("ForumBreadcrumb", new { forumId = Model.ForumId, forumTopicId = Model.Id })
+    <div class="clear">
+    </div>
         <div class="title">
-            @ViewBag.Title
+            @if (Model.IsEdit)
+            {
+                @T("Forum.EditTopic")
+            }
+            else
+            {
+                @T("Forum.NewTopic")
+            }
         </div>
         <div class="wrapper">
-            @if (Model.PostError != null)
-            {                
-                <div class="error-block">
-                    <div class="message-error">
-                        @Model.PostError
-                    </div>
-                </div>
-            }
-            @Html.ValidationSummary(false)
+            <div class="message-error">
+                @Html.ValidationSummary(true)
+            </div>
             @Html.HiddenFor(model => model.Id)
             @Html.HiddenFor(model => model.ForumId)
             <div class="clear">
             </div>
-            <table class="posttopic">
+            <table class="post-topic">
                 <tr>
                     <td class="fieldname">
                         @T("Forum.ForumName"):
                     </td>
                     <td>
-                        @Model.Forum.Name
+                        @Model.ForumName
                     </td>
                 </tr>
                 <tr>
@@ -38,7 +43,7 @@
                         @T("Forum.TopicTitle"):
                     </td>
                     <td>
-                        @Html.TextBoxFor(model => model.Subject, new { @class = "forumtopictitletext" })
+                        @Html.TextBoxFor(model => model.Subject, new { @class = "forum-topic-title-text" })
                         @Html.ValidationMessageFor(model => model.Subject)
                     </td>
                 </tr>
@@ -50,7 +55,7 @@
                         {
                             @Html.BBCodeEditor("Text");
                         }
-                        @Html.TextAreaFor(model => model.Text, new { @class = "forumposttext", TextMode = "MultiLine" })
+                        @Html.TextAreaFor(model => model.Text, new { @class = "forum-post-text", TextMode = "MultiLine" })
                         @Html.ValidationMessageFor(model => model.Text)
                     </td>
                 </tr>
@@ -79,12 +84,12 @@
                 }
                 <tr>
                     <td colspan="2" class="options">
-                        <input type="submit" value="@T("Forum.Submit")" class="submitforumtopicbutton" />
-                        <input type="button" class="cancelforumtopicbutton" value="@T("Forum.Cancel")" 
-                        onclick="setLocation('@Url.RouteUrl("ForumSlug", new { id = @Model.ForumId, slug = @Model.Forum.GetSeName() })')" />
+                        <input type="submit" value="@T("Forum.Submit")" class="button-1 submit-forum-topic-button" />
+                        <input type="button" class="button-2 cancel-forum-topic-button" value="@T("Forum.Cancel")" 
+                        onclick="setLocation('@Url.RouteUrl("ForumSlug", new { id = @Model.ForumId, slug = @Model.ForumSeName })')" />
                     </td>
                 </tr>
             </table>
         </div>
     </div>
-} 
+}

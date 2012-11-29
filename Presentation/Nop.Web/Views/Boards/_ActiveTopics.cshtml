@@ -1,37 +1,38 @@
-﻿@model Nop.Web.Models.Boards.ActiveDiscussionsModel
+﻿@model ActiveDiscussionsModel
 @using Nop.Services.Customers;
 @using Nop.Services.Forums;
 @using Nop.Services.Seo;
 @using Nop.Web;
+@using Nop.Web.Extensions;
 @using Nop.Web.Models.Boards;
-@if (Model.ViewAllLinkEnabled == true)
+@using Nop.Web.Models.Common;
+@if (!Model.ViewAllLinkEnabled)
 {
-    Html.RenderPartial("_ForumBreadcrumb", new ForumBreadcrumbModel { ForumGroupModel = null, ForumModel = null, Separator = " / " });
     Html.RenderPartial("_SearchBox");
     <div class="clear">
     </div>    
 }
-<div class="activediscussions">
-    <div class="activediscussionstitle">
+<div class="active-discussions">
+    <div class="active-discussions-title">
         @T("Forum.ActiveDiscussions")
         @if (Model.ActiveDiscussionsFeedEnabled == true)
         {
-            <a href="@Url.RouteUrl("ActiveDiscussionsRSS")" class="rss">
-                <img title="@T("Forum.ActiveDiscussionsRSSLinkTitle")" src="@Url.Content("~/content/images/icon_rss.gif")" alt="@T("Forum.RSS")" style="border-width:0px;" /></a> 
+            <a href="@Url.RouteUrl("ActiveDiscussionsRSS")" class="link-rss">
+                <img title="@T("Forum.ActiveDiscussionsRSSLinkTitle")" src="@Url.Content("~/content/images/icon_rss.gif")" alt="@T("Forum.RSS")" /></a> 
         }
-        @if (Model.ViewAllLinkEnabled == false)
+        @if (Model.ViewAllLinkEnabled)
         {        
-            <div class="viewall">
+            <div class="view-all">
                 [@Html.RouteLink(@T("Forum.ActiveDiscussions.ViewAll").Text, "ActiveDiscussions")]
             </div>
         }
     </div>
-    <div class="activediscussionstopics">
+    <div class="active-discussionstopics">
         <table class="topics">
-            @if (Model.ActiveDiscussions.Count() > 0)
+            @if (Model.ForumTopics.Count > 0)
             {
-                <tr class="activediscussionsheader">
-                    <td class="topicname">
+                <tr class="active-discussions-header">
+                    <td class="topic-name">
                         @T("Forum.TopicTitle")
                     </td>
                     <td class="replies">
@@ -40,42 +41,36 @@
                     <td class="views">
                         @T("Forum.Views")
                     </td>
-                    <td class="lastpost">
+                    <td class="last-post">
                         @T("Forum.LatestPost")
                     </td>
                 </tr>
             }
-            @foreach (var topic in Model.ActiveDiscussions)
+            @foreach (var topic in Model.ForumTopics)
             {
                 <tr class="topic">
-                    <td class="topicname">
-                        @Html.RouteLink(topic.Subject, "TopicSlug", new { id = topic.Id, slug = topic.GetSeName() }, new { @class = "topictitle" })
-                        <br />
-                        @if (@topic.ForumPosts.Count > Model.PostsPageSize)
-                        {                            
-                            <span class="topicspager">
-                                @Html.Pager(new Nop.Core.PagedList<Nop.Core.Domain.Forums.ForumPost>(topic.ForumPosts.ToList(), 1, Model.PostsPageSize))
-                            </span>
-                            <br />
-                        } <span class="topicstarter">
-                            @if (@topic.Customer != null)
+                    <td class="topic-name">
+                        @Html.RouteLink(topic.Subject, "TopicSlug", new { id = topic.Id, slug = topic.SeName }, new { @class = "topic-title" })
+                        @if (@topic.NumPosts > Model.PostsPageSize)
+                        {
+                            <div class="topicspager">
+                                @Html.ForumTopicSmallPager(topic)
+                            </div>
+                        }
+                        <div class="topic-starter">
+                            @if (@topic.CustomerId > 0)
                             {
                                 var authorText = @T("Forum.Author");
-                                var authorName = Html.Encode(@topic.Customer.FormatUserName(true));
-                                var allowViewingProfiles = Model.AllowViewingProfiles;
-                                var customerGuest = @topic.Customer.IsGuest();
-
-                                if (allowViewingProfiles && !customerGuest)
+                                if (topic.AllowViewingProfiles && !topic.IsCustomerGuest)
                                 {
-                                    var output = String.Format("{0}: <a href=\"{2}\">{1}</a>", authorText, authorName, @Url.RouteUrl("CustomerProfile", new { id = topic.Customer.Id }));
-                                    @Html.Raw(output)
+                                @T("Forum.Author")<text>:</text> @Html.RouteLink(topic.CustomerName, "CustomerProfile", new { Id = topic.CustomerId })
                                 }
                                 else
                                 {
-                                    var output = String.Format("{0}: {1}", authorText, authorName);
-                                    @output
+                                @T("Forum.Author")<text>:</text> @topic.CustomerName
                                 }
-                            } </span>
+                            }
+                        </div>
                     </td>
                     <td class="replies">
                         @topic.NumReplies
@@ -83,8 +78,8 @@
                     <td class="views">
                         @topic.Views
                     </td>
-                    <td class="lastpost">
-                        @{Html.RenderPartial("_LastPost", new LastPostModel(@topic.LastPost, false, Model.AllowViewingProfiles, Model.RelativeDateTimeFormattingEnabled));}
+                    <td class="last-post">
+                        @Html.Action("LastPost", new { forumPostId = @topic.LastPostId, showTopic = false })
                     </td>
                 </tr>
             }

@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Linq;
+using System.Collections.Generic;
 using System.Web.Mvc;
 using Nop.Admin.Models.Orders;
 using Nop.Core;
@@ -11,15 +11,15 @@ using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Messages;
 using Nop.Services.Orders;
+using Nop.Services.Security;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
 
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class ReturnRequestController : BaseNopController
+    public partial class ReturnRequestController : BaseNopController
     {
         #region Fields
 
@@ -59,7 +59,7 @@ namespace Nop.Admin.Controllers
         #region Utilities
 
         [NonAction]
-        private void PrepareReturnRequestModel(ReturnRequestModel model,
+        protected bool PrepareReturnRequestModel(ReturnRequestModel model,
             ReturnRequest returnRequest, bool excludeProperties)
         {
             if (model == null)
@@ -69,6 +69,9 @@ namespace Nop.Admin.Controllers
                 throw new ArgumentNullException("returnRequest");
 
             var opv = _orderService.GetOrderProductVariantById(returnRequest.OrderProductVariantId);
+            if (opv == null)
+                return false;
+
             model.Id = returnRequest.Id;
             model.ProductVariantId = opv.ProductVariantId;
             //product name
@@ -89,6 +92,8 @@ namespace Nop.Admin.Controllers
                 model.StaffNotes = returnRequest.StaffNotes;
                 model.ReturnRequestStatusId = returnRequest.ReturnRequestStatusId;
             }
+            //model is successfully prepared
+            return true;
         }
 
         #endregion
@@ -116,15 +121,16 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageReturnRequests))
                 return AccessDeniedView();
 
-            var returnRequests = _orderService.SearchReturnRequests(0, 0, null);
+            var returnRequests = new List<ReturnRequestModel>();
+            foreach (var rr in _orderService.SearchReturnRequests(0, 0, null).PagedForCommand(command))
+            {
+                var m = new ReturnRequestModel();
+                if (PrepareReturnRequestModel(m, rr, false))
+                    returnRequests.Add(m);
+            }
             var gridModel = new GridModel<ReturnRequestModel>
             {
-                Data = returnRequests.PagedForCommand(command).Select(x =>
-                {
-                    var m = new ReturnRequestModel();
-                    PrepareReturnRequestModel(m, x, false);
-                    return m;
-                }),
+                Data = returnRequests,
                 Total = returnRequests.Count,
             };
             return new JsonResult
@@ -141,14 +147,15 @@ namespace Nop.Admin.Controllers
 
             var returnRequest = _orderService.GetReturnRequestById(id);
             if (returnRequest == null)
-                throw new ArgumentException("No return request found with the specified id", "id");
+                //No return request found with the specified id
+                return RedirectToAction("List");
             
             var model = new ReturnRequestModel();
             PrepareReturnRequestModel(model, returnRequest, false);
             return View(model);
         }
 
-        [HttpPost, FormValueExists("save", "save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
         [FormValueRequired("save", "save-continue")]
         public ActionResult Edit(ReturnRequestModel model, bool continueEditing)
         {
@@ -157,7 +164,8 @@ namespace Nop.Admin.Controllers
 
             var returnRequest = _orderService.GetReturnRequestById(model.Id);
             if (returnRequest == null)
-                throw new ArgumentException("No return request found with the specified id");
+                //No return request found with the specified id
+                return RedirectToAction("List");
 
             if (ModelState.IsValid)
             {
@@ -191,9 +199,10 @@ namespace Nop.Admin.Controllers
 
             var returnRequest = _orderService.GetReturnRequestById(model.Id);
             if (returnRequest == null)
-                throw new ArgumentException("No return request found with the specified id");
+                //No return request found with the specified id
+                return RedirectToAction("List");
 
-            var customer = returnRequest.Customer;
+            //var customer = returnRequest.Customer;
             var opv = _orderService.GetOrderProductVariantById(returnRequest.OrderProductVariantId);
             int queuedEmailId = _workflowMessageService.SendReturnRequestStatusChangedCustomerNotification(returnRequest, opv, _localizationSettings.DefaultAdminLanguageId);
             if (queuedEmailId > 0)
@@ -202,13 +211,17 @@ namespace Nop.Admin.Controllers
         }
 
         //delete
-        [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirmed(int id)
+        [HttpPost]
+        public ActionResult Delete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageReturnRequests))
                 return AccessDeniedView();
 
             var returnRequest = _orderService.GetReturnRequestById(id);
+            if (returnRequest == null)
+                //No return request found with the specified id
+                return RedirectToAction("List");
+
             _orderService.DeleteReturnRequest(returnRequest);
 
             //activity log

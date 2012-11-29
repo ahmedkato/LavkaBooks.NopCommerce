@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Web.Hosting;
 
@@ -9,13 +10,43 @@ namespace Nop.Core.Data
         protected const char separator = ':';
         protected const string filename = "Settings.txt";
 
+        /// <summary>
+        /// Maps a virtual path to a physical disk path.
+        /// </summary>
+        /// <param name="path">The path to map. E.g. "~/bin"</param>
+        /// <returns>The physical path. E.g. "c:\inetpub\wwwroot\bin"</returns>
+        protected virtual string MapPath(string path)
+        {
+            if (HostingEnvironment.IsHosted)
+            {
+                //hosted
+                return HostingEnvironment.MapPath(path);
+            }
+            else
+            {
+                //not hosted. For example, run in unit tests
+                string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+                path = path.Replace("~/", "").TrimStart('/').Replace('/', '\\');
+                return Path.Combine(baseDirectory, path);
+            }
+        }
+
         protected virtual DataSettings ParseSettings(string text)
         {
             var shellSettings = new DataSettings();
             if (String.IsNullOrEmpty(text))
                 return shellSettings;
 
-            var settings = text.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+            //Old way of file reading. This leads to unexpected behavior when a user's FTP program transfers these files as ASCII (\r\n becomes \n).
+            //var settings = text.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+            var settings = new List<string>();
+            using (var reader = new StringReader(text))
+            {
+                string str;
+                while ((str = reader.ReadLine()) != null)
+                    settings.Add(str);
+            }
+
             foreach (var setting in settings)
             {
                 var separatorIndex = setting.IndexOf(separator);
@@ -48,15 +79,17 @@ namespace Nop.Core.Data
             if (settings == null)
                 return "";
 
-            return string.Format("DataProvider: {0}\r\nDataConnectionString: {1}\r\n",
+            return string.Format("DataProvider: {0}{2}DataConnectionString: {1}{2}",
                                  settings.DataProvider,
-                                 settings.DataConnectionString
+                                 settings.DataConnectionString,
+                                 Environment.NewLine
                 );
         }
 
         public virtual DataSettings LoadSettings()
         {
-            string filePath = Path.Combine(HostingEnvironment.MapPath("~/App_Data/"), filename);
+            //use webHelper.MapPath instead of HostingEnvironment.MapPath which is not available in unit tests
+            string filePath = Path.Combine(MapPath("~/App_Data/"), filename);
             if (File.Exists(filePath))
             {
                 string text = File.ReadAllText(filePath);
@@ -70,8 +103,9 @@ namespace Nop.Core.Data
         {
             if (settings == null)
                 throw new ArgumentNullException("settings");
-            
-            string filePath = Path.Combine(HostingEnvironment.MapPath("~/App_Data/"), filename);
+
+            //use webHelper.MapPath instead of HostingEnvironment.MapPath which is not available in unit tests
+            string filePath = Path.Combine(MapPath("~/App_Data/"), filename);
             if (!File.Exists(filePath))
             {
                 using (File.Create(filePath))

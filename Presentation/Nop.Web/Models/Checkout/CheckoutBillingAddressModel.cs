@@ -4,7 +4,7 @@ using Nop.Web.Models.Common;
 
 namespace Nop.Web.Models.Checkout
 {
-    public class CheckoutBillingAddressModel : BaseNopModel
+    public partial class CheckoutBillingAddressModel : BaseNopModel
     {
         public CheckoutBillingAddressModel()
         {
@@ -16,6 +16,9 @@ namespace Nop.Web.Models.Checkout
 
         public AddressModel NewAddress { get; set; }
 
+        /// <summary>
+        /// Used on one-page checkout page
+        /// </summary>
         public bool NewAddressPreselected { get; set; }
     }
 }

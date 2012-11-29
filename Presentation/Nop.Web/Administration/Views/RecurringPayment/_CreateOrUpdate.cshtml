@@ -23,6 +23,9 @@
             tabInfo.Selected(true);
             break;
     }
+    
+    //generate an event
+    EngineContext.Current.Resolve<IEventPublisher>().Publish(new AdminTabStripCreated(x, "recurringpayment-edit"));
 })
 @helper TabInfo()
     {
@@ -34,6 +37,14 @@
             </td>
             <td class="adminData">
                 @Html.ActionLink(T("Admin.Common.View").Text, "Edit", "Order", new { id = Model.InitialOrderId }, new { })
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.CustomerEmail):
+            </td>
+            <td class="adminData">
+                @Html.ActionLink(Model.CustomerEmail, "Edit", "Customer", new { id = Model.CustomerId }, new { })
             </td>
         </tr>
         <tr>
@@ -103,16 +114,15 @@
     <table class="adminContent">
         <tr>
             <td>
-            @*TODO add confirmation for all buttons*@
                 @if (!String.IsNullOrEmpty(Model.NextPaymentDate))
                         {
                     @T("Admin.RecurringPayments.History.NextPaymentDate")
                     <text>:</text> @Model.NextPaymentDate
-                    <button type="submit" name="processnextpayment" value="processnextpayment" class="t-button">@T("Admin.RecurringPayments.History.ProcessNextPayment")</button>
+                    <input type="submit" name="processnextpayment" class="t-button" value="@T("Admin.RecurringPayments.History.ProcessNextPayment")" />
                         }
                 @if (Model.CanCancelRecurringPayment)
                         {
-                    <button type="submit" name="cancelpayment" value="cancelpayment" class="t-button">@T("Admin.RecurringPayments.History.CancelPayment")</button>
+                    <input type="submit" name="cancelpayment" class="t-button" value="@T("Admin.RecurringPayments.History.CancelPayment")" />
                         }
             </td>
         </tr>

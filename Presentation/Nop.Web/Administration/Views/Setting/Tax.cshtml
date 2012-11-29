@@ -1,6 +1,9 @@
 ﻿@model TaxSettingsModel
-
 @using Telerik.Web.Mvc.UI;
+@{
+    //page title
+    ViewBag.Title = @T("Admin.Configuration.Settings.Tax").Text;
+}
 @using (Html.BeginForm())
 {
     
@@ -20,7 +23,7 @@
     });
 
     function toggleTaxDisplayType() {
-        if (getE('@Html.FieldIdFor(model => model.AllowCustomersToSelectTaxDisplayType)').checked) {
+        if ($('#@Html.FieldIdFor(model => model.AllowCustomersToSelectTaxDisplayType)').is(':checked')) {
             $('#pnlTaxDisplayType').hide();
         }
         else {
@@ -29,7 +32,7 @@
     }
 
     function toggleShipping() {
-        if (getE('@Html.FieldIdFor(model => model.ShippingIsTaxable)').checked) {
+        if ($('#@Html.FieldIdFor(model => model.ShippingIsTaxable)').is(':checked')) {
             $('#pnlShippingPriceIncludesTax').show();
             $('#pnlShippingTaxClass').show();
         }
@@ -40,7 +43,7 @@
     }
 
     function togglePayment() {
-        if (getE('@Html.FieldIdFor(model => model.PaymentMethodAdditionalFeeIsTaxable)').checked) {
+        if ($('#@Html.FieldIdFor(model => model.PaymentMethodAdditionalFeeIsTaxable)').is(':checked')) {
             $('#pnlPaymentMethodAdditionalFeeIncludesTax').show();
             $('#pnlPaymentMethodAdditionalFeeTaxClass').show();
         }
@@ -51,7 +54,7 @@
     }
 
     function toggleEUVAT() {
-        if (getE('@Html.FieldIdFor(model => model.EuVatEnabled)').checked) {
+        if ($('#@Html.FieldIdFor(model => model.EuVatEnabled)').is(':checked')) {
             $('#pnlEuVatShopCountry').show();
             $('#pnlEuVatAllowVATExemption').show();
             $('#pnlEuVatUseWebService').show();
@@ -72,7 +75,7 @@
             @T("Admin.Configuration.Settings.Tax")
         </div>
         <div class="options">
-            <button type="submit" name="save" value="save" class="t-button">@T("Admin.Common.Save")</button>
+            <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
         </div>
     </div>
 @Html.ValidationSummary(false)
@@ -162,7 +165,7 @@
         </tr>
         <tr>
             <td class="adminTitle" colspan="2">
-                <b>@Html.LabelFor(model => model.DefaultTaxAddress):</b>
+                <strong>@Html.LabelFor(model => model.DefaultTaxAddress):</strong>
             </td>
         </tr>
         <tr>

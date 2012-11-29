@@ -71,6 +71,15 @@
         </tr>
         <tr>
             <td class="adminTitle">
+                @Html.NopLabelFor(model => model.InsurePackage):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.InsurePackage)
+                @Html.ValidationMessageFor(model => model.InsurePackage)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
                 @Html.NopLabelFor(model => model.AdditionalHandlingCharge):
             </td>
             <td class="adminData">
@@ -98,15 +107,13 @@
         </tr>
         <tr>
             <td class="adminTitle">
-                Carrier Services:
-            <br />
-            -select the services you want to offer to customers.
+                @Html.NopLabelFor(model => model.AvailableCarrierServices):
             </td>
             <td class="adminData">
                 <div style="height: 250px; width: 300px; overflow: auto; border: solid 1px #bbb;">
                     @foreach (var csd in Model.AvailableCarrierServices)
                     {
-                        <input type="checkbox" name="CheckedCarrierServices" value="@(csd)" @(Model.CarrierServicesOffered.Contains(csd) ? " checked=\"checked\"" : null) <text> /></text>
+                        <input type="checkbox" name="CheckedCarrierServices" value="@(csd)" @(Model.CarrierServicesOffered.Contains(csd) ? Html.Raw(" checked=\"checked\"") : null) />
                         <label>@csd</label>
                         <br />
                     }
@@ -115,8 +122,7 @@
         </tr>
         <tr>
             <td colspan="2" width="100%">
-                <button type="submit" name="save" value="save" class="t-button">
-                    Save</button>
+                <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
             </td>
         </tr>
     </table>    

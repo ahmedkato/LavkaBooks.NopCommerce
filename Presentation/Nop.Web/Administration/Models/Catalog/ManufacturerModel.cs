@@ -11,7 +11,7 @@ using Telerik.Web.Mvc;
 namespace Nop.Admin.Models.Catalog
 {
     [Validator(typeof(ManufacturerValidator))]
-    public class ManufacturerModel : BaseNopEntityModel, ILocalizedModel<ManufacturerLocalizedModel>
+    public partial class ManufacturerModel : BaseNopEntityModel, ILocalizedModel<ManufacturerLocalizedModel>
     {
         public ManufacturerModel()
         {
@@ -59,6 +59,12 @@ namespace Nop.Admin.Models.Catalog
         [NopResourceDisplayName("Admin.Catalog.Manufacturers.Fields.PageSize")]
         public int PageSize { get; set; }
 
+        [NopResourceDisplayName("Admin.Catalog.Manufacturers.Fields.AllowCustomersToSelectPageSize")]
+        public bool AllowCustomersToSelectPageSize { get; set; }
+
+        [NopResourceDisplayName("Admin.Catalog.Manufacturers.Fields.PageSizeOptions")]
+        public string PageSizeOptions { get; set; }
+
         [NopResourceDisplayName("Admin.Catalog.Manufacturers.Fields.PriceRanges")]
         [AllowHtml]
         public string PriceRanges { get; set; }
@@ -76,7 +82,7 @@ namespace Nop.Admin.Models.Catalog
 
         #region Nested classes
 
-        public class ManufacturerProductModel : BaseNopEntityModel
+        public partial class ManufacturerProductModel : BaseNopEntityModel
         {
             public int ManufacturerId { get; set; }
 
@@ -95,7 +101,7 @@ namespace Nop.Admin.Models.Catalog
             public int DisplayOrder1 { get; set; }
         }
 
-        public class AddManufacturerProductModel : BaseNopModel
+        public partial class AddManufacturerProductModel : BaseNopModel
         {
             public AddManufacturerProductModel()
             {
@@ -123,7 +129,7 @@ namespace Nop.Admin.Models.Catalog
         #endregion
     }
 
-    public class ManufacturerLocalizedModel : ILocalizedModelLocal
+    public partial class ManufacturerLocalizedModel : ILocalizedModelLocal
     {
         public int LanguageId { get; set; }
 

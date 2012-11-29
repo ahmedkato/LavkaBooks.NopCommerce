@@ -1,6 +1,8 @@
 using System.Web.Routing;
 using Nop.Core.Plugins;
 using Nop.Services.Authentication.External;
+using Nop.Services.Configuration;
+using Nop.Services.Localization;
 
 namespace Nop.Plugin.ExternalAuth.Facebook
 {
@@ -10,14 +12,16 @@ namespace Nop.Plugin.ExternalAuth.Facebook
     public class FacebookExternalAuthMethod : BasePlugin, IExternalAuthenticationMethod
     {
         #region Fields
-        private readonly FacebookExternalAuthSettings _facebookExternalAuthSettings;
+
+        private readonly ISettingService _settingService;
+
         #endregion
 
         #region Ctor
 
-        public FacebookExternalAuthMethod(FacebookExternalAuthSettings facebookExternalAuthSettings)
+        public FacebookExternalAuthMethod(ISettingService settingService)
         {
-            this._facebookExternalAuthSettings = facebookExternalAuthSettings;
+            this._settingService = settingService;
         }
 
         #endregion
@@ -49,7 +53,45 @@ namespace Nop.Plugin.ExternalAuth.Facebook
             controllerName = "ExternalAuthFacebook";
             routeValues = new RouteValueDictionary() { { "Namespaces", "Nop.Plugin.ExternalAuth.Facebook.Controllers" }, { "area", null } };
         }
-        
+
+        /// <summary>
+        /// Install plugin
+        /// </summary>
+        public override void Install()
+        {
+            //settings
+            var settings = new FacebookExternalAuthSettings()
+            {
+                ClientKeyIdentifier = "",
+                ClientSecret = "",
+            };
+            _settingService.SaveSetting(settings);
+
+            //locales
+            this.AddOrUpdatePluginLocaleResource("Plugins.ExternalAuth.Facebook.Login", "Login using Facebook account");
+            this.AddOrUpdatePluginLocaleResource("Plugins.ExternalAuth.Facebook.ClientKeyIdentifier", "Client key identifier");
+            this.AddOrUpdatePluginLocaleResource("Plugins.ExternalAuth.Facebook.ClientKeyIdentifier.Hint", "Enter your client key identifier here.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.ExternalAuth.Facebook.ClientSecret", "Client secret");
+            this.AddOrUpdatePluginLocaleResource("Plugins.ExternalAuth.Facebook.ClientSecret.Hint", "Enter your client secret here.");
+
+            base.Install();
+        }
+
+        public override void Uninstall()
+        {
+            //settings
+            _settingService.DeleteSetting<FacebookExternalAuthSettings>();
+
+            //locales
+            this.DeletePluginLocaleResource("Plugins.ExternalAuth.Facebook.Login");
+            this.DeletePluginLocaleResource("Plugins.ExternalAuth.Facebook.ClientKeyIdentifier");
+            this.DeletePluginLocaleResource("Plugins.ExternalAuth.Facebook.ClientKeyIdentifier.Hint");
+            this.DeletePluginLocaleResource("Plugins.ExternalAuth.Facebook.ClientSecret");
+            this.DeletePluginLocaleResource("Plugins.ExternalAuth.Facebook.ClientSecret.Hint");
+
+            base.Uninstall();
+        }
+
         #endregion
         
     }

@@ -4,20 +4,20 @@ using System.ComponentModel.DataAnnotations;
 using System.Web.Mvc;
 using FluentValidation.Attributes;
 using Nop.Admin.Validators.Customers;
-using Nop.Core.Domain.Customers;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Models.Customers
 {
     [Validator(typeof(CustomerValidator))]
-    public class CustomerModel : BaseNopEntityModel
+    public partial class CustomerModel : BaseNopEntityModel
     {
         public CustomerModel()
         {
             AvailableTimeZones = new List<SelectListItem>();
             SendEmail = new SendEmailModel();
             SendPm = new SendPmModel();
+            AvailableCustomerRoles = new List<CustomerRoleModel>();
             AssociatedExternalAuthRecords = new List<AssociatedExternalAuthModel>();
             AvailableCountries = new List<SelectListItem>();
             AvailableStates = new List<SelectListItem>();
@@ -168,10 +168,9 @@ namespace Nop.Admin.Models.Customers
         //customer roles
         [NopResourceDisplayName("Admin.Customers.Customers.Fields.CustomerRoles")]
         public string CustomerRoleNames { get; set; }
-
-        public List<CustomerRole> AvailableCustomerRoles { get; set; }
-
+        public List<CustomerRoleModel> AvailableCustomerRoles { get; set; }
         public int[] SelectedCustomerRoleIds { get; set; }
+        public bool AllowManagingCustomerRoles { get; set; }
 
 
 
@@ -187,16 +186,6 @@ namespace Nop.Admin.Models.Customers
         [NopResourceDisplayName("Admin.Customers.Customers.RewardPoints.Fields.AddRewardPointsMessage")]
         [AllowHtml]
         public string AddRewardPointsMessage { get; set; }
-
-
-
-        
-        //properties used for filtering (customer list page)
-        public string SearchCustomerRoleIds { get; set; }
-        public string SearchCustomerEmail { get; set; }
-        public string SearchCustomerUsername { get; set; }
-        public string SearchCustomerFirstName { get; set; }
-        public string SearchCustomerLastName { get; set; }
         
         //send email model
         public SendEmailModel SendEmail { get; set; }
@@ -209,7 +198,7 @@ namespace Nop.Admin.Models.Customers
         
         #region Nested classes
 
-        public class AssociatedExternalAuthModel : BaseNopEntityModel
+        public partial class AssociatedExternalAuthModel : BaseNopEntityModel
         {
             [NopResourceDisplayName("Admin.Customers.Customers.AssociatedExternalAuth.Fields.Email")]
             public string Email { get; set; }
@@ -221,7 +210,7 @@ namespace Nop.Admin.Models.Customers
             public string AuthMethodName { get; set; }
         }
 
-        public class RewardPointsHistoryModel : BaseNopEntityModel
+        public partial class RewardPointsHistoryModel : BaseNopEntityModel
         {
             [NopResourceDisplayName("Admin.Customers.Customers.RewardPoints.Fields.Points")]
             public int Points { get; set; }
@@ -237,16 +226,18 @@ namespace Nop.Admin.Models.Customers
             public DateTime CreatedOn { get; set; }
         }
 
-        public class SendEmailModel : BaseNopModel
+        public partial class SendEmailModel : BaseNopModel
         {
             [NopResourceDisplayName("Admin.Customers.Customers.SendEmail.Subject")]
+            [AllowHtml]
             public string Subject { get; set; }
 
             [NopResourceDisplayName("Admin.Customers.Customers.SendEmail.Body")]
+            [AllowHtml]
             public string Body { get; set; }
         }
 
-        public class SendPmModel : BaseNopModel
+        public partial class SendPmModel : BaseNopModel
         {
             [NopResourceDisplayName("Admin.Customers.Customers.SendPM.Subject")]
             public string Subject { get; set; }
@@ -255,9 +246,9 @@ namespace Nop.Admin.Models.Customers
             public string Message { get; set; }
         }
 
-        public class OrderModel : BaseNopEntityModel
+        public partial class OrderModel : BaseNopEntityModel
         {
-            [NopResourceDisplayName("Admin.Customers.Customers.Orders.Order")]
+            [NopResourceDisplayName("Admin.Customers.Customers.Orders.ID")]
             public override int Id { get; set; }
 
             [NopResourceDisplayName("Admin.Customers.Customers.Orders.OrderStatus")]
@@ -276,6 +267,15 @@ namespace Nop.Admin.Models.Customers
             public DateTime CreatedOn { get; set; }
         }
 
+        public partial class ActivityLogModel : BaseNopEntityModel
+        {
+            [NopResourceDisplayName("Admin.Customers.Customers.ActivityLog.ActivityLogType")]
+            public string ActivityLogTypeName { get; set; }
+            [NopResourceDisplayName("Admin.Customers.Customers.ActivityLog.Comment")]
+            public string Comment { get; set; }
+            [NopResourceDisplayName("Admin.Customers.Customers.ActivityLog.CreatedOn")]
+            public DateTime CreatedOn { get; set; }
+        }
         #endregion
     }
 }

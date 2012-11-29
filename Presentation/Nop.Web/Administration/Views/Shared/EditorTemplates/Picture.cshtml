@@ -1,6 +1,12 @@
 ﻿@model int
 @using Nop.Core;
+@using Nop.Web.Framework.UI;
 @{
+    //register CSS and JS
+    Html.AddCssFileParts(@Url.Content("~/Administration/Content/fileuploader.css"));
+    Html.AddScriptParts(@Url.Content("~/Administration/Scripts/fileuploader.js"));
+
+    //other variables
     var random = CommonHelper.GenerateRandomInteger();
     var clientId = "picture" + random;
     var pictureService = EngineContext.Current.Resolve<Nop.Services.Media.IPictureService>();
@@ -12,7 +18,8 @@
 <div id="@(clientId + "image")">
     <img src="@(pictureService.GetPictureUrl(Model, 100, true))" />
 </div>
-@if(picture != null){
+@if (picture != null)
+{
     <span id="@(clientId + "remove")" class="t-button">@T("Admin.Picture.RemovePicture")</span>
 }
 else
@@ -20,26 +27,31 @@ else
     <span id="@(clientId + "remove")" class="t-button" style="display:none;">@T("Admin.Picture.RemovePicture")</span>
 }
 <br />
-<input type="file" id="@clientId"/>
+<div id="@clientId">
+    <noscript>
+        <p>
+            Please enable JavaScript to use file uploader.</p>
+        <!-- or put a simple form for upload here -->
+    </noscript>
+</div>
 <script type="text/javascript">
     $(function () {
         $(function () {
-
-            var authToken = '@(this.Context.Request.Cookies[FormsAuthentication.FormsCookieName]==null ? string.Empty : Request.Cookies[FormsAuthentication.FormsCookieName].Value)';
-
-            $("#@clientId").uploadify({
-                "uploader": "@(Url.Content("~/Content/Flash/uploadify.swf"))",
-                "script": "@(Url.Content("~/Admin/Picture/AsyncUpload"))",
-                "scriptData": { authToken: authToken },
-                "multi": "false",
-                "auto": true,
-                "buttonText": "Upload",
-                "cancelImg": "@Url.Content("~/Administration/Content/images/cancel-uploading.png")",
-                "onComplete": function (event, ID, fileObj, response, data) {
-                    var json = jQuery.parseJSON(response);
-                    $("#@(clientId + "image")").html("<img src='" + json.imageUrl + "'/>");
-                    $("#@(clientId + "value") input").val(json.pictureId);
-                    $("#@(clientId + "remove")").show();
+            var uploader@(clientId) = new qq.FileUploader({
+                element: document.getElementById('@clientId'),
+                action: '@(Url.Content("~/Admin/Picture/AsyncUpload"))',
+                onComplete: function(id, fileName, responseJSON){
+                    if (responseJSON.success) {
+                        $("#@(clientId + "image")").html("<img src='" + responseJSON.imageUrl + "'/>");
+                        $("#@(clientId + "value") input").val(responseJSON.pictureId);
+                        $("#@(clientId + "remove")").show();
+                    }
+                },
+                strings: {
+                    upload: "@T("Common.FileUploader.Upload")",
+                    drop: "@T("Common.FileUploader.DropFiles")",
+                    cancel: "@T("Common.FileUploader.Cancel")",
+                    failed: "@T("Common.FileUploader.Failed")"
                 }
             });
 
@@ -48,7 +60,6 @@ else
                 $("#@(clientId + "value") input").val(0);
                 $(this).hide();
             });
-
         });
     });
 </script>

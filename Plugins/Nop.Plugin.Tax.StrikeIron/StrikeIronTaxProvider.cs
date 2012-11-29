@@ -7,6 +7,8 @@ using System.Web.Routing;
 using Nop.Core.Caching;
 using Nop.Core.Plugins;
 using Nop.Plugin.Tax.StrikeIron.TaxDataBasic;
+using Nop.Services.Configuration;
+using Nop.Services.Localization;
 using Nop.Services.Tax;
 
 namespace Nop.Plugin.Tax.StrikeIron
@@ -18,11 +20,14 @@ namespace Nop.Plugin.Tax.StrikeIron
     {
         private const string TAXRATEUSA_KEY = "Nop.taxrateusa.zipCode-{0}";
         private const string TAXRATECANADA_KEY = "Nop.taxratecanada.province-{0}";
-        
+
+        private readonly ISettingService _settingService;
         private readonly StrikeIronTaxSettings _strikeIronTaxSettings;
 
-        public StrikeIronTaxProvider(StrikeIronTaxSettings strikeIronTaxSettings)
+        public StrikeIronTaxProvider(ISettingService settingService,
+            StrikeIronTaxSettings strikeIronTaxSettings)
         {
+            this._settingService = settingService;
             this._strikeIronTaxSettings = strikeIronTaxSettings;
         }
 
@@ -252,7 +257,6 @@ namespace Nop.Plugin.Tax.StrikeIron
         {
             get
             {
-                //TODO inject ICacheManager
                 return new MemoryCacheManager();
             }
         }
@@ -268,6 +272,58 @@ namespace Nop.Plugin.Tax.StrikeIron
             actionName = "Configure";
             controllerName = "TaxStrikeIron";
             routeValues = new RouteValueDictionary() { { "Namespaces", "Nop.Plugin.Tax.StrikeIron.Controllers" }, { "area", null } };
+        }
+        
+        public override void Install()
+        {
+            //settings
+            var settings = new StrikeIronTaxSettings()
+            {
+                UserId = "",
+                Password = ""
+            };
+            _settingService.SaveSetting(settings);
+
+            //locales
+            this.AddOrUpdatePluginLocaleResource("Plugins.Tax.StrikeIron.UserId", "StrikeIron User ID");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Tax.StrikeIron.UserId.Hint", "Specify StrikeIron user identifier.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Tax.StrikeIron.Password", "StrikeIron Password");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Tax.StrikeIron.Password.Hint", "Specify StrikeIron password.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Tax.StrikeIron.TestingUsa.Button", "Test (USA)");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Tax.StrikeIron.TestingUsa.Title", "Test Online Tax Service (USA)");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Tax.StrikeIron.TestingUsa.Zip", "Zip Code");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Tax.StrikeIron.TestingUsa.Zip.Hint", "Specify zip code for testing.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Tax.StrikeIron.TestingCanada.Button", "Test (Canada)");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Tax.StrikeIron.TestingCanada.Title", "Test Online Tax Service (Canada)");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Tax.StrikeIron.TestingCanada.ProvinceCode", "Two Letter Province Code");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Tax.StrikeIron.TestingCanada.ProvinceCode.Hint", "Specify postal code for testing.");
+           
+            base.Install();
+        }
+
+        /// <summary>
+        /// Uninstall plugin
+        /// </summary>
+        public override void Uninstall()
+        {
+            //settings
+            _settingService.DeleteSetting<StrikeIronTaxSettings>();
+
+            //locales
+            this.DeletePluginLocaleResource("Plugins.Tax.StrikeIron.UserId");
+            this.DeletePluginLocaleResource("Plugins.Tax.StrikeIron.UserId.Hint");
+            this.DeletePluginLocaleResource("Plugins.Tax.StrikeIron.Password");
+            this.DeletePluginLocaleResource("Plugins.Tax.StrikeIron.Password.Hint");
+            this.DeletePluginLocaleResource("Plugins.Tax.StrikeIron.TestingUsa.Button");
+            this.DeletePluginLocaleResource("Plugins.Tax.StrikeIron.TestingUsa.Title");
+            this.DeletePluginLocaleResource("Plugins.Tax.StrikeIron.TestingUsa.Zip");
+            this.DeletePluginLocaleResource("Plugins.Tax.StrikeIron.TestingUsa.Zip.Hint");
+            this.DeletePluginLocaleResource("Plugins.Tax.StrikeIron.TestingCanada.Button");
+            this.DeletePluginLocaleResource("Plugins.Tax.StrikeIron.TestingCanada.Title");
+            this.DeletePluginLocaleResource("Plugins.Tax.StrikeIron.TestingCanada.ProvinceCode");
+            this.DeletePluginLocaleResource("Plugins.Tax.StrikeIron.TestingCanada.ProvinceCode.Hint");
+           
+            base.Uninstall();
         }
     }
 }

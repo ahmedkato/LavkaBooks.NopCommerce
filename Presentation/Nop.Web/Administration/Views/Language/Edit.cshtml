@@ -1,6 +1,9 @@
 ﻿@model LanguageModel
 @using Telerik.Web.Mvc.UI
-
+@{
+    //page title
+    ViewBag.Title = @T("Admin.Configuration.Languages.EditLanguageDetails").Text;
+}
 @using (Html.BeginForm())
 {
     <div class="section-header">
@@ -9,10 +12,10 @@
             @T("Admin.Configuration.Languages.EditLanguageDetails") - @Model.Name @Html.ActionLink("(" + T("Admin.Configuration.Languages.BackToList") + ")", "List")
         </div>
         <div class="options">
-            <button type="submit" name="save" value="save" class="t-button">@T("Admin.Common.Save")</button>
-            <button type="submit" name="save" value="save-continue" class="t-button">@T("Admin.Common.SaveContinue")</button>
+            <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
+            <input type="submit" name="save-continue" class="t-button" value="@T("Admin.Common.SaveContinue")" />
             <a href="@Url.Action("ExportXml", new { id = Model.Id })" class="t-button">@T("Admin.Configuration.Languages.Export")</a>
-            <button type="submit" id="importxml" name="importxml" value="importxml" class="t-button">@T("Admin.Configuration.Languages.Import")</button>
+            <input type="button" id="importxml" class="t-button" value="@T("Admin.Configuration.Languages.Import")" />
             <span id="language-delete" class="t-button">@T("Admin.Common.Delete")</span>
         </div>
     </div>
@@ -29,7 +32,7 @@
         <table style="text-align: left;">
             <tr>
                 <td>
-                    Xml file:
+                    @T("Admin.Configuration.Languages.XmlFile"):
                 </td>
                 <td>
                     <input type="file" id="importxmlfile" name="importxmlfile" />
@@ -37,14 +40,14 @@
             </tr>
             <tr>
                 <td colspan="2">
-                    <b>NOTE: It can take up to several minutes.</b>
+                    <strong>@T("Admin.Configuration.Languages.XmlFile.Note1")</strong>
                     <br />
-                    <b>NOTE: DO NOT click twice</b>
+                    <strong>@T("Admin.Configuration.Languages.XmlFile.Note2")</strong>
                 </td>
             </tr>
             <tr>
                 <td colspan="2">
-                    <button id="importxmlsubmit" type="submit" class="t-button t-state-default">@T("Admin.Configuration.Languages.Import")</button>
+                    <input id="importxmlsubmit" type="submit" class="t-button" value="@T("Admin.Configuration.Languages.Import")" />
                 </td>
             </tr>
         </table>

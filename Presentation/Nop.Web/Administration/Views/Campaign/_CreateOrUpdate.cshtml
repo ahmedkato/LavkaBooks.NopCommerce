@@ -8,9 +8,9 @@
     <table class="adminContent">
         <tr>
             <td colspan="2">
-                <b>
+                <strong>
                     @T("Admin.Promotions.Campaigns.Warning")
-                </b>
+                </strong>
                 <br />
             </td>
         </tr>
@@ -22,14 +22,14 @@
                 @Html.EditorFor(model => model.TestEmail)
                 @Html.ValidationMessageFor(model => model.TestEmail)
                 &nbsp;&nbsp;
-                <button type="submit" name="send-test-email" value="send-test-email" class="t-button">@T("Admin.Promotions.Campaigns.SendTestEmail")</button>
+                <input type="submit" name="send-test-email" class="t-button" value="@T("Admin.Promotions.Campaigns.SendTestEmail")" />
             </td>
         </tr>
         <tr>
             <td class="adminTitle">
             </td>
             <td class="adminData">
-                <button type="submit" name="send-mass-email" value="send-mass-email" class="t-button">@T("Admin.Promotions.Campaigns.SendMassEmail")</button>
+                <input type="submit" name="send-mass-email" class="t-button" value="@T("Admin.Promotions.Campaigns.SendMassEmail")" />
             </td>
         </tr>
     </table>
@@ -59,7 +59,7 @@
             @Html.NopLabelFor(model => model.Body):
         </td>
         <td class="adminData">
-            @Html.TextAreaFor(model => model.Body, new { style = "Width: 550px; Height: 350px;" })
+            @Html.EditorFor(model => model.Body, "RichEditor")
             @Html.ValidationMessageFor(model => model.Body)
         </td>
     </tr>

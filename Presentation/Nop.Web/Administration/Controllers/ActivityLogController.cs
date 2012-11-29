@@ -2,18 +2,17 @@
 using System.Linq;
 using System.Web.Mvc;
 using Nop.Admin.Models.Logging;
-using Nop.Core.Domain.Common;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
+using Nop.Services.Security;
 using Nop.Web.Framework.Controllers;
 using Telerik.Web.Mvc;
-using Nop.Services.Security;
 
 namespace Nop.Admin.Controllers
 {
     [AdminAuthorize]
-    public class ActivityLogController : BaseNopController
+    public partial class ActivityLogController : BaseNopController
     {
         #region Fields
 
@@ -131,17 +130,17 @@ namespace Nop.Admin.Controllers
             DateTime? endDateValue = (model.CreatedOnTo == null) ? null
                             : (DateTime?)_dateTimeHelper.ConvertToUtcTime(model.CreatedOnTo.Value, _dateTimeHelper.CurrentTimeZone).AddDays(1);
 
-            var activityLogModel = _customerActivityService.GetAllActivities(startDateValue, endDateValue, model.CustomerEmail, null, model.ActivityLogTypeId, command.Page - 1, command.PageSize);
+            var activityLog = _customerActivityService.GetAllActivities(startDateValue, endDateValue,null, model.ActivityLogTypeId, command.Page - 1, command.PageSize);
             var gridModel = new GridModel<ActivityLogModel>
             {
-                Data = activityLogModel.Select(x =>
+                Data = activityLog.Select(x =>
                 {
                     var m = x.ToModel();
                     m.CreatedOn = _dateTimeHelper.ConvertToUserTime(x.CreatedOnUtc, DateTimeKind.Utc);
                     return m;
                     
                 }),
-                Total = activityLogModel.TotalCount
+                Total = activityLog.TotalCount
             };
             return new JsonResult { Data = gridModel};;
         }
@@ -153,6 +152,9 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var activityLog = _customerActivityService.GetActivityById(id);
+            if (activityLog == null)
+                throw new ArgumentException("No activity log found with the specified id");
+            
             _customerActivityService.DeleteActivity(activityLog);
 
             //TODO pass and return current ActivityLogSearchModel

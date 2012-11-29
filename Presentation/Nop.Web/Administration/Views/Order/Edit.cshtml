@@ -1,8 +1,11 @@
 ﻿@model OrderModel
-
 @using Telerik.Web.Mvc.UI;
 @using Nop.Core.Domain.Tax;
 @using Nop.Core.Domain.Catalog;
+@{
+    //page title
+    ViewBag.Title = T("Admin.Orders.EditOrderDetails").Text;
+}
 @using (Html.BeginForm(null, null, FormMethod.Post, new { id = "order-form" }))
 {
 
@@ -15,10 +18,6 @@
             @if (Model.DisplayPdfInvoice)
             {
                 <a href="@Url.Action("PdfInvoice", new { orderId = Model.Id })" class="t-button">@T("Admin.Orders.PdfInvoice")</a>
-            }
-            @if (Model.DisplayPdfPackagingSlip)
-            {
-                <a href="@Url.Action("PdfPackagingSlip", new { orderId = Model.Id })" class="t-button">@T("Admin.Orders.PrintPackagingSlip")</a>
             }
             <span id="order-delete" class="t-button">@T("Admin.Common.Delete")</span>
             <input type="submit" id="btnRefreshPage" name="btnRefreshPage" style="display: none" />
@@ -57,6 +56,9 @@
             tabInfo.Selected(true);
             break;
     }
+
+    //generate an event
+    EngineContext.Current.Resolve<IEventPublisher>().Publish(new AdminTabStripCreated(x, "order-edit"));
 })
 
 
@@ -130,11 +132,11 @@
                     @Html.NopLabelFor(model => model.OrderStatus): </strong>
             </td>
             <td class="adminData">
-                <b>
-                    @Model.OrderStatus</b>&nbsp;
+                <strong>
+                    @Model.OrderStatus</strong>&nbsp;
                 @if (Model.CanCancelOrder)
                 {
-                    <input type="submit" name="cancelorder" value="@T("Admin.Orders.Fields.OrderStatus.Cancel")" id="cancelorder" class="adminButton" />
+                    <input type="submit" name="cancelorder" value="@T("Admin.Orders.Fields.OrderStatus.Cancel")" id="cancelorder" class="adminButton" onclick="return confirm('@T("Admin.Common.AreYouSure")');"  />
                 }
             </td>
         </tr>
@@ -193,7 +195,7 @@
             @Html.NopLabelFor(model => model.AffiliateId):
         </td>
         <td class="adminData">
-            <a href="@Url.Action("Edit", "Affiliate", new { id = @Model.AffiliateId.Value})">@Model.AffiliateId.Value - @T("Admin.Common.View")</a>
+            <a href="@Url.Action("Edit", "Affiliate", new { id = @Model.AffiliateId.Value })">@Model.AffiliateId.Value - @T("Admin.Common.View")</a>
         </td>
     </tr>
     }
@@ -453,7 +455,7 @@
         <tr>
             <td>
                 <input type="submit" name="btnEditOrderTotals" value="@T("Admin.Orders.Fields.EditOrderTotals")" onclick="toggleOrderTotals(true);return false;" id="btnEditOrderTotals" class="adminButton" />
-                <input type="submit" name="btnSaveOrderTotals" value="@T("Admin.Orders.Fields.SaveOrderTotals")" id="btnSaveOrderTotals" class="adminButton" />
+                <input type="submit" name="btnSaveOrderTotals" value="@T("Admin.Orders.Fields.SaveOrderTotals")" id="btnSaveOrderTotals" class="adminButton" onclick="return confirm('@T("Admin.Common.AreYouSure")');" />
             </td>
             <td>
                 <input type="submit" name="btnCancelOrderTotals" value="@T("Admin.Orders.Fields.CancelOrderTotals")" onclick="toggleOrderTotals(false);return false;" id="btnCancelOrderTotals" class="adminButton" />
@@ -541,7 +543,7 @@
             <tr>
                 <td>
                     <input type="submit" name="btnEditCC" value="@T("Admin.Orders.Fields.EditCC")" onclick="toggleCC(true);return false;" id="btnEditCC" class="adminButton" />
-                    <input type="submit" name="btnSaveCC" value="@T("Admin.Orders.Fields.SaveCC")" id="btnSaveCC" class="adminButton" />
+                    <input type="submit" name="btnSaveCC" value="@T("Admin.Orders.Fields.SaveCC")" id="btnSaveCC" class="adminButton" onclick="return confirm('@T("Admin.Common.AreYouSure")');" />
                 </td>
                 <td>
                     <input type="submit" name="btnCancelCC" value="@T("Admin.Orders.Fields.CancelCC")" onclick="toggleCC(false);return false;" id="btnCancelCC" class="adminButton" />
@@ -608,19 +610,19 @@
                 @Model.PaymentStatus &nbsp;
                 @if (Model.CanCapture)
                 {
-                    <input type="submit" name="captureorder" value="@T("Admin.Orders.Fields.Capture")" id="captureorder" class="adminButton" /><text>&nbsp;</text>
+                    <input type="submit" name="captureorder" value="@T("Admin.Orders.Fields.Capture")" id="captureorder" class="adminButton" onclick="return confirm('@T("Admin.Common.AreYouSure")');" /><text>&nbsp;</text>
                 }
                 @if (Model.CanMarkOrderAsPaid)
                 {
-                    <input type="submit" name="markorderaspaid" value="@T("Admin.Orders.Fields.MarkAsPaid")" id="markorderaspaid" class="adminButton" /><text>&nbsp;</text>
+                    <input type="submit" name="markorderaspaid" value="@T("Admin.Orders.Fields.MarkAsPaid")" id="markorderaspaid" class="adminButton" onclick="return confirm('@T("Admin.Common.AreYouSure")');" /><text>&nbsp;</text>
                 }
                 @if (Model.CanRefund)
                 {
-                    <input type="submit" name="refundorder" value="@T("Admin.Orders.Fields.Refund")" id="refundorder" class="adminButton" /><text>&nbsp;</text>
+                    <input type="submit" name="refundorder" value="@T("Admin.Orders.Fields.Refund")" id="refundorder" class="adminButton" onclick="return confirm('@T("Admin.Common.AreYouSure")');" /><text>&nbsp;</text>
                 }
                 @if (Model.CanRefundOffline)
                 {
-                    <input type="submit" name="refundorderoffline" value="@T("Admin.Orders.Fields.RefundOffline")" id="refundorderoffline" class="adminButton" /><text>&nbsp;</text>
+                    <input type="submit" name="refundorderoffline" value="@T("Admin.Orders.Fields.RefundOffline")" id="refundorderoffline" class="adminButton" onclick="return confirm('@T("Admin.Common.AreYouSure")');" /><text>&nbsp;</text>
                 }
                 @if (Model.CanPartiallyRefund)
                 {
@@ -632,11 +634,11 @@
                 }
                 @if (Model.CanVoid)
                 {
-                    <input type="submit" name="voidorder" value="@T("Admin.Orders.Fields.Void")" id="voidorder" class="adminButton" /><text>&nbsp;</text>
+                    <input type="submit" name="voidorder" value="@T("Admin.Orders.Fields.Void")" id="voidorder" class="adminButton" onclick="return confirm('@T("Admin.Common.AreYouSure")');" /><text>&nbsp;</text>
                 }
                 @if (Model.CanVoidOffline)
                 {
-                    <input type="submit" name="voidorderoffline" value="@T("Admin.Orders.Fields.VoidOffline")" id="voidorderoffline" class="adminButton" /><text>&nbsp;</text>
+                    <input type="submit" name="voidorderoffline" value="@T("Admin.Orders.Fields.VoidOffline")" id="voidorderoffline" class="adminButton" onclick="return confirm('@T("Admin.Common.AreYouSure")');" /><text>&nbsp;</text>
                 }
                 <script type="text/javascript">
                     $(document).ready(function () {
@@ -871,17 +873,9 @@
                     </tr>
                 </table>
                 <div style="padding-top: 15px;">
-                    <img alt="google maps" src="@Url.Content("~/Administration/Content/images/GoogleMaps.gif")" />
+                    <img alt="google maps" src="@Url.Content("~/Administration/Content/images/google-maps.gif")" />
                     <a href="@Html.Raw(Model.ShippingAddressGoogleMapsUrl)" target="_blank">@T("Admin.Orders.Fields.ShippingAddress.ViewOnGoogleMaps")</a>
                 </div>
-            </td>
-        </tr>
-        <tr>
-            <td class="adminTitle">
-                @Html.NopLabelFor(model => model.OrderWeight):
-            </td>
-            <td class="adminData">
-                @string.Format("{0:F2} [{1}]", Model.OrderWeight, Model.BaseWeightIn)
             </td>
         </tr>
         <tr>
@@ -894,51 +888,56 @@
         </tr>
         <tr>
             <td class="adminTitle">
-                @Html.NopLabelFor(model => model.TrackingNumber):
+                @Html.NopLabelFor(model => model.ShippingStatus):
             </td>
             <td class="adminData">
-                @Html.EditorFor(model => model.TrackingNumber)
-                <input type="submit" name="settrackingnumber" value="@T("Admin.Orders.Fields.TrackingNumber.Button")" id="settrackingnumber" class="adminButton" />
+                @Model.ShippingStatus
             </td>
         </tr>
+    </table>
+        
+    <div class="clear">
+    </div>    
+    <p>
+        <strong>
+            @T("Admin.Orders.Shipments")
+        </strong>
+    </p>
+    <div class="clear">
+    </div>  
+        <table class="adminContent">
         <tr>
-            <td class="adminTitle">
-                @Html.NopLabelFor(model => model.ShippedDate):
-            </td>
-            <td class="adminData">
-                @if (!String.IsNullOrEmpty(Model.ShippedDate))
+            <td>
+                @(Html.Telerik().Grid<ShipmentModel>().Name("shipments-grid")
+                .DataBinding(binding =>
                 {
-                    @Model.ShippedDate
-                }
-                else
+                    binding.Ajax().Select("ShipmentsSelect", "Order", new { orderId = Model.Id });
+                })
+                .Columns(columns =>
                 {
-                    @T("Admin.Orders.Fields.ShippedDate.NotYet")
-                }
-                @if (Model.CanShip)
-                {
-                    <input type="submit" name="setasshipped" value="@T("Admin.Orders.Fields.ShippedDate.Button")" id="setasshipped" class="adminButton" />
-                }
-            </td>
-        </tr>
-        <tr>
-            <td class="adminTitle">
-                @Html.NopLabelFor(model => model.DeliveryDate):
-            </td>
-            <td class="adminData">
-                @if (!String.IsNullOrEmpty(Model.DeliveryDate))
-                {
-                    @Model.DeliveryDate
-                }
-                else
-                {
-                    @T("Admin.Orders.Fields.DeliveryDate.NotYet")
-                }
-                @if (Model.CanDeliver)
-                {
-                    <input type="submit" name="setasdelivered" value="@T("Admin.Orders.Fields.DeliveryDate.Button")" id="setasdelivered" class="adminButton" />
-                }
+                    columns.Bound(x => x.Id).Width(50);
+                    columns.Bound(x => x.TrackingNumber);
+                    columns.Bound(x => x.TotalWeight);
+                    columns.Bound(x => x.ShippedDate);
+                    columns.Bound(x => x.DeliveryDate);
+                    columns.Bound(x => x.Id)
+                        .Template(x => Html.ActionLink(T("Admin.Common.View").Text, "ShipmentDetails", "Order", new { id = x.Id }, new { }))
+                        .ClientTemplate("<a href=\"" + @Url.Content("~/Admin/Order/ShipmentDetails/") + "<#= Id #>\">" + T("Admin.Common.View").Text + "</a>")
+                        .Width(50)
+                        .Centered()
+                        .HeaderTemplate(T("Admin.Common.View").Text);
+                })
+                .EnableCustomBinding(true))
             </td>
         </tr>
+        @if (Model.CanAddNewShipments)
+        {
+            <tr>
+                <td class="adminData">
+                    <input type="submit" id="btnAddNewShipment" name="btnAddNewShipment" value="@T("Admin.Orders.Shipments.AddNew")" onclick="javascript:setLocation('@(Url.Action("AddShipment", "Order", new { orderId = Model.Id }))'); return false;" class="t-button" />
+                </td>
+            </tr>
+        }
     </table>
         }
         else
@@ -1049,20 +1048,41 @@
                                             <br />
                                             @Html.Raw(item.RecurringInfo)
                                         }
+                                        @if (!String.IsNullOrEmpty(item.Sku))
+                                        {
+                                            <br />
+                                            <strong>@T("Admin.Orders.Products.SKU")</strong><text>:</text>
+                                            @item.Sku
+                                        }
                                         @if (item.ReturnRequestIds.Count > 0)
                                         {
                                             <br />
                                             <br />
                                             <hr />
                                             @T("Admin.Orders.Products.ReturnRequests")<text>:</text>
-                                       for (int i = 0; i < item.ReturnRequestIds.Count; i++)
-                                       {
-                                            <a href="@Url.Action("Edit", "ReturnRequest", new { id = item.ReturnRequestIds[i] })">@item.ReturnRequestIds[i]</a>
-                                                                                                                             if (i != item.ReturnRequestIds.Count - 1)
-                                                                                                                             {
-                                            <text>,</text>
-                                                                                                                             }
-                                       }
+                                            for (int i = 0; i < item.ReturnRequestIds.Count; i++)
+                                            {
+                                                <a href="@Url.Action("Edit", "ReturnRequest", new { id = item.ReturnRequestIds[i] })">@item.ReturnRequestIds[i]</a>
+                                                if (i != item.ReturnRequestIds.Count - 1)
+                                                {
+                                                    <text>,</text>
+                                                }
+                                            }
+                                        }
+                                        @if (item.PurchasedGiftCardIds.Count > 0)
+                                        {
+                                            <br />
+                                            <br />
+                                            <hr />
+                                            @T("Admin.Orders.Products.GiftCards")<text>:</text>
+                                            for (int i = 0; i < item.PurchasedGiftCardIds.Count; i++)
+                                            {
+                                                <a href="@Url.Action("Edit", "GiftCard", new { id = item.PurchasedGiftCardIds[i] })">@item.PurchasedGiftCardIds[i]</a>
+                                                if (i != item.PurchasedGiftCardIds.Count - 1)
+                                                {
+                                                    <text>,</text>
+                                                }
+                                            }
                                         }
                                     </div>
                                 </td>
@@ -1084,8 +1104,8 @@
                                             </div>
                                             }
                                             <div>
-                                                <b>
-                                                    @T("Admin.Orders.Products.License")</b>
+                                                <strong>
+                                                    @T("Admin.Orders.Products.License")</strong>
                                                 <br />
                                                 @if (item.LicenseDownloadId.HasValue && item.LicenseDownloadId.Value > 0)
                                                 {
@@ -1257,8 +1277,8 @@
                                 </td>
                                 <td align="center" style="width: 15%;">
                                     <input type="submit" name="btnEditOpv@(item.Id)" value="@T("Admin.Common.Edit")" onclick="toggleOpvEdit@(item.Id)(true);return false;" id="btnEditOpv@(item.Id)" class="adminButton" />
-                                    <input type="submit" name="btnDeleteOpv@(item.Id)" value="@T("Admin.Common.Delete")" id="btnDeleteOpv@(item.Id)" class="adminButton" />
-                                    <input type="submit" name="btnSaveOpv@(item.Id)" value="@T("Admin.Common.Save")" id="btnSaveOpv@(item.Id)" class="adminButton" style="display: none;" />
+                                    <input type="submit" name="btnDeleteOpv@(item.Id)" value="@T("Admin.Common.Delete")" id="btnDeleteOpv@(item.Id)" class="adminButton" onclick="return confirm('@T("Admin.Common.AreYouSure")');" />
+                                    <input type="submit" name="btnSaveOpv@(item.Id)" value="@T("Admin.Common.Save")" id="btnSaveOpv@(item.Id)" class="adminButton" style="display: none;" onclick="return confirm('@T("Admin.Common.AreYouSure")');" />
                                     <input type="submit" name="btnCancelOpv@(item.Id)" value="@T("Admin.Common.Cancel")" onclick="toggleOpvEdit@(item.Id)(false);return false;" id="btnCancelOpv@(item.Id)" class="adminButton" style="display: none;" />
                                 </td>
                             </tr>
@@ -1275,6 +1295,11 @@
                 </td>
             </tr>
         }
+        <tr>
+            <td class="adminData">
+                <input type="submit" id="btnAddNewProduct" name="btnAddNewProduct" value="@T("Admin.Orders.Products.AddNew")" onclick="javascript:setLocation('@(Url.Action("AddProductToOrder", "Order", new { orderId = Model.Id }))'); return false;" class="t-button" />
+            </td>
+        </tr>
     </table>
 }
 @helper TabOrderNotes()
@@ -1301,7 +1326,7 @@
             columns.Command(commands =>
             {
                 commands.Delete();
-            }).Width(180).Title("Delete");
+            }).Width(180).Title(T("Admin.Common.Delete").Text);
         })
         .EnableCustomBinding(true))
             </td>
@@ -1335,8 +1360,7 @@
         </tr>
         <tr>
             <td colspan="2" align="left">
-                <button type="button" name="addOrderNote" id="addOrderNote" class="t-button">
-                    @T("Admin.Orders.OrderNotes.AddButton")</button>
+                <input type="button" id="addOrderNote" class="t-button" value="@T("Admin.Orders.OrderNotes.AddButton")" />
             </td>
         </tr>
     </table>
@@ -1351,14 +1375,14 @@
                     cache:false,
                     type: "POST",
                     url: "@(Url.Action("OrderNoteAdd", "Order"))",
-                    data: "DisplayToCustomer=" + orderNoteDisplayToCustomer + "&message=" + orderNoteMessage + "&orderId=" + @Model.Id,
+                    data: { "DisplayToCustomer": orderNoteDisplayToCustomer, "message": orderNoteMessage, "orderId": @Model.Id },
                     success: function (data) {
                          var ordernotesGrid = $("#ordernotes-grid");
                          ordernotesGrid.data('tGrid').ajaxRequest();
                          $('#addOrderNote').attr('disabled', false);
                     },
                     error:function (xhr, ajaxOptions, thrownError){
-                        alert('Failed to add reward points.')
+                        alert('Failed to add order note.');
                         $('#addOrderNote').attr('disabled', false);
                     }  
                 });

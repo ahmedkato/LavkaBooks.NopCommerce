@@ -1,4 +1,4 @@
-﻿@model IList<Nop.Web.Models.Catalog.ProductModel>
+﻿@model IList<ProductOverviewModel>
 @{
     Layout = "~/Views/Shared/_ColumnsThree.cshtml";
 
@@ -7,25 +7,23 @@
 }
 @using Nop.Core;
 @using Nop.Core.Infrastructure;
-@using Nop.Web.Framework.UI;
 @using Nop.Web.Models.Catalog;
-<div class="recently-viewed-products">
+<div class="page recently-viewed-products-page">
     <div class="page-title">
         <h1>@T("Products.RecentlyViewedProducts")</h1>
     </div>
     <div class="clear">
     </div>
-    @*product list*@
-    @if (Model.Count > 0)
-    {
-@*grid mode*@
-        <div class="product-grid">
-            @(Html.DataList<ProductModel>(Model, 2,
+    <div class="page-body">
+        @if (Model.Count > 0)
+        {
+            <div class="product-grid">
+                @(Html.DataList<ProductOverviewModel>(Model, 2,
                     @<div class="item-box">
                         @Html.Partial("_ProductBox", @item)
                     </div>
                 ))
-        </div>
-        
-    }
+            </div>
+        }
+    </div>
 </div>

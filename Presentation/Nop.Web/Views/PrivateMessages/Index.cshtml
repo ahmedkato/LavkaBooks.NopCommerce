@@ -1,19 +1,18 @@
-﻿@model Nop.Web.Models.PrivateMessages.PrivateMessageIndexModel
+﻿@model PrivateMessageIndexModel
+@using Nop.Web.Models.PrivateMessages;
 @{    
     Layout = "~/Views/Shared/_ColumnsOne.cshtml";
 
     Html.AddTitleParts(T("PageTitle.PrivateMessages").Text);
-    
-    Html.AddCssFileParts(@Url.Content("~/Content/smoothness/jquery-ui-1.8.13.custom.css"));
 }
-<div class="private-messages-page">
+<div class="page private-messages-page">
     <div class="page-title">
         <h1>
             @T("PrivateMessages.PrivateMessages")</h1>
     </div>
     <div class="clear">
     </div>
-    <div class="body">
+    <div class="page-body">
         @{
             var selectSentTab = (@Model.SentItemsTabSelected) ? ".tabs('select', 1)" : "";
         }

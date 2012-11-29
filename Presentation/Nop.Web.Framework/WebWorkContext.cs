@@ -7,6 +7,7 @@ using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Localization;
 using Nop.Core.Domain.Tax;
 using Nop.Services.Authentication;
+using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Directory;
 using Nop.Services.Localization;
@@ -66,7 +67,7 @@ namespace Nop.Web.Framework
                 //check whether request is made by a search engine
                 //in this case return built-in customer record for search engines 
                 //or comment the following two lines of code in order to disable this functionality
-                if (_webHelper.IsSearchEngine(_httpContext.Request))
+                if (_webHelper.IsSearchEngine(_httpContext))
                     customer = _customerService.GetCustomerBySystemName(SystemCustomerNames.SearchEngine);
 
                 //registered user
@@ -76,11 +77,8 @@ namespace Nop.Web.Framework
                 }
 
                 //impersonate user if required (currently used for 'phone order' support)
-                //and validate that the current user is admin
                 if (customer != null && !customer.Deleted && customer.Active)
                 {
-                    if (customer.IsAdmin()) 
-                    {
                         int? impersonatedCustomerId = customer.GetAttribute<int?>(SystemCustomerAttributeNames.ImpersonatedCustomerId);
                         if (impersonatedCustomerId.HasValue && impersonatedCustomerId.Value > 0)
                         {
@@ -92,7 +90,6 @@ namespace Nop.Web.Framework
                                 customer = impersonatedCustomer;
                             }
                         }
-                    }
                 }
 
                 //load guest customer
@@ -269,7 +266,11 @@ namespace Nop.Web.Framework
             {
                 //return primary store currency when we're in admin area/mode
                 if (this.IsAdmin)
-                    return _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId);
+                {
+                    var primaryStoreCurrency =  _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId);
+                    if (primaryStoreCurrency != null)
+                        return primaryStoreCurrency;
+                }
 
                 if (this.CurrentCustomer != null &&
                     this.CurrentCustomer.Currency != null &&

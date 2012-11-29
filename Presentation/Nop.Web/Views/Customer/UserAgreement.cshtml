@@ -1,27 +1,25 @@
-﻿@model Nop.Web.Models.Customer.UserAgreementModel
+﻿@model UserAgreementModel
+@using Nop.Web.Models.Customer;
 @{
     Layout = "~/Views/Shared/_ColumnsOne.cshtml"; 
 }
-@using Nop.Web.Framework;
-
 <script type="text/javascript">
     $(document).ready(function () {
 
-        $("#agreementagree").click(toggleContinueButton);
+        $("#agreement-agree").click(toggleContinueButton);
 
         toggleContinueButton();
     });
 
     function toggleContinueButton() {
-        if ($('#agreementagree').is(':checked')) {
-            $('#continuedownloading').removeAttr('disabled');
+        if ($('#agreement-agree').is(':checked')) {
+            $('#continue-downloading').removeAttr('disabled');
         } else {
-            $('#continuedownloading').attr('disabled', 'disabled');
-        } 
+            $('#continue-downloading').attr('disabled', 'disabled');
+        }
     }
 </script>
-
-<div class="user-agreement-page">
+<div class="page user-agreement-page">
     <div class="page-title">
         <h1>@T("DownloadableProducts.UserAgreement")</h1>
     </div>
@@ -29,11 +27,11 @@
     </div>
     <div class="page-body">
         @Html.Raw(Model.UserAgreementText)
-        <br />
-        <br />
-        <input id="agreementagree" type="checkbox" name="agreementagree" value="@T("DownloadableProducts.IAgree")" />
-        <br />
-        <br />
-        <input type="submit" id="continuedownloading" class="useragreementbutton" value="@T("Common.Continue")" onclick="setLocation('@Url.Action("GetDownload", "Download", new { opvId = Model.OrderProductVariantGuid, agree = true })')" />
+        <div>
+            <input id="agreement-agree" type="checkbox" value="@T("DownloadableProducts.IAgree")" />
+        </div>
+        <div>
+            <input type="submit" id="continue-downloading" class="button-1 user-agreement-button" value="@T("Common.Continue")" onclick="setLocation('@Url.RouteUrl("GetDownload", new { opvId = Model.OrderProductVariantGuid, agree = true })')" />
+        </div>
     </div>
 </div>

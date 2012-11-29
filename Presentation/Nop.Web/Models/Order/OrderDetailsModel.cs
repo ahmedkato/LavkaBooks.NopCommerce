@@ -5,7 +5,7 @@ using Nop.Web.Models.Common;
 
 namespace Nop.Web.Models.Order
 {
-    public class OrderDetailsModel : BaseNopEntityModel
+    public partial class OrderDetailsModel : BaseNopEntityModel
     {
         public OrderDetailsModel()
         {
@@ -13,6 +13,7 @@ namespace Nop.Web.Models.Order
             GiftCards = new List<GiftCard>();
             Items = new List<OrderProductVariantModel>();
             OrderNotes = new List<OrderNote>();
+            Shipments = new List<ShipmentBriefModel>();
         }
 
         public bool PrintMode { get; set; }
@@ -29,12 +30,8 @@ namespace Nop.Web.Models.Order
         public bool IsShippable { get; set; }
         public string ShippingStatus { get; set; }
         public AddressModel ShippingAddress { get; set; }
-        public decimal OrderWeight { get; set; }
-        public string BaseWeightIn { get; set; }
         public string ShippingMethod { get; set; }
-        public string ShippedDate { get; set; }
-        public string DeliveryDate { get; set; }
-        public string TrackingNumber { get; set; }
+        public IList<ShipmentBriefModel> Shipments { get; set; }
 
         public AddressModel BillingAddress { get; set; }
 
@@ -42,6 +39,8 @@ namespace Nop.Web.Models.Order
 
         public string PaymentMethod { get; set; }
         public bool CanRePostProcessPayment { get; set; }
+        public bool DisplayPurchaseOrderNumber { get; set; }
+        public string PurchaseOrderNumber { get; set; }
 
         public string OrderSubtotal { get; set; }
         public string OrderSubTotalDiscount { get; set; }
@@ -66,41 +65,41 @@ namespace Nop.Web.Models.Order
 
 		#region Nested Classes
 
-        public class OrderProductVariantModel : BaseNopEntityModel
+        public partial class OrderProductVariantModel : BaseNopEntityModel
         {
             public string Sku { get; set; }
-
             public int ProductId { get; set; }
-
             public string ProductName { get; set; }
-
             public string ProductSeName { get; set; }
-
             public string UnitPrice { get; set; }
-
             public string SubTotal { get; set; }
-
             public int Quantity { get; set; }
-            
             public string AttributeInfo { get; set; }
         }
 
-        public class TaxRate : BaseNopModel
+        public partial class TaxRate : BaseNopModel
         {
             public string Rate { get; set; }
             public string Value { get; set; }
         }
 
-        public class GiftCard : BaseNopModel
+        public partial class GiftCard : BaseNopModel
         {
             public string CouponCode { get; set; }
             public string Amount { get; set; }
         }
 
-        public class OrderNote : BaseNopModel
+        public partial class OrderNote : BaseNopModel
         {
             public string Note { get; set; }
             public DateTime CreatedOn { get; set; }
+        }
+
+        public partial class ShipmentBriefModel : BaseNopEntityModel
+        {
+            public string TrackingNumber { get; set; }
+            public DateTime? ShippedDate { get; set; }
+            public DateTime? DeliveryDate { get; set; }
         }
 		#endregion
     }

@@ -31,21 +31,17 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Autofac, Version=2.5.1.827, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
+    <Reference Include="Autofac, Version=2.6.3.862, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\packages\Autofac.2.5.1.827\lib\NET40\Autofac.dll</HintPath>
+      <HintPath>..\..\packages\Autofac.2.6.3.862\lib\NET40\Autofac.dll</HintPath>
     </Reference>
-    <Reference Include="Autofac.Configuration, Version=2.5.1.827, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
+    <Reference Include="Autofac.Configuration, Version=2.6.3.862, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\packages\Autofac.2.5.1.827\lib\NET40\Autofac.Configuration.dll</HintPath>
+      <HintPath>..\..\packages\Autofac.2.6.3.862\lib\NET40\Autofac.Configuration.dll</HintPath>
     </Reference>
-    <Reference Include="Autofac.Integration.Mvc, Version=2.5.1.827, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
+    <Reference Include="Autofac.Integration.Mvc, Version=2.6.3.862, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\packages\Autofac.Mvc3.2.5.1.827\lib\NET40\Autofac.Integration.Mvc.dll</HintPath>
-    </Reference>
-    <Reference Include="AutofacContrib.Startable, Version=2.4.5.724, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\packages\AutofacContrib-2.5.1.827-NET40\Library\AutofacContrib.Startable.dll</HintPath>
+      <HintPath>..\..\packages\Autofac.Mvc3.2.6.3.862\lib\NET40\Autofac.Integration.Mvc.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
@@ -55,7 +51,7 @@
     <Reference Include="System.Web" />
     <Reference Include="System.Web.Mvc, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>C:\Program Files\Microsoft ASP.NET\ASP.NET MVC 3\Assemblies\System.Web.Mvc.dll</HintPath>
+      <HintPath>..\..\packages\aspnetmvc\System.Web.Mvc.dll</HintPath>
     </Reference>
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -65,6 +61,16 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ComponentModel\WriteLockDisposable.cs" />
+    <Compile Include="Domain\Catalog\BackInStockSubscription.cs" />
+    <Compile Include="Domain\Cms\WidgetSettings.cs" />
+    <Compile Include="Domain\Common\FulltextSearchMode.cs" />
+    <Compile Include="Domain\Common\GenericAttribute.cs" />
+    <Compile Include="Domain\Common\PageTitleSeoAdjustment.cs" />
+    <Compile Include="Domain\Orders\Events.cs" />
+    <Compile Include="Domain\Shipping\ShipmentOrderProductVariant.cs" />
+    <Compile Include="Domain\Shipping\Shipment.cs" />
+    <Compile Include="Domain\Tasks\ScheduleTask.cs" />
+    <Compile Include="Domain\Messages\Events.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="Data\BaseDataProviderManager.cs" />
     <Compile Include="Data\IDataProvider.cs" />
@@ -76,8 +82,6 @@
     <Compile Include="Domain\Catalog\ManufacturerTemplate.cs" />
     <Compile Include="Domain\Catalog\CategoryTemplate.cs" />
     <Compile Include="Domain\Catalog\ProductTemplate.cs" />
-    <Compile Include="Domain\Cms\Widget.cs" />
-    <Compile Include="Domain\Cms\WidgetZone.cs" />
     <Compile Include="Domain\Common\AdminAreaSettings.cs" />
     <Compile Include="Domain\Common\SeoSettings.cs" />
     <Compile Include="Domain\Customers\ExternalAuthenticationSettings.cs" />
@@ -87,15 +91,10 @@
     <Compile Include="Domain\Polls\PollAnswer.cs" />
     <Compile Include="Domain\Polls\Poll.cs" />
     <Compile Include="Domain\Orders\BestsellersReportLine.cs" />
-    <Compile Include="Events\EventPublisherExtensions.cs" />
     <Compile Include="Events\EntityDeleted.cs" />
     <Compile Include="Events\EntityInserted.cs" />
     <Compile Include="Events\EntityUpdated.cs" />
-    <Compile Include="Events\EventPublisher.cs" />
-    <Compile Include="Events\IConsumer.cs" />
-    <Compile Include="Events\IEventPublisher.cs" />
-    <Compile Include="Events\ISubscriptionService.cs" />
-    <Compile Include="Events\SubscriptionService.cs" />
+    <Compile Include="Fakes\Extensions.cs" />
     <Compile Include="Fakes\FakeHttpContext.cs" />
     <Compile Include="Fakes\FakeHttpRequest.cs" />
     <Compile Include="Fakes\FakeHttpResponse.cs" />
@@ -161,7 +160,6 @@
     <Compile Include="Domain\Messages\MessageTemplate.cs" />
     <Compile Include="Domain\Messages\NewsLetterSubscription.cs" />
     <Compile Include="Domain\Messages\QueuedEmail.cs" />
-    <Compile Include="Domain\Messages\SmsSettings.cs" />
     <Compile Include="Domain\Orders\OrderNote.cs" />
     <Compile Include="Domain\Orders\OrderProductVariant.cs" />
     <Compile Include="Domain\Orders\OrderStatus.cs" />
@@ -177,6 +175,7 @@
     <Compile Include="Domain\StoreInformationSettings.cs" />
     <Compile Include="GenericComparer.cs" />
     <Compile Include="Data\IRepository.cs" />
+    <Compile Include="Infrastructure\IStartupTask.cs" />
     <Compile Include="IPersistentCollection.cs" />
     <Compile Include="IWebHelper.cs" />
     <Compile Include="Domain\Security\DefaultPermissionRecord.cs" />
@@ -194,7 +193,6 @@
     <Compile Include="Infrastructure\ITypeFinder.cs" />
     <Compile Include="Infrastructure\NopEngine.cs" />
     <Compile Include="Domain\Common\Address.cs" />
-    <Compile Include="Domain\Customers\CustomerAttribute.cs" />
     <Compile Include="Domain\Customers\CustomerSettings.cs" />
     <Compile Include="Domain\Customers\CustomerRole.cs" />
     <Compile Include="Domain\Customers\RewardPointsSettings.cs" />
@@ -247,6 +245,7 @@
     <Compile Include="Html\ResolveLinksHelper.cs" />
     <Compile Include="PersistentCollection.cs" />
     <Compile Include="Plugins\BasePlugin.cs" />
+    <Compile Include="Plugins\PluginFileParser.cs" />
     <Compile Include="Plugins\PluginManager.cs" />
     <Compile Include="Plugins\PluginDescriptor.cs" />
     <Compile Include="Infrastructure\DependencyManagement\DependencyAttribute.cs" />
@@ -291,13 +290,7 @@
     <Compile Include="IO\IStorageFolder.cs" />
     <Compile Include="IO\IStorageProvider.cs" />
     <Compile Include="Domain\Customers\PasswordFormat.cs" />
-    <Compile Include="Plugins\IAutoStart.cs" />
     <Compile Include="NopVersion.cs" />
-    <Compile Include="Tasks\IStartupTask.cs" />
-    <Compile Include="Tasks\ITask.cs" />
-    <Compile Include="Tasks\Task.cs" />
-    <Compile Include="Tasks\TaskManager.cs" />
-    <Compile Include="Tasks\TaskThread.cs" />
     <Compile Include="WebHelper.cs" />
     <Compile Include="Domain\Customers\Customer.cs" />
     <Compile Include="Domain\Localization\Language.cs" />

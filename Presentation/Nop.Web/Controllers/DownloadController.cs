@@ -8,24 +8,21 @@ using Nop.Services.Orders;
 
 namespace Nop.Web.Controllers
 {
-    public class DownloadController : BaseNopController
+    public partial class DownloadController : BaseNopController
     {
         private readonly IDownloadService _downloadService;
         private readonly IProductService _productService;
         private readonly IOrderService _orderService;
-        private readonly IOrderProcessingService _orderProcessingService;
         private readonly IWorkContext _workContext;
 
         private readonly CustomerSettings _customerSettings;
 
         public DownloadController(IDownloadService downloadService, IProductService productService,
-            IOrderService orderService, IOrderProcessingService orderProcessingService,
-            IWorkContext workContext, CustomerSettings customerSettings)
+            IOrderService orderService, IWorkContext workContext, CustomerSettings customerSettings)
         {
             this._downloadService = downloadService;
             this._productService = productService;
             this._orderService = orderService;
-            this._orderProcessingService = orderProcessingService;
             this._workContext = workContext;
             this._customerSettings = customerSettings;
         }
@@ -34,7 +31,7 @@ namespace Nop.Web.Controllers
         {
             var productVariant = _productService.GetProductVariantById(productVariantId);
             if (productVariant == null)
-                return RedirectToAction("Index", "Home");
+                return RedirectToRoute("HomePage");
 
             if (!productVariant.HasSampleDownload)
                 return Content("Product variant doesn't have a sample download.");
@@ -52,8 +49,9 @@ namespace Nop.Web.Controllers
                 if (download.DownloadBinary == null)
                     return Content("Download data is not available any more.");
 
-                string fileName = download.Filename ?? productVariant.Id.ToString();
-                return new FileContentResult(download.DownloadBinary, download.ContentType) { FileDownloadName = fileName + download.Extension };
+                string fileName = !String.IsNullOrWhiteSpace(download.Filename) ? download.Filename : productVariant.Id.ToString();
+                string contentType = !String.IsNullOrWhiteSpace(download.ContentType) ? download.ContentType : "application/octet-stream";
+                return new FileContentResult(download.DownloadBinary, contentType) { FileDownloadName = fileName + download.Extension };
             }
         }
 
@@ -61,11 +59,11 @@ namespace Nop.Web.Controllers
         {
             var orderProductVariant = _orderService.GetOrderProductVariantByGuid(opvId);
             if (orderProductVariant == null)
-                return RedirectToAction("Index", "Home");
+                return RedirectToRoute("HomePage");
 
             var order = orderProductVariant.Order;
             var productVariant = orderProductVariant.ProductVariant;
-            if (!_orderProcessingService.IsDownloadAllowed(orderProductVariant))
+            if (!_downloadService.IsDownloadAllowed(orderProductVariant))
                 return Content("Downloads are not allowed");
 
             if (_customerSettings.DownloadableProductsValidateUser)
@@ -84,7 +82,7 @@ namespace Nop.Web.Controllers
             if (productVariant.HasUserAgreement)
             {
                 if (!agree)
-                    return RedirectToAction("useragreement", "customer", new { opvId = opvId });
+                    return RedirectToRoute("DownloadUserAgreement", new { opvid = opvId });
             }
 
 
@@ -106,14 +104,14 @@ namespace Nop.Web.Controllers
                 if (download.DownloadBinary == null)
                     return Content("Download data is not available any more.");
 
-                string fileName = download.Filename ?? productVariant.Id.ToString();
-
                 //increase download
                 orderProductVariant.DownloadCount++;
                 _orderService.UpdateOrder(order);
 
                 //return result
-                return new FileContentResult(download.DownloadBinary, download.ContentType) { FileDownloadName = fileName + download.Extension };
+                string fileName = !String.IsNullOrWhiteSpace(download.Filename) ? download.Filename : productVariant.Id.ToString();
+                string contentType = !String.IsNullOrWhiteSpace(download.ContentType) ? download.ContentType : "application/octet-stream";
+                return new FileContentResult(download.DownloadBinary, contentType) { FileDownloadName = fileName + download.Extension };
             }
         }
 
@@ -121,11 +119,11 @@ namespace Nop.Web.Controllers
         {
             var orderProductVariant = _orderService.GetOrderProductVariantByGuid(opvId);
             if (orderProductVariant == null)
-                return RedirectToAction("Index", "Home");
+                return RedirectToRoute("HomePage");
 
             var order = orderProductVariant.Order;
             var productVariant = orderProductVariant.ProductVariant;
-            if (!_orderProcessingService.IsLicenseDownloadAllowed(orderProductVariant))
+            if (!_downloadService.IsLicenseDownloadAllowed(orderProductVariant))
                 return Content("Downloads are not allowed");
 
             if (_customerSettings.DownloadableProductsValidateUser)
@@ -150,12 +148,36 @@ namespace Nop.Web.Controllers
             {
                 if (download.DownloadBinary == null)
                     return Content("Download data is not available any more.");
-
-                string fileName = download.Filename ?? productVariant.Id.ToString();
-
+                
                 //return result
-                return new FileContentResult(download.DownloadBinary, download.ContentType) { FileDownloadName = fileName + download.Extension };
+                string fileName = !String.IsNullOrWhiteSpace(download.Filename) ? download.Filename : productVariant.Id.ToString();
+                string contentType = !String.IsNullOrWhiteSpace(download.ContentType) ? download.ContentType : "application/octet-stream";
+                return new FileContentResult(download.DownloadBinary, contentType) { FileDownloadName = fileName + download.Extension };
             }
         }
+
+        public ActionResult GetFileUpload(Guid downloadId)
+        {
+            var download = _downloadService.GetDownloadByGuid(downloadId);
+            if (download == null)
+                return Content("Download is not available any more.");
+
+            if (download.UseDownloadUrl)
+            {
+                //return result
+                return new RedirectResult(download.DownloadUrl);
+            }
+            else
+            {
+                if (download.DownloadBinary == null)
+                    return Content("Download data is not available any more.");
+
+                //return result
+                string fileName = !String.IsNullOrWhiteSpace(download.Filename) ? download.Filename : downloadId.ToString();
+                string contentType = !String.IsNullOrWhiteSpace(download.ContentType) ? download.ContentType : "application/octet-stream";
+                return new FileContentResult(download.DownloadBinary, contentType) { FileDownloadName = fileName + download.Extension };
+            }
+        }
+
     }
 }

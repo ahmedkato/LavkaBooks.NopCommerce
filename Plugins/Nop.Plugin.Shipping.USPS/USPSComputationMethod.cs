@@ -5,7 +5,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Globalization;
 using System.IO;
 using System.Net;
@@ -17,10 +16,12 @@ using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Shipping;
 using Nop.Core.Plugins;
 using Nop.Plugin.Shipping.USPS.Domain;
+using Nop.Services.Catalog;
 using Nop.Services.Configuration;
 using Nop.Services.Directory;
+using Nop.Services.Localization;
 using Nop.Services.Shipping;
-using Nop.Services.Catalog;
+using Nop.Services.Shipping.Tracking;
 
 namespace Nop.Plugin.Shipping.USPS
 {
@@ -107,7 +108,7 @@ namespace Nop.Plugin.Shipping.USPS
             if (usedMeasureDimension == null)
                 throw new NopException(string.Format("USPS shipping service. Could not load \"{0}\" measure dimension", MEASUREDIMENSIONSYSTEMKEYWORD));
 
-            var baseusedMeasureDimension = _measureService.GetMeasureWeightById(_measureSettings.BaseDimensionId);
+            var baseusedMeasureDimension = _measureService.GetMeasureDimensionById(_measureSettings.BaseDimensionId);
             if (usedMeasureDimension == null)
                 throw new NopException("Primary dimension can't be loaded");
 
@@ -144,7 +145,7 @@ namespace Nop.Plugin.Shipping.USPS
             decimal subTotal = decimal.Zero;
             foreach (var shoppingCartItem in getShippingOptionRequest.Items)
             {
-                if (shoppingCartItem.IsFreeShipping || !shoppingCartItem.IsShipEnabled)
+                if (!shoppingCartItem.IsShipEnabled)
                     continue;
                 subTotal += _priceCalculationService.GetSubTotal(shoppingCartItem, true);
             }
@@ -546,14 +547,14 @@ namespace Nop.Plugin.Shipping.USPS
                         char tm = (char)174;
                         serviceCode = serviceCode.Replace("&lt;sup&gt;&amp;reg;&lt;/sup&gt;", tm.ToString());
 
-                        if (shippingOptions.Find((s) => s.Name == serviceCode) == null)
+                        ShippingOption shippingOption = shippingOptions.Find((s) => s.Name == serviceCode);
+                        if (shippingOption == null)
                         {
-                            var shippingOption = new ShippingOption();
-                            //TODO check whether we need to multiply rate by package quantity
-                            shippingOption.Rate = Convert.ToDecimal(postalRate, new CultureInfo("en-US"));
+                            shippingOption = new ShippingOption();
                             shippingOption.Name = serviceCode;
                             shippingOptions.Add(shippingOption);
                         }
+                        shippingOption.Rate += Convert.ToDecimal(postalRate, new CultureInfo("en-US"));
                     }
                 }
                 while (!tr.EOF);
@@ -589,7 +590,8 @@ namespace Nop.Plugin.Shipping.USPS
                 return response;
             }
 
-            getShippingOptionRequest.ZipPostalCodeFrom = _uspsSettings.ZipPostalCodeFrom;
+            if (String.IsNullOrEmpty(getShippingOptionRequest.ZipPostalCodeFrom))
+                getShippingOptionRequest.ZipPostalCodeFrom = _uspsSettings.ZipPostalCodeFrom;
 
 
             bool isDomestic = IsDomesticRequest(getShippingOptionRequest);
@@ -643,6 +645,7 @@ namespace Nop.Plugin.Shipping.USPS
         /// </summary>
         public override void Install()
         {
+            //settings
             var settings = new USPSSettings()
             {
                 Url = "http://production.shippingapis.com/ShippingAPI.dll",
@@ -655,7 +658,51 @@ namespace Nop.Plugin.Shipping.USPS
             };
             _settingService.SaveSetting(settings);
 
+
+            //locales
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.Url", "URL");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.Url.Hint", "Specify USPS URL.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.Username", "Username");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.Username.Hint", "Specify USPS username.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.Password", "Password");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.Password.Hint", "Specify USPS password.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.AdditionalHandlingCharge", "Additional handling charge");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.AdditionalHandlingCharge.Hint", "Enter additional handling fee to charge your customers.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.ZipPostalCodeFrom", "Shipped from zip");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.ZipPostalCodeFrom.Hint", "Specify origin zip code.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.AvailableCarrierServicesDomestic", "Domestic Carrier Services");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.AvailableCarrierServicesDomestic.Hint", "Select the services you want to offer to customers.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.AvailableCarrierServicesInternational", "International Carrier Services");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.AvailableCarrierServicesInternational.Hint", "Select the services you want to offer to customers.");
+
             base.Install();
+        }
+
+        /// <summary>
+        /// Uninstall plugin
+        /// </summary>
+        public override void Uninstall()
+        {
+            //settings
+            _settingService.DeleteSetting<USPSSettings>();
+
+            //locales
+            this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.Url");
+            this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.Url.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.Username");
+            this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.Username.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.Password");
+            this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.Password.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.AdditionalHandlingCharge");
+            this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.AdditionalHandlingCharge.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.ZipPostalCodeFrom");
+            this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.ZipPostalCodeFrom.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.AvailableCarrierServicesDomestic");
+            this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.AvailableCarrierServicesDomestic.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.AvailableCarrierServicesInternational");
+            this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.AvailableCarrierServicesInternational.Hint");
+
+            base.Uninstall();
         }
 
         #endregion
@@ -671,6 +718,14 @@ namespace Nop.Plugin.Shipping.USPS
             {
                 return ShippingRateComputationMethodType.Realtime;
             }
+        }
+        
+        /// <summary>
+        /// Gets a shipment tracker
+        /// </summary>
+        public IShipmentTracker ShipmentTracker
+        {
+            get { return null; }
         }
 
         #endregion

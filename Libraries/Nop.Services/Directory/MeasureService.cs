@@ -5,7 +5,7 @@ using Nop.Core;
 using Nop.Core.Caching;
 using Nop.Core.Data;
 using Nop.Core.Domain.Directory;
-using Nop.Core.Events;
+using Nop.Services.Events;
 
 namespace Nop.Services.Directory
 {
@@ -42,7 +42,7 @@ namespace Nop.Services.Directory
         /// <param name="measureDimensionRepository">Dimension repository</param>
         /// <param name="measureWeightRepository">Weight repository</param>
         /// <param name="measureSettings">Measure settings</param>
-        /// <param name="eventPublisher"></param>
+        /// <param name="eventPublisher">Event published</param>
         public MeasureService(ICacheManager cacheManager,
             IRepository<MeasureDimension> measureDimensionRepository,
             IRepository<MeasureWeight> measureWeightRepository,

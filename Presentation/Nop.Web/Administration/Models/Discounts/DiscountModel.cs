@@ -10,10 +10,12 @@ using Nop.Web.Framework.Mvc;
 namespace Nop.Admin.Models.Discounts
 {
     [Validator(typeof(DiscountValidator))]
-    public class DiscountModel : BaseNopEntityModel
+    public partial class DiscountModel : BaseNopEntityModel
     {
         public DiscountModel()
         {
+            AppliedToCategoryModels = new List<AppliedToCategoryModel>();
+            AppliedToProductVariantModels = new List<AppliedToProductVariantModel>();
             AvailableDiscountRequirementRules = new List<SelectListItem>();
             DiscountRequirementMetaInfos = new List<DiscountRequirementMetaInfo>();
         }
@@ -57,6 +59,12 @@ namespace Nop.Admin.Models.Discounts
         public int LimitationTimes { get; set; }
 
 
+        [NopResourceDisplayName("Admin.Promotions.Discounts.Fields.AppliedToCategories")]
+        public IList<AppliedToCategoryModel> AppliedToCategoryModels { get; set; }
+
+        [NopResourceDisplayName("Admin.Promotions.Discounts.Fields.AppliedToProductVariants")]
+        public IList<AppliedToProductVariantModel> AppliedToProductVariantModels { get; set; }
+
 
         [NopResourceDisplayName("Admin.Promotions.Discounts.Requirements.DiscountRequirementType")]
         public string AddDiscountRequirement { get; set; }
@@ -68,14 +76,14 @@ namespace Nop.Admin.Models.Discounts
 
         #region Nested classes
 
-        public class DiscountRequirementMetaInfo : BaseNopModel
+        public partial class DiscountRequirementMetaInfo : BaseNopModel
         {
             public int DiscountRequirementId { get; set; }
             public string RuleName { get; set; }
             public string ConfigurationUrl { get; set; }
         }
 
-        public class DiscountUsageHistoryModel : BaseNopEntityModel
+        public partial class DiscountUsageHistoryModel : BaseNopEntityModel
         {
             public int DiscountId { get; set; }
 
@@ -86,6 +94,19 @@ namespace Nop.Admin.Models.Discounts
             public DateTime CreatedOn { get; set; }
         }
 
+        public partial class AppliedToCategoryModel : BaseNopModel
+        {
+            public int CategoryId { get; set; }
+
+            public string Name { get; set; }
+        }
+
+        public partial class AppliedToProductVariantModel : BaseNopModel
+        {
+            public int ProductVariantId { get; set; }
+
+            public string FullProductName { get; set; }
+        }
         #endregion
     }
 }
