@@ -140,7 +140,7 @@
     </ProjectReference>
     <ProjectReference Include="..\..\Presentation\Nop.Web\Nop.Web.csproj">
       <Project>{4F1F649C-1020-45BE-A487-F416D9297FF3}</Project>
-      <Name>Nop.Web %28Presentation\Nop.Web%29</Name>
+      <Name>Nop.Web</Name>
     </ProjectReference>
     <ProjectReference Include="..\Nop.Tests\Nop.Tests.csproj">
       <Project>{1D9EB579-3630-468A-BE94-49E7DF4F6E1D}</Project>
