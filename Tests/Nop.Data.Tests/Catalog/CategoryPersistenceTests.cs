@@ -18,7 +18,6 @@ namespace Nop.Data.Tests.Catalog
                                    MetaKeywords = "Meta keywords",
                                    MetaDescription = "Meta description",
                                    MetaTitle = "Meta title",
-                                   SeName = "SE name",
                                    ParentCategoryId = 2,
                                    PictureId = 3,
                                    PageSize = 4,
@@ -28,6 +27,7 @@ namespace Nop.Data.Tests.Catalog
                                    ShowOnHomePage = false,
                                    HasDiscountsApplied = true,
                                    Published = true,
+                                   SubjectToAcl = true,
                                    Deleted = false,
                                    DisplayOrder = 5,
                                    CreatedOnUtc = new DateTime(2010, 01, 01),
@@ -40,7 +40,6 @@ namespace Nop.Data.Tests.Catalog
             fromDb.Description.ShouldEqual("Description 1");
             fromDb.MetaKeywords.ShouldEqual("Meta keywords");
             fromDb.MetaDescription.ShouldEqual("Meta description");
-            fromDb.SeName.ShouldEqual("SE name");
             fromDb.ParentCategoryId.ShouldEqual(2);
             fromDb.PictureId.ShouldEqual(3);
             fromDb.PageSize.ShouldEqual(4);
@@ -50,6 +49,7 @@ namespace Nop.Data.Tests.Catalog
             fromDb.ShowOnHomePage.ShouldEqual(false);
             fromDb.HasDiscountsApplied.ShouldEqual(true);
             fromDb.Published.ShouldEqual(true);
+            fromDb.SubjectToAcl.ShouldEqual(true);
             fromDb.Deleted.ShouldEqual(false);
             fromDb.DisplayOrder.ShouldEqual(5);
             fromDb.CreatedOnUtc.ShouldEqual(new DateTime(2010, 01, 01));

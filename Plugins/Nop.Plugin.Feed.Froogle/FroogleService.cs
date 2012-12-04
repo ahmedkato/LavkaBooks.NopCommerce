@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Web;
 using System.Web.Routing;
 using System.Xml;
@@ -89,7 +90,44 @@ namespace Nop.Plugin.Feed.Froogle
         #endregion
 
         #region Utilities
+        /// <summary>
+        /// Removes invalid characters
+        /// </summary>
+        /// <param name="input">Input string</param>
+        /// <param name="isHtmlEncoded">A value indicating whether input string is HTML encoded</param>
+        /// <returns>Valid string</returns>
+        private string StripInvalidChars(string input, bool isHtmlEncoded)
+        {
+            if (String.IsNullOrWhiteSpace(input))
+                return input;
 
+            //Microsoft uses a proprietary encoding (called CP-1252) for the bullet symbol and some other special characters, 
+            //whereas most websites and data feeds use UTF-8. When you copy-paste from a Microsoft product into a website, 
+            //some characters may appear as junk. Our system generates data feeds in the UTF-8 character encoding, 
+            //which many shopping engines now require.
+
+            //http://www.atensoftware.com/p90.php?q=182
+
+            if (isHtmlEncoded)
+                input = HttpUtility.HtmlDecode(input);
+
+            input = input.Replace("¼", "");
+            input = input.Replace("½", "");
+            input = input.Replace("¾", "");
+            //input = input.Replace("•", "");
+            //input = input.Replace("”", "");
+            //input = input.Replace("“", "");
+            //input = input.Replace("’", "");
+            //input = input.Replace("‘", "");
+            //input = input.Replace("™", "");
+            //input = input.Replace("®", "");
+            //input = input.Replace("°", "");
+            
+            if (isHtmlEncoded)
+                input = HttpUtility.HtmlEncode(input);
+
+            return input;
+        }
         private Currency GetUsedCurrency()
         {
             var currency = _currencyService.GetCurrencyById(_froogleSettings.CurrencyId);
@@ -198,6 +236,8 @@ namespace Nop.Plugin.Feed.Froogle
                             description = product.Name;
                         if (String.IsNullOrEmpty(description))
                             description = productVariant.FullProductName; //description is required
+                        //resolving character encoding issues in your data feed
+                        description = StripInvalidChars(description, true);
                         writer.WriteCData(description);
                         writer.WriteEndElement(); // description
 
@@ -236,8 +276,7 @@ namespace Nop.Plugin.Feed.Froogle
                         }
 
                         //link [link] - URL directly linking to your item's page on your website
-                        var productUrl = string.Format("{0}p/{1}/{2}", _webHelper.GetStoreLocation(false), product.Id,
-                                                       product.GetSeName(_workContext.WorkingLanguage.Id));
+                        var productUrl = string.Format("{0}{1}", _webHelper.GetStoreLocation(false), product.GetSeName(_workContext.WorkingLanguage.Id));
                         writer.WriteElementString("link", productUrl);
 
                         //image link [image_link] - URL of an image of the item
@@ -332,7 +371,47 @@ namespace Nop.Plugin.Feed.Froogle
                         }
 
                         #endregion
+
+                        #region Apparel Products
+
+                        /* Apparel includes all products that fall under 'Apparel & Accessories' (including all sub-categories)
+                         * in Google’s product taxonomy.
+                        */
+
+                        //gender [gender] - Gender of the item
+                        if (googleProduct != null && !String.IsNullOrEmpty(googleProduct.Gender))
+                        {
+                            writer.WriteStartElement("g", "gender", googleBaseNamespace);
+                            writer.WriteCData(googleProduct.Gender);
+                            writer.WriteFullEndElement(); // g:gender
+                        }
+
+                        //age group [age_group] - Target age group of the item
+                        if (googleProduct != null && !String.IsNullOrEmpty(googleProduct.AgeGroup))
+                        {
+                            writer.WriteStartElement("g", "age_group", googleBaseNamespace);
+                            writer.WriteCData(googleProduct.AgeGroup);
+                            writer.WriteFullEndElement(); // g:age_group
+                        }
+
+                        //color [color] - Color of the item
+                        if (googleProduct != null && !String.IsNullOrEmpty(googleProduct.Color))
+                        {
+                            writer.WriteStartElement("g", "color", googleBaseNamespace);
+                            writer.WriteCData(googleProduct.Color);
+                            writer.WriteFullEndElement(); // g:color
+                        }
+
+                        //size [size] - Size of the item
+                        if (googleProduct != null && !String.IsNullOrEmpty(googleProduct.Size))
+                        {
+                            writer.WriteStartElement("g", "size", googleBaseNamespace);
+                            writer.WriteCData(googleProduct.Size);
+                            writer.WriteFullEndElement(); // g:size
+                        }
                         
+                        #endregion
+
                         #region Tax & Shipping
                         
                         //tax [tax]
@@ -394,7 +473,6 @@ namespace Nop.Plugin.Feed.Froogle
             {
                 ProductPictureSize = 125,
                 PassShippingInfo = false,
-                FtpHostname = "ftp://uploads.google.com",
                 StaticFileName = string.Format("froogle_{0}.xml", CommonHelper.GenerateRandomDigitCode(10)),
             };
             _settingService.SaveSetting(settings);
@@ -408,15 +486,6 @@ namespace Nop.Plugin.Feed.Froogle
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.Currency.Hint", "Select the default currency that will be used to generate the feed.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.DefaultGoogleCategory", "Default Google category");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.DefaultGoogleCategory.Hint", "The default Google category will be useds if other one is not specified.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.FtpHostname", "FTP Hostname");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.FtpHostname.Hint", "Google FTP server hostname.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.FtpFilename", "FTP File name");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.FtpFilename.Hint", "Feed file name.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.FtpUsername", "FTP Username");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.FtpUsername.Hint", "Google FTP account username.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.FtpPassword", "FTP Password");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.FtpPassword.Hint", "Google FTP account password.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.FtpUploadStatus", "Froogle feed upload status: {0}");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.General", "General");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.Generate", "Generate feed");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.Override", "Override product settings");
@@ -424,13 +493,16 @@ namespace Nop.Plugin.Feed.Froogle
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.ProductPictureSize.Hint", "The default size (pixels) for product thumbnail images.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.Products.ProductName", "Product");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.Products.GoogleCategory", "Google Category");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.Products.Gender", "Gender");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.Products.AgeGroup", "Age group");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.Products.Color", "Color");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.Products.Size", "Size");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.SuccessResult", "Froogle feed has been successfully generated. {0} to see generated feed");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.Upload", "Upload feed to Google FTP server");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.TaskEnabled", "Automatically generate a file");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.TaskEnabled.Hint", "Check if you want a file to be automatically generated.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.GenerateStaticFileEachMinutes", "A task period (minutes)");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.GenerateStaticFileEachMinutes.Hint", "Specify a task period in minutes (generation of a new Froogle file).");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.TaskRestart", "If a task settings ('Automatically generate a file') have been changed, please restart the application");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.TaskRestart", "If a task setting ('Automatically generate a file') have been changed, please restart the application");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.StaticFilePath", "Generated file path (static)");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.StaticFilePath.Hint", "A file path of the generated Froogle file. It's static for your store and can be shared with the Froogle service.");
 
@@ -470,15 +542,6 @@ namespace Nop.Plugin.Feed.Froogle
             this.DeletePluginLocaleResource("Plugins.Feed.Froogle.Currency.Hint");
             this.DeletePluginLocaleResource("Plugins.Feed.Froogle.DefaultGoogleCategory");
             this.DeletePluginLocaleResource("Plugins.Feed.Froogle.DefaultGoogleCategory.Hint");
-            this.DeletePluginLocaleResource("Plugins.Feed.Froogle.FtpHostname");
-            this.DeletePluginLocaleResource("Plugins.Feed.Froogle.FtpHostname.Hint");
-            this.DeletePluginLocaleResource("Plugins.Feed.Froogle.FtpFilename");
-            this.DeletePluginLocaleResource("Plugins.Feed.Froogle.FtpFilename.Hint");
-            this.DeletePluginLocaleResource("Plugins.Feed.Froogle.FtpUsername");
-            this.DeletePluginLocaleResource("Plugins.Feed.Froogle.FtpUsername.Hint");
-            this.DeletePluginLocaleResource("Plugins.Feed.Froogle.FtpPassword");
-            this.DeletePluginLocaleResource("Plugins.Feed.Froogle.FtpPassword.Hint");
-            this.DeletePluginLocaleResource("Plugins.Feed.Froogle.FtpUploadStatus");
             this.DeletePluginLocaleResource("Plugins.Feed.Froogle.General");
             this.DeletePluginLocaleResource("Plugins.Feed.Froogle.Generate");
             this.DeletePluginLocaleResource("Plugins.Feed.Froogle.Override");
@@ -486,8 +549,11 @@ namespace Nop.Plugin.Feed.Froogle
             this.DeletePluginLocaleResource("Plugins.Feed.Froogle.ProductPictureSize.Hint");
             this.DeletePluginLocaleResource("Plugins.Feed.Froogle.Products.ProductName");
             this.DeletePluginLocaleResource("Plugins.Feed.Froogle.Products.GoogleCategory");
+            this.DeletePluginLocaleResource("Plugins.Feed.Froogle.Products.Gender");
+            this.DeletePluginLocaleResource("Plugins.Feed.Froogle.Products.AgeGroup");
+            this.DeletePluginLocaleResource("Plugins.Feed.Froogle.Products.Color");
+            this.DeletePluginLocaleResource("Plugins.Feed.Froogle.Products.Size");
             this.DeletePluginLocaleResource("Plugins.Feed.Froogle.SuccessResult");
-            this.DeletePluginLocaleResource("Plugins.Feed.Froogle.Upload");
             this.DeletePluginLocaleResource("Plugins.Feed.Froogle.TaskEnabled");
             this.DeletePluginLocaleResource("Plugins.Feed.Froogle.TaskEnabled.Hint");
             this.DeletePluginLocaleResource("Plugins.Feed.Froogle.GenerateStaticFileEachMinutes");

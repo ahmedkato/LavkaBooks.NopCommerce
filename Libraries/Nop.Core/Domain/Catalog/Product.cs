@@ -1,13 +1,15 @@
 using System;
 using System.Collections.Generic;
 using Nop.Core.Domain.Localization;
+using Nop.Core.Domain.Security;
+using Nop.Core.Domain.Seo;
 
 namespace Nop.Core.Domain.Catalog
 {
     /// <summary>
     /// Represents a product
     /// </summary>
-    public partial class Product : BaseEntity, ILocalizedEntity
+    public partial class Product : BaseEntity, ILocalizedEntity, ISlugSupported, IAclSupported
     {
         private ICollection<ProductVariant> _productVariants;
         private ICollection<ProductCategory> _productCategories;
@@ -63,11 +65,6 @@ namespace Nop.Core.Domain.Catalog
         public virtual string MetaTitle { get; set; }
 
         /// <summary>
-        /// Gets or sets the search-engine name
-        /// </summary>
-        public virtual string SeName { get; set; }
-
-        /// <summary>
         /// Gets or sets a value indicating whether the product allows customer reviews
         /// </summary>
         public virtual bool AllowCustomerReviews { get; set; }
@@ -91,6 +88,11 @@ namespace Nop.Core.Domain.Catalog
         /// Gets or sets the total rating votes (not approved reviews)
         /// </summary>
         public virtual int NotApprovedTotalReviews { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the entity is subject to ACL
+        /// </summary>
+        public virtual bool SubjectToAcl { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the entity is published

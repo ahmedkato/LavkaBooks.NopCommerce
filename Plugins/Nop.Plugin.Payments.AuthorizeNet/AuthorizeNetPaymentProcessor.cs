@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Globalization;
 using System.Net;
@@ -17,6 +18,7 @@ using Nop.Services.Configuration;
 using Nop.Services.Customers;
 using Nop.Services.Directory;
 using Nop.Services.Localization;
+using Nop.Services.Orders;
 using Nop.Services.Payments;
 
 namespace Nop.Plugin.Payments.AuthorizeNet
@@ -34,6 +36,7 @@ namespace Nop.Plugin.Payments.AuthorizeNet
         private readonly ICustomerService _customerService;
         private readonly CurrencySettings _currencySettings;
         private readonly IWebHelper _webHelper;
+        private readonly IOrderTotalCalculationService _orderTotalCalculationService;
         private readonly StoreInformationSettings _storeInformationSettings;
 
         #endregion
@@ -43,7 +46,7 @@ namespace Nop.Plugin.Payments.AuthorizeNet
         public AuthorizeNetPaymentProcessor(AuthorizeNetPaymentSettings authorizeNetPaymentSettings,
             ISettingService settingService, ICurrencyService currencyService,
             ICustomerService customerService,
-            CurrencySettings currencySettings, IWebHelper webHelper,
+            CurrencySettings currencySettings, IWebHelper webHelper, IOrderTotalCalculationService orderTotalCalculationService,
             StoreInformationSettings storeInformationSettings)
         {
             this._authorizeNetPaymentSettings = authorizeNetPaymentSettings;
@@ -52,6 +55,7 @@ namespace Nop.Plugin.Payments.AuthorizeNet
             this._customerService = customerService;
             this._currencySettings = currencySettings;
             this._webHelper = webHelper;
+            this._orderTotalCalculationService = orderTotalCalculationService;
             this._storeInformationSettings = storeInformationSettings;
         }
 
@@ -210,10 +214,13 @@ namespace Nop.Plugin.Payments.AuthorizeNet
         /// <summary>
         /// Gets additional handling fee
         /// </summary>
+        /// <param name="cart">Shoping cart</param>
         /// <returns>Additional handling fee</returns>
-        public decimal GetAdditionalHandlingFee()
+        public decimal GetAdditionalHandlingFee(IList<ShoppingCartItem> cart)
         {
-            return _authorizeNetPaymentSettings.AdditionalFee;
+            var result = this.CalculateAdditionalFee(_orderTotalCalculationService, cart,
+                _authorizeNetPaymentSettings.AdditionalFee, _authorizeNetPaymentSettings.AdditionalFeePercentage);
+            return result;
         }
 
         /// <summary>
@@ -540,6 +547,9 @@ namespace Nop.Plugin.Payments.AuthorizeNet
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.AuthorizeNet.Fields.LoginId.Hint", "Specify login identifier.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.AuthorizeNet.Fields.AdditionalFee", "Additional fee");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.AuthorizeNet.Fields.AdditionalFee.Hint", "Enter additional fee to charge your customers.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.AuthorizeNet.Fields.AdditionalFeePercentage", "Additinal fee. Use percentage");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.AuthorizeNet.Fields.AdditionalFeePercentage.Hint", "Determines whether to apply a percentage additional fee to the order total. If not enabled, a fixed value is used.");
+
             
             base.Install();
         }
@@ -561,6 +571,8 @@ namespace Nop.Plugin.Payments.AuthorizeNet
             this.DeletePluginLocaleResource("Plugins.Payments.AuthorizeNet.Fields.LoginId.Hint");
             this.DeletePluginLocaleResource("Plugins.Payments.AuthorizeNet.Fields.AdditionalFee");
             this.DeletePluginLocaleResource("Plugins.Payments.AuthorizeNet.Fields.AdditionalFee.Hint");
+            this.DeletePluginLocaleResource("Plugins.Payments.AuthorizeNet.Fields.AdditionalFeePercentage");
+            this.DeletePluginLocaleResource("Plugins.Payments.AuthorizeNet.Fields.AdditionalFeePercentage.Hint");
             
             base.Uninstall();
         }

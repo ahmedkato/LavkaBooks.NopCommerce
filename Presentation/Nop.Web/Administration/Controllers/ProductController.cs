@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Web.Mvc;
@@ -7,8 +8,10 @@ using Nop.Admin.Models.Catalog;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Common;
+using Nop.Core.Domain.Directory;
 using Nop.Services.Catalog;
 using Nop.Services.Common;
+using Nop.Services.Directory;
 using Nop.Services.ExportImport;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
@@ -19,6 +22,9 @@ using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Nop.Web.Framework.Mvc;
 using Telerik.Web.Mvc;
+using Nop.Services.Seo;
+using Nop.Services.Customers;
+using Nop.Core.Domain.Customers;
 
 namespace Nop.Admin.Controllers
 {
@@ -31,6 +37,8 @@ namespace Nop.Admin.Controllers
         private readonly IProductTemplateService _productTemplateService;
         private readonly ICategoryService _categoryService;
         private readonly IManufacturerService _manufacturerService;
+        private readonly ICustomerService _customerService;
+        private readonly IUrlRecordService _urlRecordService;
         private readonly IWorkContext _workContext;
         private readonly ILanguageService _languageService;
         private readonly ILocalizationService _localizationService;
@@ -45,6 +53,11 @@ namespace Nop.Admin.Controllers
         private readonly IImportManager _importManager;
         private readonly ICustomerActivityService _customerActivityService;
         private readonly IPermissionService _permissionService;
+        private readonly IAclService _aclService;
+        private readonly ICurrencyService _currencyService;
+        private readonly CurrencySettings _currencySettings;
+        private readonly IMeasureService _measureService;
+        private readonly MeasureSettings _measureSettings;
         private readonly PdfSettings _pdfSettings;
         private readonly AdminAreaSettings _adminAreaSettings;
 
@@ -55,20 +68,25 @@ namespace Nop.Admin.Controllers
         public ProductController(IProductService productService, 
             IProductTemplateService productTemplateService,
             ICategoryService categoryService, IManufacturerService manufacturerService,
-            IWorkContext workContext, ILanguageService languageService, 
+            ICustomerService customerService,
+            IUrlRecordService urlRecordService, IWorkContext workContext, ILanguageService languageService, 
             ILocalizationService localizationService, ILocalizedEntityService localizedEntityService,
             ISpecificationAttributeService specificationAttributeService, IPictureService pictureService,
             ITaxCategoryService taxCategoryService, IProductTagService productTagService,
             ICopyProductService copyProductService, IPdfService pdfService,
             IExportManager exportManager, IImportManager importManager,
             ICustomerActivityService customerActivityService,
-            IPermissionService permissionService, 
+            IPermissionService permissionService, IAclService aclService,
+            ICurrencyService currencyService, CurrencySettings currencySettings,
+            IMeasureService measureService, MeasureSettings measureSettings,
             PdfSettings pdfSettings, AdminAreaSettings adminAreaSettings)
         {
             this._productService = productService;
             this._productTemplateService = productTemplateService;
             this._categoryService = categoryService;
             this._manufacturerService = manufacturerService;
+            this._customerService = customerService;
+            this._urlRecordService = urlRecordService;
             this._workContext = workContext;
             this._languageService = languageService;
             this._localizationService = localizationService;
@@ -83,6 +101,11 @@ namespace Nop.Admin.Controllers
             this._importManager = importManager;
             this._customerActivityService = customerActivityService;
             this._permissionService = permissionService;
+            this._aclService = aclService;
+            this._currencyService = currencyService;
+            this._currencySettings = currencySettings;
+            this._measureService = measureService;
+            this._measureSettings = measureSettings;
             this._pdfSettings = pdfSettings;
             this._adminAreaSettings = adminAreaSettings;
         }
@@ -120,10 +143,10 @@ namespace Nop.Admin.Controllers
                                                                x => x.MetaTitle,
                                                                localized.MetaTitle,
                                                                localized.LanguageId);
-                _localizedEntityService.SaveLocalizedValue(product,
-                                                               x => x.SeName,
-                                                               localized.SeName,
-                                                               localized.LanguageId);
+
+                //search engine name
+                var seName = product.ValidateSeName(localized.SeName, localized.Name, false);
+                _urlRecordService.SaveSlug(product, seName, localized.LanguageId);
             }
         }
 
@@ -134,6 +157,14 @@ namespace Nop.Admin.Controllers
                 _pictureService.SetSeoFilename(pp.PictureId, _pictureService.GetPictureSeName(product.Name));
         }
 
+        [NonAction]
+        protected void UpdateProductTagTotals(Product product)
+        {
+            var productTags = product.ProductTags;
+            foreach (var productTag in productTags)
+                _productTagService.UpdateProductTagTotals(productTag);
+        }
+        
         [NonAction]
         private void PrepareTemplatesModel(ProductModel model)
         {
@@ -191,7 +222,7 @@ namespace Nop.Admin.Controllers
             if (model == null)
                 throw new ArgumentNullException("model");
 
-            model.NumberOfAvailableCategories = _categoryService.GetAllCategories(true).Count;
+            model.NumberOfAvailableCategories = _categoryService.GetAllCategories(showHidden: true).Count;
         }
 
         [NonAction]
@@ -201,6 +232,52 @@ namespace Nop.Admin.Controllers
                 throw new ArgumentNullException("model");
 
             model.NumberOfAvailableManufacturers = _manufacturerService.GetAllManufacturers(true).Count;
+        }
+
+        [NonAction]
+        private void PrepareAclModel(ProductModel model, Product product, bool excludeProperties)
+        {
+            if (model == null)
+                throw new ArgumentNullException("model");
+
+            model.AvailableCustomerRoles = _customerService
+                .GetAllCustomerRoles(true)
+                .Select(cr => cr.ToModel())
+                .ToList();
+            if (!excludeProperties)
+            {
+                if (product != null)
+                {
+                    model.SelectedCustomerRoleIds = _aclService.GetCustomerRoleIdsWithAccess(product);
+                }
+                else
+                {
+                    model.SelectedCustomerRoleIds = new int[0];
+                }
+            }
+        }
+
+        [NonAction]
+        protected void SaveProductAcl(Product product, ProductModel model)
+        {
+            var existingAclRecords = _aclService.GetAclRecords(product);
+            var allCustomerRoles = _customerService.GetAllCustomerRoles(true);
+            foreach (var customerRole in allCustomerRoles)
+            {
+                if (model.SelectedCustomerRoleIds != null && model.SelectedCustomerRoleIds.Contains(customerRole.Id))
+                {
+                    //new role
+                    if (existingAclRecords.Where(acl => acl.CustomerRoleId == customerRole.Id).Count() == 0)
+                        _aclService.InsertAclRecord(product, customerRole.Id);
+                }
+                else
+                {
+                    //removed role
+                    var aclRecordToDelete = existingAclRecords.Where(acl => acl.CustomerRoleId == customerRole.Id).FirstOrDefault();
+                    if (aclRecordToDelete != null)
+                        _aclService.DeleteAclRecord(aclRecordToDelete);
+                }
+            }
         }
 
         [NonAction]
@@ -312,6 +389,11 @@ namespace Nop.Admin.Controllers
             model.AvailableTaxCategories.Add(new SelectListItem() { Text = "---", Value = "0" });
             foreach (var tc in taxCategories)
                 model.AvailableTaxCategories.Add(new SelectListItem() { Text = tc.Name, Value = tc.Id.ToString(), Selected = variant != null && !setPredefinedValues && tc.Id == variant.TaxCategoryId });
+
+            model.PrimaryStoreCurrencyCode = _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId).CurrencyCode;
+            model.BaseWeightIn = _measureService.GetMeasureWeightById(_measureSettings.BaseWeightId).Name;
+            model.BaseDimensionIn = _measureService.GetMeasureDimensionById(_measureSettings.BaseDimensionId).Name;
+
 
             if (setPredefinedValues)
             {
@@ -450,7 +532,7 @@ namespace Nop.Admin.Controllers
             };
             //categories
             model.AvailableCategories.Add(new SelectListItem() { Text = _localizationService.GetResource("Admin.Common.All"), Value = "0" });
-            foreach (var c in _categoryService.GetAllCategories(true))
+            foreach (var c in _categoryService.GetAllCategories(showHidden: true))
                 model.AvailableCategories.Add(new SelectListItem() { Text = c.GetCategoryNameWithPrefix(_categoryService), Value = c.Id.ToString() });
 
             //manufacturers
@@ -515,11 +597,10 @@ namespace Nop.Admin.Controllers
             PrepareAddProductPictureModel(model);
             PrepareCategoryMapping(model);
             PrepareManufacturerMapping(model);
+            PrepareAclModel(model, null, false);
             //default values
             model.Published = true;
             model.AllowCustomerReviews = true;
-
-
             //first product variant
             model.FirstProductVariantModel = new ProductVariantModel();
             AddLocales(_languageService, model.FirstProductVariantModel.Locales);
@@ -540,8 +621,15 @@ namespace Nop.Admin.Controllers
                 product.CreatedOnUtc = DateTime.UtcNow;
                 product.UpdatedOnUtc = DateTime.UtcNow;
                 _productService.InsertProduct(product);
+                //search engine name
+                model.SeName = product.ValidateSeName(model.SeName, product.Name, true);
+                _urlRecordService.SaveSlug(product, model.SeName, 0);
+                //locales
                 UpdateLocales(product, model);
+                //tags
                 SaveProductTags(product, ParseProductTags(model.ProductTags));
+                //ACL (customer roles)
+                SaveProductAcl(product, model);
 
                 //default product variant
                 var variant = model.FirstProductVariantModel.ToEntity();
@@ -568,6 +656,7 @@ namespace Nop.Admin.Controllers
             PrepareAddProductPictureModel(model);
             PrepareCategoryMapping(model);
             PrepareManufacturerMapping(model);
+            PrepareAclModel(model, null, true);
             //first product variant
             FirstVariant_PrepareProductVariantModel(model.FirstProductVariantModel, null, false);
             return View(model);
@@ -593,7 +682,7 @@ namespace Nop.Admin.Controllers
                     locale.MetaKeywords = product.GetLocalized(x => x.MetaKeywords, languageId, false, false);
                     locale.MetaDescription = product.GetLocalized(x => x.MetaDescription, languageId, false, false);
                     locale.MetaTitle = product.GetLocalized(x => x.MetaTitle, languageId, false, false);
-                    locale.SeName = product.GetLocalized(x => x.SeName, languageId, false, false);
+                    locale.SeName = product.GetSeName(languageId, false, false);
                 });
 
             PrepareTags(model, product);
@@ -604,6 +693,7 @@ namespace Nop.Admin.Controllers
             PrepareAddProductPictureModel(model);
             PrepareCategoryMapping(model);
             PrepareManufacturerMapping(model);
+            PrepareAclModel(model, product, false);
             return View(model);
         }
 
@@ -620,11 +710,20 @@ namespace Nop.Admin.Controllers
 
             if (ModelState.IsValid)
             {
+                //product
                 product = model.ToEntity(product);
                 product.UpdatedOnUtc = DateTime.UtcNow;
                 _productService.UpdateProduct(product);
+                //search engine name
+                model.SeName = product.ValidateSeName(model.SeName, product.Name, true);
+                _urlRecordService.SaveSlug(product, model.SeName, 0);
+                //locales
                 UpdateLocales(product, model);
+                //tags
                 SaveProductTags(product, ParseProductTags(model.ProductTags));
+                //ACL (customer roles)
+                SaveProductAcl(product, model);
+                //picture seo names
                 UpdatePictureSeoNames(product);
 
                 //activity log
@@ -643,6 +742,7 @@ namespace Nop.Admin.Controllers
             PrepareAddProductPictureModel(model);
             PrepareCategoryMapping(model);
             PrepareManufacturerMapping(model);
+            PrepareAclModel(model, product, true);
             return View(model);
         }
 
@@ -655,6 +755,8 @@ namespace Nop.Admin.Controllers
 
             var product = _productService.GetProductById(id);
             _productService.DeleteProduct(product);
+            //update product tag totals
+            UpdateProductTagTotals(product);
 
             //activity log
             _customerActivityService.InsertActivity("DeleteProduct", _localizationService.GetResource("ActivityLog.DeleteProduct"), product.Name);
@@ -678,7 +780,12 @@ namespace Nop.Admin.Controllers
                 products.AddRange(_productService.GetProductsByIds(ids));
 
                 for (int i = 0; i < products.Count; i++)
-                    _productService.DeleteProduct(products[i]);
+                {
+                    var product = products[i];
+                    _productService.DeleteProduct(product);
+                    //update product tag totals
+                    UpdateProductTagTotals(product);
+                }
             }
 
             return RedirectToAction("List");
@@ -774,16 +881,23 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
 
-            var productCategory = new ProductCategory()
+            var productId = model.ProductId;
+            var categoryId = Int32.Parse(model.Category); //use Category property (not CategoryId) because appropriate property is stored in it
+              
+            var existingProductCategories = _categoryService.GetProductCategoriesByCategoryId(categoryId, 0, int.MaxValue, true);
+            if (existingProductCategories.FindProductCategory(productId, categoryId) == null)
             {
-                ProductId = model.ProductId,
-                CategoryId = Int32.Parse(model.Category), //use Category property (not CategoryId) because appropriate property is stored in it
-                IsFeaturedProduct = model.IsFeaturedProduct,
-                DisplayOrder = model.DisplayOrder
-            };
-            _categoryService.InsertProductCategory(productCategory);
-
-            return ProductCategoryList(command, model.ProductId);
+                var productCategory = new ProductCategory()
+                {
+                    ProductId = productId,
+                    CategoryId = categoryId,
+                    IsFeaturedProduct = model.IsFeaturedProduct,
+                    DisplayOrder = model.DisplayOrder
+                };
+                _categoryService.InsertProductCategory(productCategory);
+            }
+            
+            return ProductCategoryList(command, productId);
         }
 
         [GridAction(EnableCustomBinding = true)]
@@ -865,16 +979,23 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
 
-            var productManufacturer = new ProductManufacturer()
-            {
-                ProductId = model.ProductId,
-                ManufacturerId = Int32.Parse(model.Manufacturer), //use Manufacturer property (not ManufacturerId) because appropriate property is stored in it
-                IsFeaturedProduct = model.IsFeaturedProduct,
-                DisplayOrder = model.DisplayOrder
-            };
-            _manufacturerService.InsertProductManufacturer(productManufacturer);
+            var productId = model.ProductId;
+            var manufacturerId = Int32.Parse(model.Manufacturer); //use Manufacturer property (not ManufacturerId) because appropriate property is stored in it
 
-            return ProductManufacturerList(command, model.ProductId);
+            var existingProductmanufacturers = _manufacturerService.GetProductManufacturersByManufacturerId(manufacturerId, 0, int.MaxValue, true);
+            if (existingProductmanufacturers.FindProductManufacturer(productId, manufacturerId) == null)
+            {
+                var productManufacturer = new ProductManufacturer()
+                {
+                    ProductId = productId,
+                    ManufacturerId = manufacturerId,
+                    IsFeaturedProduct = model.IsFeaturedProduct,
+                    DisplayOrder = model.DisplayOrder
+                };
+                _manufacturerService.InsertProductManufacturer(productManufacturer);
+            }
+            
+            return ProductManufacturerList(command, productId);
         }
 
         [GridAction(EnableCustomBinding = true)]
@@ -1000,7 +1121,7 @@ namespace Nop.Admin.Controllers
             };
             //categories
             model.AvailableCategories.Add(new SelectListItem() { Text = _localizationService.GetResource("Admin.Common.All"), Value = "0" });
-            foreach (var c in _categoryService.GetAllCategories(true))
+            foreach (var c in _categoryService.GetAllCategories(showHidden: true))
                 model.AvailableCategories.Add(new SelectListItem() { Text = c.GetCategoryNameWithPrefix(_categoryService), Value = c.Id.ToString() });
 
             //manufacturers
@@ -1139,7 +1260,7 @@ namespace Nop.Admin.Controllers
             };
             //categories
             model.AvailableCategories.Add(new SelectListItem() { Text = _localizationService.GetResource("Admin.Common.All"), Value = "0" });
-            foreach (var c in _categoryService.GetAllCategories(true))
+            foreach (var c in _categoryService.GetAllCategories(showHidden: true))
                 model.AvailableCategories.Add(new SelectListItem() { Text = c.GetCategoryNameWithPrefix(_categoryService), Value = c.Id.ToString() });
 
             //manufacturers
@@ -1402,21 +1523,7 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
 
-            var tags = _productTagService.GetAllProductTags();
-            var model = new GridModel<ProductTagModel>
-            {
-                Data = tags.Take(_adminAreaSettings.GridPageSize).Select(x =>
-                {
-                    return new ProductTagModel()
-                    {
-                        Id = x.Id,
-                        Name = x.Name,
-                        ProductCount = x.ProductCount
-                    };
-                }),
-                Total = tags.Count
-            };
-            return View(model);
+            return View();
         }
 
         [HttpPost, GridAction(EnableCustomBinding = true)]
@@ -1454,7 +1561,7 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
 
-            var tag = _productTagService.GetProductById(id);
+            var tag = _productTagService.GetProductTagById(id);
             if (tag == null)
                 throw new ArgumentException("No product tag found with the specified id");
             _productTagService.DeleteProductTag(tag);
@@ -1468,7 +1575,7 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
 
-            var productTag = _productTagService.GetProductById(id);
+            var productTag = _productTagService.GetProductTagById(id);
             if (productTag == null)
                 //No product tag found with the specified id
                 return RedirectToAction("List");
@@ -1494,7 +1601,7 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
 
-            var productTag = _productTagService.GetProductById(model.Id);
+            var productTag = _productTagService.GetProductTagById(model.Id);
             if (productTag == null)
                 //No product tag found with the specified id
                 return RedirectToAction("List");
@@ -1532,11 +1639,15 @@ namespace Nop.Admin.Controllers
                     _workContext.WorkingLanguage.Id, new List<int>(),
                     ProductSortingEnum.Position, 0, int.MaxValue,
                     false, out filterableSpecificationAttributeOptionIds, true);
-                string fileName = string.Format("pdfcatalog_{0}_{1}.pdf", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"), CommonHelper.GenerateRandomDigitCode(4));
-                string filePath = System.IO.Path.Combine(this.Request.PhysicalApplicationPath, "content\\files\\ExportImport", fileName);
-                _pdfService.PrintProductsToPdf(products, _workContext.WorkingLanguage, filePath);
-                var bytes = System.IO.File.ReadAllBytes(filePath);
-                return File(bytes, "application/pdf", fileName);
+
+
+                byte[] bytes = null;
+                using (var stream = new MemoryStream())
+                {
+                    _pdfService.PrintProductsToPdf(stream, products, _workContext.WorkingLanguage);
+                    bytes = stream.ToArray();
+                }
+                return File(bytes, "application/pdf", "pdfcatalog.pdf");
             }
             catch (Exception exc)
             {
@@ -1558,9 +1669,8 @@ namespace Nop.Admin.Controllers
                     ProductSortingEnum.Position, 0, int.MaxValue,
                     false, out filterableSpecificationAttributeOptionIds, true);
 
-                var fileName = string.Format("products_{0}.xml", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"));
                 var xml = _exportManager.ExportProductsToXml(products);
-                return new XmlDownloadResult(xml, fileName);
+                return new XmlDownloadResult(xml, "products.xml");
             }
             catch (Exception exc)
             {
@@ -1584,9 +1694,8 @@ namespace Nop.Admin.Controllers
                 products.AddRange(_productService.GetProductsByIds(ids));
             }
 
-            var fileName = string.Format("products_{0}.xml", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"));
             var xml = _exportManager.ExportProductsToXml(products);
-            return new XmlDownloadResult(xml, fileName);
+            return new XmlDownloadResult(xml, "products.xml");
         }
 
         public ActionResult ExportExcelAll()
@@ -1601,14 +1710,14 @@ namespace Nop.Admin.Controllers
                     _workContext.WorkingLanguage.Id, new List<int>(),
                     ProductSortingEnum.Position, 0, int.MaxValue,
                     false, out filterableSpecificationAttributeOptionIds, true);
-
-                string fileName = string.Format("products_{0}_{1}.xlsx", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"), CommonHelper.GenerateRandomDigitCode(4));
-                string filePath = System.IO.Path.Combine(Request.PhysicalApplicationPath, "content\\files\\ExportImport", fileName);
-
-                _exportManager.ExportProductsToXlsx(filePath, products);
-
-                var bytes = System.IO.File.ReadAllBytes(filePath);
-                return File(bytes, "text/xls", fileName);
+                
+                byte[] bytes = null;
+                using (var stream = new MemoryStream())
+                {
+                    _exportManager.ExportProductsToXlsx(stream, products);
+                    bytes = stream.ToArray();
+                }
+                return File(bytes, "text/xls", "products.xlsx");
             }
             catch (Exception exc)
             {
@@ -1632,13 +1741,13 @@ namespace Nop.Admin.Controllers
                 products.AddRange(_productService.GetProductsByIds(ids));
             }
 
-            string fileName = string.Format("products_{0}_{1}.xlsx", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"), CommonHelper.GenerateRandomDigitCode(4));
-            string filePath = System.IO.Path.Combine(Request.PhysicalApplicationPath, "content\\files\\ExportImport", fileName);
-
-            _exportManager.ExportProductsToXlsx(filePath, products);
-
-            var bytes = System.IO.File.ReadAllBytes(filePath);
-            return File(bytes, "text/xls", fileName);
+            byte[] bytes = null;
+            using (var stream = new MemoryStream())
+            {
+                _exportManager.ExportProductsToXlsx(stream, products);
+                bytes = stream.ToArray();
+            }
+            return File(bytes, "text/xls", "products.xlsx");
         }
 
         [HttpPost]
@@ -1652,14 +1761,7 @@ namespace Nop.Admin.Controllers
                 var file = Request.Files["importexcelfile"];
                 if (file != null && file.ContentLength > 0)
                 {
-                    var fileBytes = new byte[file.ContentLength];
-                    file.InputStream.Read(fileBytes, 0, file.ContentLength);
-                    //do stuff with the bytes
-                    string fileName = string.Format("products_{0}_{1}.xlsx", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"), CommonHelper.GenerateRandomDigitCode(4));
-                    string filePath = System.IO.Path.Combine(Request.PhysicalApplicationPath, "content\\files\\ExportImport", fileName);
-
-                    System.IO.File.WriteAllBytes(filePath, fileBytes);
-                    _importManager.ImportProductsFromXlsx(filePath);
+                    _importManager.ImportProductsFromXlsx(file.InputStream);
                 }
                 else
                 {

@@ -3,6 +3,7 @@ using System.Linq;
 using Nop.Core;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Plugins;
+using Nop.Services.Configuration;
 using Nop.Services.Discounts;
 using Nop.Services.Localization;
 
@@ -10,6 +11,13 @@ namespace Nop.Plugin.DiscountRules.HasOneProduct
 {
     public partial class HasOneProductDiscountRequirementRule : BasePlugin, IDiscountRequirementRule
     {
+        private readonly ISettingService _settingService;
+
+        public HasOneProductDiscountRequirementRule(ISettingService settingService)
+        {
+            this._settingService = settingService;
+        }
+
         /// <summary>
         /// Check discount requirement
         /// </summary>
@@ -23,7 +31,9 @@ namespace Nop.Plugin.DiscountRules.HasOneProduct
             if (request.DiscountRequirement == null)
                 throw new NopException("Discount requirement is not set");
 
-            if (String.IsNullOrWhiteSpace(request.DiscountRequirement.RestrictedProductVariantIds))
+            var restrictedProductVariantIds = _settingService.GetSettingByKey<string>(string.Format("DiscountRequirement.RestrictedProductVariantIds-{0}", request.DiscountRequirement.Id));
+
+            if (String.IsNullOrWhiteSpace(restrictedProductVariantIds))
                 return true;
 
             if (request.Customer == null)
@@ -35,17 +45,23 @@ namespace Nop.Plugin.DiscountRules.HasOneProduct
             //      {Product variant ID}:{Quantity}. For example, 77:1, 123:2, 156:3
             //3. The comma-separated list of product variant identifiers with quantity range.
             //      {Product variant ID}:{Min quantity}-{Max quantity}. For example, 77:1-3, 123:2-5, 156:3-8
-            var restrictedProductVariants = request.DiscountRequirement.RestrictedProductVariantIds
+            var restrictedProductVariants = restrictedProductVariantIds
                 .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(x => x.Trim())
                 .ToList();
             if (restrictedProductVariants.Count == 0)
                 return false;
-
-            //cart
-            var cart = request.Customer.ShoppingCartItems.Where(x => x.ShoppingCartType == ShoppingCartType.ShoppingCart);
             
+            //group products in the cart by product variant ID
+            //it could be the same product variant with distinct product attributes
+            //that's why we get the total quantity of this product variant
+            var cartQuery = from sci in request.Customer.ShoppingCartItems
+                                   where sci.ShoppingCartType == ShoppingCartType.ShoppingCart
+                                   group sci by sci.ProductVariantId into g
+                                   select new {ProductVariantId = g.Key, TotalQuantity = g.Sum(x => x.Quantity)};
+            var cart = cartQuery.ToList();
 
+            //process
             bool found = false;
             foreach (var restrictedPv in restrictedProductVariants)
             {
@@ -73,7 +89,7 @@ namespace Nop.Plugin.DiscountRules.HasOneProduct
                                 //parsing error; exit;
                                 return false;
 
-                            if (sci.ProductVariantId == restrictedPvId && quantityMin <= sci.Quantity && sci.Quantity <= quantityMax)
+                            if (sci.ProductVariantId == restrictedPvId && quantityMin <= sci.TotalQuantity && sci.TotalQuantity <= quantityMax)
                             {
                                 found = true;
                                 break;
@@ -92,7 +108,7 @@ namespace Nop.Plugin.DiscountRules.HasOneProduct
                                 //parsing error; exit;
                                 return false;
 
-                            if (sci.ProductVariantId == restrictedPvId && sci.Quantity == quantity)
+                            if (sci.ProductVariantId == restrictedPvId && sci.TotalQuantity == quantity)
                             {
                                 found = true;
                                 break;

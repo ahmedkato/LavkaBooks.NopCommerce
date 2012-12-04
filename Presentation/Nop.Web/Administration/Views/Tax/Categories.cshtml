@@ -3,7 +3,7 @@
 @using System.Linq;
 @{    
     //page title
-    ViewBag.Title = @T("Admin.Configuration.Tax.Categories").Text;
+    ViewBag.Title = T("Admin.Configuration.Tax.Categories").Text;
 }
 <div class="section-header">
     <div class="title">
@@ -26,8 +26,8 @@
                         columns.Bound(x => x.DisplayOrder).Width(100);
                         columns.Command(commands =>
                         {
-                            commands.Edit();
-                            commands.Delete();
+                            commands.Edit().Text(T("Admin.Common.Edit").Text);
+                            commands.Delete().Text(T("Admin.Common.Delete").Text);
                         }).Width(180);
 
                     })

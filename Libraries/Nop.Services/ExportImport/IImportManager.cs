@@ -1,15 +1,16 @@
 ﻿
+using System.IO;
 namespace Nop.Services.ExportImport
 {
     /// <summary>
     /// Import manager interface
     /// </summary>
-    public interface IImportManager
+    public partial interface IImportManager
     {
         /// <summary>
         /// Import products from XLSX file
         /// </summary>
-        /// <param name="filePath">Excel file path</param>
-        void ImportProductsFromXlsx(string filePath);
+        /// <param name="stream">Stream</param>
+        void ImportProductsFromXlsx(Stream stream);
     }
 }

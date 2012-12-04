@@ -143,6 +143,15 @@ namespace Nop.Services.Payments
             if (paymentMethod.PaymentMethodType != PaymentMethodType.Redirection)
                 return false;   //this option is available only for redirection payment methods
 
+            if (order.Deleted)
+                return false;  //do not allow for deleted orders
+
+            if (order.OrderStatus == OrderStatus.Cancelled)
+                return false;  //do not allow for cancelled orders
+
+            if (order.PaymentStatus != PaymentStatus.Pending)
+                return false;  //payment status should be Pending
+
             return paymentMethod.CanRePostProcessPayment(order);
         }
 
@@ -151,15 +160,16 @@ namespace Nop.Services.Payments
         /// <summary>
         /// Gets an additional handling fee of a payment method
         /// </summary>
+        /// <param name="cart">Shoping cart</param>
         /// <param name="paymentMethodSystemName">Payment method system name</param>
         /// <returns>Additional handling fee</returns>
-        public virtual decimal GetAdditionalHandlingFee(string paymentMethodSystemName)
+        public virtual decimal GetAdditionalHandlingFee(IList<ShoppingCartItem> cart, string paymentMethodSystemName)
         {
             var paymentMethod = LoadPaymentMethodBySystemName(paymentMethodSystemName);
             if (paymentMethod == null)
                 return decimal.Zero;
 
-            decimal result = paymentMethod.GetAdditionalHandlingFee();
+            decimal result = paymentMethod.GetAdditionalHandlingFee(cart);
             if (result < decimal.Zero)
                 result = decimal.Zero;
             if (_shoppingCartSettings.RoundPricesDuringCalculation)

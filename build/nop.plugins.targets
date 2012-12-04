@@ -91,10 +91,6 @@
         <MSBuild Projects ="$(MSBuildProjectFullPath)"
                         Targets="Plugin-CopyToWeb"
                         Properties="
-                        PluginProjectName=Nop.Plugin.ExchangeRate.EcbExchange"/>
-        <MSBuild Projects ="$(MSBuildProjectFullPath)"
-                        Targets="Plugin-CopyToWeb"
-                        Properties="
                         PluginProjectName=Nop.Plugin.ExchangeRate.McExchange"/>
     </Target>
 
@@ -108,10 +104,6 @@
                         Targets="Plugin-CopyToWeb"
                         Properties="
                         PluginProjectName=Nop.Plugin.ExternalAuth.OpenId"/>
-        <MSBuild Projects ="$(MSBuildProjectFullPath)"
-                        Targets="Plugin-CopyToWeb"
-                        Properties="
-                        PluginProjectName=Nop.Plugin.ExternalAuth.Twitter"/>
     </Target>
     
     <!--Feed plugins-->
@@ -119,15 +111,7 @@
         <MSBuild Projects ="$(MSBuildProjectFullPath)"
                         Targets="Plugin-CopyToWeb"
                         Properties="
-                        PluginProjectName=Nop.Plugin.Feed.Become"/>
-        <MSBuild Projects ="$(MSBuildProjectFullPath)"
-                        Targets="Plugin-CopyToWeb"
-                        Properties="
                         PluginProjectName=Nop.Plugin.Feed.Froogle"/>
-        <MSBuild Projects ="$(MSBuildProjectFullPath)"
-                        Targets="Plugin-CopyToWeb"
-                        Properties="
-                        PluginProjectName=Nop.Plugin.Feed.PriceGrabber"/>
     </Target>
     
     <!--Misc plugins-->
@@ -135,11 +119,7 @@
         <MSBuild Projects ="$(MSBuildProjectFullPath)"
                         Targets="Plugin-CopyToWeb"
                         Properties="
-                        PluginProjectName=Nop.Plugin.Misc.WebServices"/>        
-		<MSBuild Projects ="$(MSBuildProjectFullPath)"
-                        Targets="Plugin-CopyToWeb"
-                        Properties="
-                        PluginProjectName=Nop.Plugin.Misc.MailChimp"/>
+                        PluginProjectName=Nop.Plugin.Misc.WebServices"/>
     </Target>
     
     <!--Payment plugins-->
@@ -164,10 +144,6 @@
                         Targets="Plugin-CopyToWeb"
                         Properties="
                         PluginProjectName=Nop.Plugin.Payments.Manual"/>
-        <MSBuild Projects ="$(MSBuildProjectFullPath)"
-                        Targets="Plugin-CopyToWeb"
-                        Properties="
-                        PluginProjectName=Nop.Plugin.Payments.PayInStore"/>
         <MSBuild Projects ="$(MSBuildProjectFullPath)"
                         Targets="Plugin-CopyToWeb"
                         Properties="
@@ -219,10 +195,6 @@
         <MSBuild Projects ="$(MSBuildProjectFullPath)"
                         Targets="Plugin-CopyToWeb"
                         Properties="
-                        PluginProjectName=Nop.Plugin.SMS.Clickatell"/>
-        <MSBuild Projects ="$(MSBuildProjectFullPath)"
-                        Targets="Plugin-CopyToWeb"
-                        Properties="
                         PluginProjectName=Nop.Plugin.SMS.Verizon"/>
     </Target>
 
@@ -236,14 +208,6 @@
                         Targets="Plugin-CopyToWeb"
                         Properties="
                         PluginProjectName=Nop.Plugin.Tax.FixedRate"/>
-        <MSBuild Projects ="$(MSBuildProjectFullPath)"
-                        Targets="Plugin-CopyToWeb"
-                        Properties="
-                        PluginProjectName=Nop.Plugin.Tax.Free"/>
-        <MSBuild Projects ="$(MSBuildProjectFullPath)"
-                        Targets="Plugin-CopyToWeb"
-                        Properties="
-                        PluginProjectName=Nop.Plugin.Tax.StrikeIron"/>
     </Target>
 
     <!--Widget plugins-->

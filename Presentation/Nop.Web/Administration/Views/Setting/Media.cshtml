@@ -2,7 +2,7 @@
 @using Telerik.Web.Mvc.UI;
 @{
     //page title
-    ViewBag.Title = @T("Admin.Configuration.Settings.Media").Text;
+    ViewBag.Title = T("Admin.Configuration.Settings.Media").Text;
 }
 @using (Html.BeginForm())
 {
@@ -32,7 +32,7 @@
                 }
                 
             <input type="submit" name="change-picture-storage" class="t-button" onclick="return confirm('@T("Admin.Common.AreYouSure")');" value="@T("Admin.Configuration.Settings.Media.PicturesStoredIntoDatabase.Change")" />
-            NOTE: Do not forget to backup your database before changing this option.
+             @T("Admin.Configuration.Settings.Media.PicturesStoredIntoDatabase.Note")
             </td>
         </tr>
         <tr>

@@ -188,13 +188,16 @@ namespace Nop.Services.Orders
         /// <param name="os">Order status; null to load all records</param>
         /// <param name="ps">Order payment status; null to load all records</param>
         /// <param name="ss">Shipping status; null to load all records</param>
+        /// <param name="billingCountryId">Billing country identifier; 0 to load all records</param>
         /// <param name="recordsToReturn">Records to return</param>
         /// <param name="orderBy">1 - order by quantity, 2 - order by total amount</param>
+        /// <param name="groupBy">1 - group by product variants, 2 - group by products</param>
         /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Result</returns>
         public virtual IList<BestsellersReportLine> BestSellersReport(DateTime? startTime,
             DateTime? endTime, OrderStatus? os, PaymentStatus? ps, ShippingStatus? ss,
-            int recordsToReturn = 5, int orderBy = 1, bool showHidden = false)
+            int billingCountryId = 0,
+            int recordsToReturn = 5, int orderBy = 1, int groupBy = 1, bool showHidden = false)
         {
             int? orderStatusId = null;
             if (os.HasValue)
@@ -221,18 +224,32 @@ namespace Nop.Services.Orders
                          (!o.Deleted) &&
                          (!p.Deleted) &&
                          (!pv.Deleted) &&
+                         (billingCountryId == 0 || o.BillingAddress.CountryId == billingCountryId) &&
                          (showHidden || p.Published) &&
                          (showHidden || pv.Published)
                          select opv;
 
-            var query2 = from opv in query1
-                         group opv by opv.ProductVariantId into g
-                         select new
-                         {
-                             ProductVariantId = g.Key,
-                             TotalAmount = g.Sum(x => x.PriceExclTax),
-                             TotalQuantity = g.Sum(x => x.Quantity),
-                         };
+            var query2 = groupBy == 1 ?
+                //group by product variants
+                from opv in query1
+                group opv by opv.ProductVariantId into g
+                select new
+                {
+                    EntityId = g.Key,
+                    TotalAmount = g.Sum(x => x.PriceExclTax),
+                    TotalQuantity = g.Sum(x => x.Quantity),
+                }
+                :
+                //group by products
+                from opv in query1
+                group opv by opv.ProductVariant.ProductId into g
+                select new
+                {
+                    EntityId = g.Key,
+                    TotalAmount = g.Sum(x => x.PriceExclTax),
+                    TotalQuantity = g.Sum(x => x.Quantity),
+                }
+                ;
             
             switch (orderBy)
             {
@@ -255,12 +272,13 @@ namespace Nop.Services.Orders
 
             var result = query2.ToList().Select(x =>
             {
-                return new BestsellersReportLine()
+                var reportLine = new BestsellersReportLine()
                 {
-                    ProductVariantId = x.ProductVariantId,
+                    EntityId = x.EntityId,
                     TotalAmount = x.TotalAmount,
                     TotalQuantity = x.TotalQuantity
                 };
+                return reportLine;
             }).ToList();
 
             return result;

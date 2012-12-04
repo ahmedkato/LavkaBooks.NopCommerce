@@ -5,12 +5,15 @@ using System.Web.Mvc;
 using Nop.Admin.Models.Affiliates;
 using Nop.Core;
 using Nop.Core.Domain.Affiliates;
+using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Directory;
 using Nop.Services.Affiliates;
 using Nop.Services.Catalog;
+using Nop.Services.Customers;
 using Nop.Services.Directory;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
+using Nop.Services.Orders;
 using Nop.Services.Security;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
@@ -31,6 +34,8 @@ namespace Nop.Admin.Controllers
         private readonly IStateProvinceService _stateProvinceService;
         private readonly IPriceFormatter _priceFormatter;
         private readonly IAffiliateService _affiliateService;
+        private readonly ICustomerService _customerService;
+        private readonly IOrderService _orderService;
         private readonly IPermissionService _permissionService;
 
         #endregion
@@ -41,6 +46,7 @@ namespace Nop.Admin.Controllers
             IWorkContext workContext, IDateTimeHelper dateTimeHelper, IWebHelper webHelper,
             ICountryService countryService, IStateProvinceService stateProvinceService,
             IPriceFormatter priceFormatter, IAffiliateService affiliateService,
+            ICustomerService customerService, IOrderService orderService,
             IPermissionService permissionService)
         {
             this._localizationService = localizationService;
@@ -51,6 +57,8 @@ namespace Nop.Admin.Controllers
             this._stateProvinceService = stateProvinceService;
             this._priceFormatter = priceFormatter;
             this._affiliateService = affiliateService;
+            this._customerService = customerService;
+            this._orderService = orderService;
             this._permissionService = permissionService;
         }
 
@@ -74,6 +82,26 @@ namespace Nop.Admin.Controllers
                     model.Address = affiliate.Address.ToModel();
                 }
             }
+
+            model.Address.FirstNameEnabled = true;
+            model.Address.FirstNameRequired = true;
+            model.Address.LastNameEnabled = true;
+            model.Address.LastNameRequired = true;
+            model.Address.EmailEnabled = true;
+            model.Address.EmailRequired = true;
+            model.Address.CompanyEnabled = true;
+            model.Address.CountryEnabled = true;
+            model.Address.StateProvinceEnabled = true;
+            model.Address.CityEnabled = true;
+            model.Address.CityRequired = true;
+            model.Address.StreetAddressEnabled = true;
+            model.Address.StreetAddressRequired = true;
+            model.Address.StreetAddress2Enabled = true;
+            model.Address.ZipPostalCodeEnabled = true;
+            model.Address.ZipPostalCodeRequired = true;
+            model.Address.PhoneEnabled = true;
+            model.Address.PhoneRequired = true;
+            model.Address.FaxEnabled = true;
 
             //address
             model.Address.AvailableCountries.Add(new SelectListItem() { Text = _localizationService.GetResource("Admin.Address.SelectCountry"), Value = "0" });
@@ -115,16 +143,16 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageAffiliates))
                 return AccessDeniedView();
 
-            var affiliates = _affiliateService.GetAllAffiliates(true);
+            var affiliates = _affiliateService.GetAllAffiliates(command.Page - 1, command.PageSize, true);
             var gridModel = new GridModel<AffiliateModel>
             {
-                Data = affiliates.PagedForCommand(command).Select(x =>
+                Data = affiliates.Select(x =>
                 {
                     var m = new AffiliateModel();
                     PrepareAffiliateModel(m, x, false);
                     return m;
                 }),
-                Total = affiliates.Count,
+                Total = affiliates.TotalCount,
             };
             return new JsonResult
             {
@@ -250,14 +278,10 @@ namespace Nop.Admin.Controllers
             if (affiliate == null)
                 throw new ArgumentException("No affiliate found with the specified id");
 
-            var orders = affiliate.AffiliatedOrders
-                .Where(o => !o.Deleted)
-                .OrderBy(x => x.CreatedOnUtc)
-                .ToList();
+            var orders = _orderService.GetOrdersByAffiliateId(affiliate.Id, command.Page - 1, command.PageSize);
             var model = new GridModel<AffiliateModel.AffiliatedOrderModel>
             {
-                Data = orders.PagedForCommand(command)
-                    .Select(order =>
+                Data = orders.Select(order =>
                     {
                         var orderModel = new AffiliateModel.AffiliatedOrderModel();
                         orderModel.Id = order.Id;
@@ -268,7 +292,7 @@ namespace Nop.Admin.Controllers
                         orderModel.CreatedOn = _dateTimeHelper.ConvertToUserTime(order.CreatedOnUtc, DateTimeKind.Utc);
                         return orderModel;
                     }),
-                Total = orders.Count
+                Total = orders.TotalCount
             };
 
             return new JsonResult
@@ -286,22 +310,18 @@ namespace Nop.Admin.Controllers
             var affiliate = _affiliateService.GetAffiliateById(affiliateId);
             if (affiliate == null)
                 throw new ArgumentException("No affiliate found with the specified id");
-
-            var customers = affiliate.AffiliatedCustomers
-                .Where(c => !c.Deleted)
-                .OrderBy(x => x.CreatedOnUtc)
-                .ToList();
+            
+            var customers = _customerService.GetAllCustomers(affiliate.Id, command.Page - 1, command.PageSize);
             var model = new GridModel<AffiliateModel.AffiliatedCustomerModel>
             {
-                Data = customers.PagedForCommand(command)
-                    .Select(customer =>
+                Data = customers.Select(customer =>
                     {
                         var customerModel = new AffiliateModel.AffiliatedCustomerModel();
                         customerModel.Id = customer.Id;
                         customerModel.Name = customer.Email;
                         return customerModel;
                     }),
-                Total = customers.Count
+                Total = customers.TotalCount
             };
 
             return new JsonResult

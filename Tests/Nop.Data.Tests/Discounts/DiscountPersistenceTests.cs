@@ -64,10 +64,7 @@ namespace Nop.Data.Tests.Discounts
                 (
                      new DiscountRequirement()
                      {
-                         DiscountRequirementRuleSystemName = "BillingCountryIs",
-                         SpentAmount = 1,
-                         BillingCountryId = 2,
-                         ShippingCountryId = 3,
+                         DiscountRequirementRuleSystemName = "BillingCountryIs"
                      }
                 );
             var fromDb = SaveAndLoadEntity(discount);
@@ -162,7 +159,6 @@ namespace Nop.Data.Tests.Discounts
                 MetaKeywords = "Meta keywords",
                 MetaDescription = "Meta description",
                 MetaTitle = "Meta title",
-                SeName = "SE name",
                 ParentCategoryId = 2,
                 PictureId = 3,
                 PageSize = 4,

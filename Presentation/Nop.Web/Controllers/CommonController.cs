@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Web;
 using System.Web.Mvc;
 using Nop.Core;
@@ -21,6 +22,7 @@ using Nop.Services.Customers;
 using Nop.Services.Directory;
 using Nop.Services.Forums;
 using Nop.Services.Localization;
+using Nop.Services.Logging;
 using Nop.Services.Messages;
 using Nop.Services.Orders;
 using Nop.Services.Security;
@@ -34,6 +36,7 @@ using Nop.Web.Framework.UI.Captcha;
 using Nop.Web.Infrastructure.Cache;
 using Nop.Web.Models.Catalog;
 using Nop.Web.Models.Common;
+using Nop.Web.Models.Topics;
 
 namespace Nop.Web.Controllers
 {
@@ -61,6 +64,7 @@ namespace Nop.Web.Controllers
         private readonly IMobileDeviceHelper _mobileDeviceHelper;
         private readonly HttpContextBase _httpContext;
         private readonly ICacheManager _cacheManager;
+        private readonly ICustomerActivityService _customerActivityService;
 
         private readonly CustomerSettings _customerSettings;
         private readonly TaxSettings _taxSettings;
@@ -88,7 +92,7 @@ namespace Nop.Web.Controllers
             IGenericAttributeService genericAttributeService, IWebHelper webHelper,
             IPermissionService permissionService, IMobileDeviceHelper mobileDeviceHelper,
             HttpContextBase httpContext, ICacheManager cacheManager,
-            CustomerSettings customerSettings, 
+            ICustomerActivityService customerActivityService, CustomerSettings customerSettings, 
             TaxSettings taxSettings, CatalogSettings catalogSettings,
             StoreInformationSettings storeInformationSettings, EmailAccountSettings emailAccountSettings,
             CommonSettings commonSettings, BlogSettings blogSettings, ForumSettings forumSettings,
@@ -114,6 +118,7 @@ namespace Nop.Web.Controllers
             this._mobileDeviceHelper = mobileDeviceHelper;
             this._httpContext = httpContext;
             this._cacheManager = cacheManager;
+            this._customerActivityService = customerActivityService;
 
             this._customerSettings = customerSettings;
             this._taxSettings = taxSettings;
@@ -138,14 +143,19 @@ namespace Nop.Web.Controllers
             {
                 var result = _languageService
                     .GetAllLanguages()
-                    .Select(x => x.ToModel())
+                    .Select(x => new LanguageModel()
+                    {
+                        Id = x.Id,
+                        Name = x.Name,
+                        FlagImageFileName = x.FlagImageFileName,
+                    })
                     .ToList();
                 return result;
             });
 
             var model = new LanguageSelectorModel()
             {
-                CurrentLanguage = _workContext.WorkingLanguage.ToModel(),
+                CurrentLanguageId = _workContext.WorkingLanguage.Id,
                 AvailableLanguages = availableLanguages,
                 UseImages = _localizationSettings.UseImagesForLanguageSelection
             };
@@ -159,14 +169,18 @@ namespace Nop.Web.Controllers
             {
                 var result = _currencyService
                     .GetAllCurrencies()
-                    .Select(x => x.ToModel())
+                    .Select(x => new CurrencyModel()
+                    {
+                        Id = x.Id,
+                        Name = x.GetLocalized(y => y.Name),
+                    })
                     .ToList();
                 return result;
             });
 
             var model = new CurrencySelectorModel()
             {
-                CurrentCurrency = _workContext.WorkingCurrency.ToModel(),
+                CurrentCurrencyId = _workContext.WorkingCurrency.Id,
                 AvailableCurrencies = availableCurrencies
             };
             return model;
@@ -212,7 +226,7 @@ namespace Nop.Web.Controllers
             var model = PrepareLanguageSelectorModel();
             return PartialView(model);
         }
-        public ActionResult SetLanguage(int langid)
+        public ActionResult SetLanguage(int langid, string returnUrl = "")
         {
             var language = _languageService.GetLanguageById(langid);
             if (language != null && language.Published)
@@ -220,40 +234,23 @@ namespace Nop.Web.Controllers
                 _workContext.WorkingLanguage = language;
             }
 
-
+            //url referrer
+            if (String.IsNullOrEmpty(returnUrl))
+                returnUrl = _webHelper.GetUrlReferrer();
+            //home page
+            if (String.IsNullOrEmpty(returnUrl))
+                returnUrl = Url.RouteUrl("HomePage");
             if (_localizationSettings.SeoFriendlyUrlsForLanguagesEnabled)
             {
                 string applicationPath = HttpContext.Request.ApplicationPath;
-                if (HttpContext.Request.UrlReferrer != null)
+                if (returnUrl.IsLocalizedUrl(applicationPath, true))
                 {
-                    string redirectUrl = HttpContext.Request.UrlReferrer.PathAndQuery;
-                    if (redirectUrl.IsLocalizedUrl(applicationPath, true))
-                    {
-                        //already localized URL
-                        redirectUrl = redirectUrl.RemoveLocalizedPathFromRawUrl(applicationPath);
-                    }
-                    redirectUrl = redirectUrl.AddLocalizedPathToRawUrl(applicationPath, _workContext.WorkingLanguage);
-                    return Redirect(redirectUrl);
+                    //already localized URL
+                    returnUrl = returnUrl.RemoveLanguageSeoCodeFromRawUrl(applicationPath);
                 }
-                else
-                {
-                    string redirectUrl = Url.RouteUrl("HomePage");
-                    redirectUrl = redirectUrl.AddLocalizedPathToRawUrl(applicationPath, _workContext.WorkingLanguage);
-                    return Redirect(redirectUrl);
-                }
+                returnUrl = returnUrl.AddLanguageSeoCodeToRawUrl(applicationPath, _workContext.WorkingLanguage);
             }
-            else
-            {
-                //TODO: URL referrer is null in IE 8. Fix it
-                if (HttpContext.Request.UrlReferrer != null)
-                {
-                    return Redirect(HttpContext.Request.UrlReferrer.PathAndQuery);
-                }
-                else
-                {
-                    return RedirectToRoute("HomePage");
-                }
-            }
+            return Redirect(returnUrl);
         }
 
         //currency
@@ -263,21 +260,19 @@ namespace Nop.Web.Controllers
             var model = PrepareCurrencySelectorModel();
             return PartialView(model);
         }
-        public ActionResult CurrencySelected(int customerCurrency)
+        public ActionResult CurrencySelected(int customerCurrency, string returnUrl = "")
         {
             var currency = _currencyService.GetCurrencyById(customerCurrency);
             if (currency != null)
                 _workContext.WorkingCurrency = currency;
 
-            //TODO: URL referrer is null in IE 8. Fix it
-            if (HttpContext.Request.UrlReferrer != null)
-            {
-                return Redirect(HttpContext.Request.UrlReferrer.PathAndQuery);
-            }
-            else
-            {
-                return RedirectToRoute("HomePage");
-            }
+            //url referrer
+            if (String.IsNullOrEmpty(returnUrl))
+                returnUrl = _webHelper.GetUrlReferrer();
+            //home page
+            if (String.IsNullOrEmpty(returnUrl))
+                returnUrl = Url.RouteUrl("HomePage");
+            return Redirect(returnUrl);
         }
 
         //tax type
@@ -287,20 +282,18 @@ namespace Nop.Web.Controllers
             var model = PrepareTaxTypeSelectorModel();
             return PartialView(model);
         }
-        public ActionResult TaxTypeSelected(int customerTaxType)
+        public ActionResult TaxTypeSelected(int customerTaxType, string returnUrl = "")
         {
             var taxDisplayType = (TaxDisplayType)Enum.ToObject(typeof(TaxDisplayType), customerTaxType);
             _workContext.TaxDisplayType = taxDisplayType;
 
-            //TODO: URL referrer is null in IE 8. Fix it
-            if (HttpContext.Request.UrlReferrer != null)
-            {
-                return Redirect(HttpContext.Request.UrlReferrer.PathAndQuery);
-            }
-            else
-            {
-                return RedirectToRoute("HomePage");
-            }
+            //url referrer
+            if (String.IsNullOrEmpty(returnUrl))
+                returnUrl = _webHelper.GetUrlReferrer();
+            //home page
+            if (String.IsNullOrEmpty(returnUrl))
+                returnUrl = Url.RouteUrl("HomePage");
+            return Redirect(returnUrl);
         }
 
         //Configuration page (used on mobile devices)
@@ -318,7 +311,6 @@ namespace Nop.Web.Controllers
             else
                 return Content("");
         }
-
         public ActionResult Config()
         {
             return View();
@@ -430,7 +422,6 @@ namespace Nop.Web.Controllers
             };
             return View(model);
         }
-
         [HttpPost, ActionName("ContactUs")]
         [CaptchaValidator]
         public ActionResult ContactUsSend(ContactUsModel model, bool captchaValid)
@@ -483,6 +474,10 @@ namespace Nop.Web.Controllers
                 
                 model.SuccessfullySent = true;
                 model.Result = _localizationService.GetResource("ContactUs.YourEnquiryHasBeenSent");
+
+                //activity log
+                _customerActivityService.InsertActivity("PublicStore.ContactUs", _localizationService.GetResource("ActivityLog.PublicStore.ContactUs"));
+
                 return View(model);
             }
 
@@ -527,7 +522,15 @@ namespace Nop.Web.Controllers
             if (_commonSettings.SitemapIncludeTopics)
             {
                 var topics = _topicService.GetAllTopics().ToList().FindAll(t => t.IncludeInSitemap);
-                model.Topics = topics.Select(x => x.ToModel()).ToList();
+                model.Topics = topics.Select(topic => new TopicModel()
+                {
+                    Id = topic.Id,
+                    SystemName = topic.SystemName,
+                    IncludeInSitemap = topic.IncludeInSitemap,
+                    IsPasswordProtected = topic.IsPasswordProtected,
+                    Title = topic.GetLocalized(x => x.Title),
+                })
+                .ToList();
             }
             return View(model);
         }
@@ -571,7 +574,6 @@ namespace Nop.Web.Controllers
                 .ToList();
             return PartialView(model);
         }
-
         public ActionResult StoreThemeSelected(string themeName)
         {
             _themeContext.WorkingDesktopTheme = themeName;
@@ -621,15 +623,10 @@ namespace Nop.Web.Controllers
             _genericAttributeService.SaveAttribute(_workContext.CurrentCustomer,
                 SystemCustomerAttributeNames.DontUseMobileVersion, dontUseMobileVersion);
 
-            //TODO: URL referrer is null in IE 8. Fix it
-            if (HttpContext.Request.UrlReferrer != null)
-            {
-                return Redirect(HttpContext.Request.UrlReferrer.PathAndQuery);
-            }
-            else
-            {
-                return RedirectToRoute("HomePage");
-            }
+            string returnurl = _webHelper.GetUrlReferrer();
+            if (String.IsNullOrEmpty(returnurl))
+                returnurl = Url.RouteUrl("HomePage");
+            return Redirect(returnurl);
         }
         [ChildActionOnly]
         public ActionResult ChangeDeviceBlock()
@@ -645,10 +642,7 @@ namespace Nop.Web.Controllers
             return View();
         }
 
-
-
-
-
+        //EU Cookie law
         [ChildActionOnly]
         public ActionResult EuCookieLaw()
         {
@@ -662,7 +656,6 @@ namespace Nop.Web.Controllers
 
             return PartialView();
         }
-
         [HttpPost]
         public ActionResult EuCookieLawAccept()
         {
@@ -673,6 +666,116 @@ namespace Nop.Web.Controllers
             //save setting
             _genericAttributeService.SaveAttribute(_workContext.CurrentCustomer, "EuCookieLaw.Accepted", true);
             return Json(new { stored = true });
+        }
+
+        public ActionResult RobotsTextFile()
+        {
+            var disallowPaths = new List<string>()
+                                    {
+                                        "/bin/",
+                                        "/content/files/",
+                                        "/content/files/exportimport/",
+                                        "/country/getstatesbycountryid",
+                                        "/install",
+                                        "/setproductreviewhelpfulness",
+                                    };
+            var localizableDisallowPaths = new List<string>()
+                                               {
+                                                   "/boards/forumwatch",
+                                                   "/boards/postedit",
+                                                   "/boards/postdelete",
+                                                   "/boards/postcreate",
+                                                   "/boards/topicedit",
+                                                   "/boards/topicdelete",
+                                                   "/boards/topiccreate",
+                                                   "/boards/topicmove",
+                                                   "/boards/topicwatch",
+                                                   "/cart",
+                                                   "/checkout",
+                                                   "/checkout/billingaddress",
+                                                   "/checkout/completed",
+                                                   "/checkout/confirm",
+                                                   "/checkout/shippingaddress",
+                                                   "/checkout/shippingmethod",
+                                                   "/checkout/paymentinfo",
+                                                   "/checkout/paymentmethod",
+                                                   "/clearcomparelist",
+                                                   "/compareproducts",
+                                                   "/customer/avatar",
+                                                   "/customer/activation",
+                                                   "/customer/addresses",
+                                                   "/customer/backinstocksubscriptions",
+                                                   "/customer/changepassword",
+                                                   "/customer/checkusernameavailability",
+                                                   "/customer/downloadableproducts",
+                                                   "/customer/forumsubscriptions",
+                                                   "/customer/info",
+                                                   "/customer/orders",
+                                                   "/customer/returnrequests",
+                                                   "/customer/rewardpoints",
+                                                   "/deletepm",
+                                                   "/emailwishlist",
+                                                   "/inboxupdate",
+                                                   "/newsletter/subscriptionactivation",
+                                                   "/onepagecheckout",
+                                                   "/orderdetails",
+                                                   "/passwordrecovery/confirm",
+                                                   "/poll/vote",
+                                                   "/privatemessages",
+                                                   "/returnrequest",
+                                                   "/sendpm",
+                                                   "/sentupdate",
+                                                   "/subscribenewsletter",
+                                                   "/topic/authenticate",
+                                                   "/viewpm",
+                                                   "/wishlist",
+                                               };
+
+
+            const string newLine = "\r\n"; //Environment.NewLine
+            var sb = new StringBuilder();
+            sb.Append("User-agent: *");
+            sb.Append(newLine);
+            //usual paths
+            foreach (var path in disallowPaths)
+            {
+                sb.AppendFormat("Disallow: {0}", path);
+                sb.Append(newLine);
+            }
+            //localizable paths (without SEO code)
+            foreach (var path in localizableDisallowPaths)
+            {
+                sb.AppendFormat("Disallow: {0}", path);
+                sb.Append(newLine);
+            }
+            if (_localizationSettings.SeoFriendlyUrlsForLanguagesEnabled)
+            {
+                //URLs are localizable. Append SEO code
+                foreach (var language in _languageService.GetAllLanguages())
+                {
+                    foreach (var path in localizableDisallowPaths)
+                    {
+                        sb.AppendFormat("Disallow: {0}{1}", language.UniqueSeoCode, path);
+                        sb.Append(newLine);
+                    }
+                }
+            }
+
+            Response.ContentType = "text/plain";
+            Response.Write(sb.ToString());
+            return null;
+        }
+
+        public ActionResult GenericUrl()
+        {
+            //seems that no entity was found
+            return RedirectToRoute("HomePage");
+        }
+
+        //store is closed
+        public ActionResult StoreClosed()
+        {
+            return View();
         }
 
         #endregion

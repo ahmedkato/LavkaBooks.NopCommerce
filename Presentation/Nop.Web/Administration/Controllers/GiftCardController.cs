@@ -5,6 +5,7 @@ using Nop.Admin.Models.Orders;
 using Nop.Core;
 using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Localization;
+using Nop.Core.Domain.Orders;
 using Nop.Services.Catalog;
 using Nop.Services.Directory;
 using Nop.Services.Helpers;
@@ -32,6 +33,7 @@ namespace Nop.Admin.Controllers
         private readonly ICurrencyService _currencyService;
         private readonly CurrencySettings _currencySettings;
         private readonly ILocalizationService _localizationService;
+        private readonly ILanguageService _languageService;
         private readonly ICustomerActivityService _customerActivityService;
         private readonly IPermissionService _permissionService;
 
@@ -43,8 +45,8 @@ namespace Nop.Admin.Controllers
             IPriceFormatter priceFormatter, IWorkflowMessageService workflowMessageService,
             IDateTimeHelper dateTimeHelper, LocalizationSettings localizationSettings,
             ICurrencyService currencyService, CurrencySettings currencySettings,
-            ILocalizationService localizationService, ICustomerActivityService customerActivityService,
-            IPermissionService permissionService)
+            ILocalizationService localizationService, ILanguageService languageService,
+            ICustomerActivityService customerActivityService, IPermissionService permissionService)
         {
             this._giftCardService = giftCardService;
             this._priceFormatter = priceFormatter;
@@ -54,6 +56,7 @@ namespace Nop.Admin.Controllers
             this._currencyService = currencyService;
             this._currencySettings = currencySettings;
             this._localizationService = localizationService;
+            this._languageService = languageService;
             this._customerActivityService = customerActivityService;
             this._permissionService = permissionService;
         }
@@ -104,10 +107,11 @@ namespace Nop.Admin.Controllers
                 isGiftCardActivated = true;
             else if (model.ActivatedId == 2)
                 isGiftCardActivated = false;
-            var giftCards = _giftCardService.GetAllGiftCards(null, null, null, isGiftCardActivated, model.CouponCode);
+            var giftCards = _giftCardService.GetAllGiftCards(null, null, null,
+                isGiftCardActivated, model.CouponCode, command.Page - 1, command.PageSize);
             var gridModel = new GridModel<GiftCardModel>
             {
-                Data = giftCards.PagedForCommand(command).Select(x =>
+                Data = giftCards.Select(x =>
                 {
                     var m = x.ToModel();
                     m.RemainingAmountStr = _priceFormatter.FormatPrice(x.GetGiftCardRemainingAmount(), true, false);
@@ -115,7 +119,7 @@ namespace Nop.Admin.Controllers
                     m.CreatedOn = _dateTimeHelper.ConvertToUserTime(x.CreatedOnUtc, DateTimeKind.Utc);
                     return m;
                 }),
-                Total = giftCards.Count()
+                Total = giftCards.TotalCount
             };
             return new JsonResult
             {
@@ -238,7 +242,19 @@ namespace Nop.Admin.Controllers
                 if (!CommonHelper.IsValidEmail(giftCard.SenderEmail))
                     throw new NopException("Sender email is not valid");
 
-                int queuedEmailId = _workflowMessageService.SendGiftCardNotification(giftCard, _localizationSettings.DefaultAdminLanguageId);
+                var languageId = 0;
+                var order = giftCard.PurchasedWithOrderProductVariant != null ? giftCard.PurchasedWithOrderProductVariant.Order : null;
+                if (order != null)
+                {
+                    var customerLang = _languageService.GetLanguageById(order.CustomerLanguageId);
+                    if (customerLang == null)
+                        customerLang = _languageService.GetAllLanguages().FirstOrDefault();
+                }
+                else
+                {
+                    languageId = _localizationSettings.DefaultAdminLanguageId;
+                }
+                int queuedEmailId = _workflowMessageService.SendGiftCardNotification(giftCard, languageId);
                 if (queuedEmailId > 0)
                 {
                     giftCard.IsRecipientNotified = true;

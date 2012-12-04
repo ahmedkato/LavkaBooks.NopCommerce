@@ -89,12 +89,7 @@ namespace Nop.Plugin.Feed.Froogle.Controllers
                     Value = gc
                 });
             }
-            //FTP settings
-            model.FtpHostname = _froogleSettings.FtpHostname;
-            model.FtpFilename = _froogleSettings.FtpFilename;
-            model.FtpUsername = _froogleSettings.FtpUsername;
-            model.FtpPassword = _froogleSettings.FtpPassword;
-            
+
             //task
             ScheduleTask task = FindScheduledTask();
             if (task != null)
@@ -123,10 +118,6 @@ namespace Nop.Plugin.Feed.Froogle.Controllers
             _froogleSettings.ProductPictureSize = model.ProductPictureSize;
             _froogleSettings.CurrencyId = model.CurrencyId;
             _froogleSettings.DefaultGoogleCategory = model.DefaultGoogleCategory;
-            _froogleSettings.FtpHostname = model.FtpHostname;
-            _froogleSettings.FtpFilename = model.FtpFilename;
-            _froogleSettings.FtpUsername = model.FtpUsername;
-            _froogleSettings.FtpPassword = model.FtpPassword;
             _settingService.SaveSetting(_froogleSettings);
 
             // Update the task
@@ -241,92 +232,6 @@ namespace Nop.Plugin.Feed.Froogle.Controllers
             return View("Nop.Plugin.Feed.Froogle.Views.FeedFroogle.Configure", model);
         }
 
-        [HttpPost, ActionName("Configure")]
-        [FormValueRequired("uploadfeed")]
-        public ActionResult UploadFeed(FeedFroogleModel model)
-        {
-            if (!ModelState.IsValid)
-            {
-                return Configure();
-            }
-
-            try
-            {
-                string uri = String.Format("{0}/{1}", _froogleSettings.FtpHostname, _froogleSettings.FtpFilename);
-                var req = WebRequest.Create(uri) as FtpWebRequest;
-                req.Credentials = new NetworkCredential(_froogleSettings.FtpUsername, _froogleSettings.FtpPassword);
-                req.KeepAlive = true;
-                req.UseBinary = true;
-                req.Method = WebRequestMethods.Ftp.UploadFile;
-
-                using (Stream reqStream = req.GetRequestStream())
-                {
-                    var pluginDescriptor = _pluginFinder.GetPluginDescriptorBySystemName("PromotionFeed.Froogle");
-                    if (pluginDescriptor == null)
-                        throw new Exception("Cannot load the plugin");
-
-                    //plugin
-                    var plugin = pluginDescriptor.Instance() as FroogleService;
-                    if (plugin == null)
-                        throw new Exception("Cannot load the plugin");
-
-                    plugin.GenerateFeed(reqStream);
-                }
-
-                var rsp = req.GetResponse() as FtpWebResponse;
-
-                model.GenerateFeedResult = String.Format(_localizationService.GetResource("Plugins.Feed.Froogle.FtpUploadStatus"), rsp.StatusDescription);
-            }
-            catch (Exception exc)
-            {
-                model.GenerateFeedResult = exc.Message;
-                _logger.Error(exc.Message, exc);
-            }
-
-            foreach (var c in _currencyService.GetAllCurrencies(false))
-            {
-                model.AvailableCurrencies.Add(new SelectListItem()
-                {
-                    Text = c.Name,
-                    Value = c.Id.ToString()
-                });
-            }
-            model.AvailableGoogleCategories.Add(new SelectListItem()
-            {
-                Text = "Select a category",
-                Value = ""
-            });
-            foreach (var gc in _googleService.GetTaxonomyList())
-            {
-                model.AvailableGoogleCategories.Add(new SelectListItem()
-                {
-                    Text = gc,
-                    Value = gc
-                });
-            }
-
-            //task
-            ScheduleTask task = FindScheduledTask();
-            if (task != null)
-            {
-                model.GenerateStaticFileEachMinutes = task.Seconds / 60;
-                model.TaskEnabled = task.Enabled;
-            }
-
-            //file path
-            if (System.IO.File.Exists(System.IO.Path.Combine(HttpRuntime.AppDomainAppPath, "content\\files\\exportimport", _froogleSettings.StaticFileName)))
-                model.StaticFilePath = string.Format("{0}content/files/exportimport/{1}", _webHelper.GetStoreLocation(false), _froogleSettings.StaticFileName);
-
-
-            return View("Nop.Plugin.Feed.Froogle.Views.FeedFroogle.Configure", model);
-        }
-
-
-
-
-
-
-
         [HttpPost, GridAction(EnableCustomBinding = true)]
         public ActionResult GoogleProductList(GridCommand command)
         {
@@ -339,10 +244,17 @@ namespace Nop.Plugin.Feed.Froogle.Controllers
                                 {
                                     ProductVariantId = x.Id,
                                     FullProductVariantName = x.FullProductName
+
                                 };
                                 var googleProduct = _googleService.GetByProductVariantId(x.Id);
                                 if (googleProduct != null)
+                                {
                                     gModel.GoogleCategory = googleProduct.Taxonomy;
+                                    gModel.Gender = googleProduct.Gender;
+                                    gModel.AgeGroup = googleProduct.AgeGroup;
+                                    gModel.Color = googleProduct.Color;
+                                    gModel.GoogleSize = googleProduct.Size;
+                                }
 
                                 return gModel;
                             })
@@ -366,8 +278,12 @@ namespace Nop.Plugin.Feed.Froogle.Controllers
             var googleProduct = _googleService.GetByProductVariantId(model.ProductVariantId);
             if (googleProduct != null)
             {
-                //update
+
                 googleProduct.Taxonomy = model.GoogleCategory;
+                googleProduct.Gender = model.Gender;
+                googleProduct.AgeGroup = model.AgeGroup;
+                googleProduct.Color = model.Color;
+                googleProduct.Size = model.GoogleSize;
                 _googleService.UpdateGoogleProductRecord(googleProduct);
             }
             else
@@ -376,7 +292,11 @@ namespace Nop.Plugin.Feed.Froogle.Controllers
                 googleProduct = new GoogleProductRecord()
                 {
                     ProductVariantId = model.ProductVariantId,
-                    Taxonomy = model.GoogleCategory
+                    Taxonomy = model.GoogleCategory,
+                    Gender = model.Gender,
+                    AgeGroup = model.AgeGroup,
+                    Color = model.Color,
+                    Size = model.GoogleSize
                 };
                 _googleService.InsertGoogleProductRecord(googleProduct);
             }

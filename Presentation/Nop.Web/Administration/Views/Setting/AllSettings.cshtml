@@ -3,7 +3,7 @@
     var gridPageSize = EngineContext.Current.Resolve<Nop.Core.Domain.Common.AdminAreaSettings>().GridPageSize;
     
     //page title
-    ViewBag.Title = @T("Admin.Configuration.Settings.AllSettings").Text;
+    ViewBag.Title = T("Admin.Configuration.Settings.AllSettings").Text;
 }
 @using Telerik.Web.Mvc.UI;
 @using System.Linq;
@@ -33,8 +33,8 @@
                         columns.Bound(x => x.Value).EditorTemplateName("String");
                         columns.Command(commands =>
                         {
-                            commands.Edit();
-                            commands.Delete();
+                            commands.Edit().Text(T("Admin.Common.Edit").Text);
+                            commands.Delete().Text(T("Admin.Common.Delete").Text);
                         }).Width(180);
 
                     })

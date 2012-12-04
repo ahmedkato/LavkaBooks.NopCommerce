@@ -2,7 +2,7 @@
 @using Telerik.Web.Mvc.UI;
 @{
     //page title
-    ViewBag.Title = @T("Admin.Configuration.Settings.ShoppingCart").Text;
+    ViewBag.Title = T("Admin.Configuration.Settings.ShoppingCart").Text;
 }
 @using (Html.BeginForm())
 {
@@ -92,6 +92,15 @@
             <td class="adminData">
                 @Html.EditorFor(model => model.MaximumWishlistItems)
                 @Html.ValidationMessageFor(model => model.MaximumWishlistItems)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.MoveItemsFromWishlistToCart):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.MoveItemsFromWishlistToCart)
+                @Html.ValidationMessageFor(model => model.MoveItemsFromWishlistToCart)
             </td>
         </tr>
         <tr>

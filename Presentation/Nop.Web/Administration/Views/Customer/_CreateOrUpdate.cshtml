@@ -149,7 +149,7 @@
                 @Html.ValidationMessageFor(model => model.Password)
                 @if (Model.Id > 0)
                 {
-                    <input type="submit" name="changepassword" class="t-button" value="Change password" />
+                    <input type="submit" name="changepassword" class="t-button" value="@T("Admin.Customers.Customers.Fields.Password.Change")" />
                 }
             </td>
         </tr>
@@ -362,7 +362,7 @@
                     @Html.NopLabelFor(model => model.AffiliateId):
                 </td>
                 <td class="adminData">
-                    <a href="@Url.Action("Edit", "Affiliate", new { id = @Model.AffiliateId.Value })">@Model.AffiliateId.Value
+                    <a href="@Url.Action("Edit", "Affiliate", new { id = Model.AffiliateId.Value })">@Model.AffiliateId.Value
                         - @T("Admin.Common.View")</a>
                 </td>
             </tr>
@@ -593,9 +593,9 @@
             .ClientTemplate("<a href=\"" + @Url.Content("~/Admin/Customer/AddressEdit?customerId=") + @Model.Id + "&addressid=<#= Id #>\">" + T("Admin.Common.Edit").Text + "</a>")
             .Title(T("Admin.Common.Edit").Text);
         columns.Command(commands =>
-        {
-            commands.Delete();
-        })
+            {
+                commands.Delete().Text(T("Admin.Common.Delete").Text);
+            })
             .Title(T("Admin.Common.Delete").Text);
     }))
     <div class="clear">

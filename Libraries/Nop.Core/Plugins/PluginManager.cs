@@ -12,12 +12,10 @@ using System.Web.Hosting;
 using Nop.Core.ComponentModel;
 using Nop.Core.Plugins;
 
-//Contributor: Umbraco (http://www.umbraco.com). Thanks a lot!
-//SEE THIS POST for full details of what this does
-//http://shazwazza.com/post/Developing-a-plugin-framework-in-ASPNET-with-medium-trust.aspx
+//Contributor: Umbraco (http://www.umbraco.com). Thanks a lot! 
+//SEE THIS POST for full details of what this does - http://shazwazza.com/post/Developing-a-plugin-framework-in-ASPNET-with-medium-trust.aspx
 
 [assembly: PreApplicationStartMethod(typeof(PluginManager), "Initialize")]
-
 namespace Nop.Core.Plugins
 {
     /// <summary>
@@ -25,13 +23,18 @@ namespace Nop.Core.Plugins
     /// </summary>
     public class PluginManager
     {
+        #region Const
+
+        private const string InstalledPluginsFilePath = "~/App_Data/InstalledPlugins.txt";
+        private const string PluginsPath = "~/Plugins";
+        private const string ShadowCopyPath = "~/Plugins/bin";
+
+        #endregion
+
         #region Fields
 
         private static readonly ReaderWriterLockSlim Locker = new ReaderWriterLockSlim();
         private static DirectoryInfo _shadowCopyFolder;
-        private static readonly string _installedPluginsFilePath = "~/App_Data/InstalledPlugins.txt";
-        private static readonly string _pluginsPath = "~/Plugins";
-        private static readonly string _shadowCopyPath = "~/Plugins/bin";
         private static bool _clearShadowDirectoryOnStartup;
 
         #endregion
@@ -57,8 +60,8 @@ namespace Nop.Core.Plugins
             {
                 // TODO: Add verbose exception handling / raising here since this is happening on app startup and could
                 // prevent app from starting altogether
-                var pluginFolder = new DirectoryInfo(HostingEnvironment.MapPath(_pluginsPath));
-                _shadowCopyFolder = new DirectoryInfo(HostingEnvironment.MapPath(_shadowCopyPath));
+                var pluginFolder = new DirectoryInfo(HostingEnvironment.MapPath(PluginsPath));
+                _shadowCopyFolder = new DirectoryInfo(HostingEnvironment.MapPath(ShadowCopyPath));
 
                 var referencedPlugins = new List<PluginDescriptor>();
                 var incompatiblePlugins = new List<string>();
@@ -115,7 +118,6 @@ namespace Nop.Core.Plugins
 
                         //set 'Installed' property
                         pluginDescriptor.Installed = installedPluginSystemNames
-                            .ToList()
                             .Where(x => x.Equals(pluginDescriptor.SystemName, StringComparison.InvariantCultureIgnoreCase))
                             .FirstOrDefault() != null;
 
@@ -194,7 +196,7 @@ namespace Nop.Core.Plugins
             if (String.IsNullOrEmpty(systemName))
                 throw new ArgumentNullException("systemName");
 
-            var filePath = HostingEnvironment.MapPath(_installedPluginsFilePath);
+            var filePath = HostingEnvironment.MapPath(InstalledPluginsFilePath);
             if (!File.Exists(filePath))
                 using (File.Create(filePath))
                 {
@@ -204,7 +206,6 @@ namespace Nop.Core.Plugins
 
             var installedPluginSystemNames = PluginFileParser.ParseInstalledPluginsFile(GetInstalledPluginsFilePath());
             bool alreadyMarkedAsInstalled = installedPluginSystemNames
-                                .ToList()
                                 .Where(x => x.Equals(systemName, StringComparison.InvariantCultureIgnoreCase))
                                 .FirstOrDefault() != null;
             if (!alreadyMarkedAsInstalled)
@@ -221,7 +222,7 @@ namespace Nop.Core.Plugins
             if (String.IsNullOrEmpty(systemName))
                 throw new ArgumentNullException("systemName");
 
-            var filePath = HostingEnvironment.MapPath(_installedPluginsFilePath);
+            var filePath = HostingEnvironment.MapPath(InstalledPluginsFilePath);
             if (!File.Exists(filePath))
                 using (File.Create(filePath))
                 {
@@ -231,7 +232,6 @@ namespace Nop.Core.Plugins
 
             var installedPluginSystemNames = PluginFileParser.ParseInstalledPluginsFile(GetInstalledPluginsFilePath());
             bool alreadyMarkedAsInstalled = installedPluginSystemNames
-                                .ToList()
                                 .Where(x => x.Equals(systemName, StringComparison.InvariantCultureIgnoreCase))
                                 .FirstOrDefault() != null;
             if (alreadyMarkedAsInstalled)
@@ -244,7 +244,7 @@ namespace Nop.Core.Plugins
         /// </summary>
         public static void MarkAllPluginsAsUninstalled()
         {
-            var filePath = HostingEnvironment.MapPath(_installedPluginsFilePath);
+            var filePath = HostingEnvironment.MapPath(InstalledPluginsFilePath);
             if (File.Exists(filePath))
                 File.Delete(filePath);
         }
@@ -324,7 +324,7 @@ namespace Nop.Core.Plugins
         {
             if (plug.Directory.Parent == null)
                 throw new InvalidOperationException("The plugin directory for the " + plug.Name +
-                                                    " file exists in a folder outside of the allowed Umbraco folder heirarchy");
+                                                    " file exists in a folder outside of the allowed nopCommerce folder heirarchy");
 
             FileInfo shadowCopiedPlug;
 
@@ -333,9 +333,6 @@ namespace Nop.Core.Plugins
                 //all plugins will need to be copied to ~/Plugins/bin/
                 //this is aboslutely required because all of this relies on probingPaths being set statically in the web.config
                 
-                //var shadowCopyPlugFolderName = "Packages";
-                //Debug.WriteLine(plug.FullName + " to " + shadowCopyPlugFolderName);
-
                 //were running in med trust, so copy to custom bin folder
                 var shadowCopyPlugFolder = Directory.CreateDirectory(_shadowCopyFolder.FullName);
                 shadowCopiedPlug = InitializeMediumTrust(plug, shadowCopyPlugFolder);
@@ -472,7 +469,7 @@ namespace Nop.Core.Plugins
         /// <returns></returns>
         private static string GetInstalledPluginsFilePath()
         { 
-            var filePath = HostingEnvironment.MapPath(_installedPluginsFilePath);
+            var filePath = HostingEnvironment.MapPath(InstalledPluginsFilePath);
             return filePath;
         }
 

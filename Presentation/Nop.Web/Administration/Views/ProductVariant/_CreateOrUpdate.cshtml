@@ -46,11 +46,12 @@
                         .Width(200)
                         .Centered();
                     columns.Bound(x => x.Price1)
-                        .Width(100);
+                        .Width(100)
+                        .Format("{0:G29}");
                     columns.Command(commands =>
                     {
-                        commands.Edit();
-                        commands.Delete();
+                        commands.Edit().Text(T("Admin.Common.Edit").Text);
+                        commands.Delete().Text(T("Admin.Common.Delete").Text);
                     })
                     .Width(180);
                 })
@@ -142,9 +143,12 @@
                         .Width(150)
                         .Centered();
                     columns.Bound(x => x.IsRequired)
-                        .Width(100)
-                        .Centered()
-                        .Template(x => x.IsRequired.ToString().ToLower());
+                            .Template(
+                                @<img alt="" src="@Url.Content("~/Administration/Content/images/active-" + item.IsRequired.ToString().ToLowerInvariant() + ".gif")" />
+                            )
+                            .ClientTemplate("<img alt='' src='" + Url.Content("~/Administration/Content/images/") + "active-<#= IsRequired #>.gif' />")
+                            .Centered()
+                            .Width(100);
                     columns.Bound(x => x.AttributeControlType)
                         .Width(150)
                         .Centered();
@@ -158,8 +162,8 @@
                         .Title(T("Admin.Catalog.Products.Variants.ProductVariantAttributes.Attributes.Values").Text);
                     columns.Command(commands =>
                     {
-                        commands.Edit();
-                        commands.Delete();
+                        commands.Edit().Text(T("Admin.Common.Edit").Text);
+                        commands.Delete().Text(T("Admin.Common.Delete").Text);
                     })
                     .Width(180);
                 })
@@ -180,7 +184,7 @@
     </script>
 }
 @helper TabAttributeCombinations()
-    {
+{
     <div style="margin: 10px 0px 10px 0px;">
         <strong>@T("Admin.Catalog.Products.Variants.ProductVariantAttributes.AttributeCombinations.Description")</strong>
     </div>
@@ -202,18 +206,20 @@
                 {
                     columns.Bound(x => x.AttributesXml)
                         .ClientTemplate("<#= AttributesXml #><br /><span style=\"color: red\"><#= Warnings #></span>")
-                        .Width(350)
                         .Encoded(false)
                         .ReadOnly();
                     columns.Bound(x => x.StockQuantity1)
                         .Centered();
                     columns.Bound(x => x.AllowOutOfStockOrders1)
-                        .Centered()
-                        .Template(x => x.AllowOutOfStockOrders1.ToString().ToLower());
+                            .Template(
+                                @<img alt="" src="@Url.Content("~/Administration/Content/images/active-" + item.AllowOutOfStockOrders1.ToString().ToLowerInvariant() + ".gif")" />
+                            )
+                            .ClientTemplate("<img alt='' src='" + Url.Content("~/Administration/Content/images/") + "active-<#= AllowOutOfStockOrders1 #>.gif' />")
+                            .Centered();
                     columns.Command(commands =>
                     {
-                        commands.Edit();
-                        commands.Delete();
+                        commands.Edit().Text(T("Admin.Common.Edit").Text);
+                        commands.Delete().Text(T("Admin.Common.Delete").Text);
                     })
                     .Width(180);
                 })

@@ -33,14 +33,19 @@
                                 //TODO display localized values here
                                 columns.Bound(x => x.PriceAdjustment)
                                     .Width(100)
-                                    .Centered();
+                                    .Centered()
+                                    .Format("{0:G29}");
                                 columns.Bound(x => x.WeightAdjustment)
                                     .Width(100)
-                                    .Centered();
+                                    .Centered()
+                                    .Format("{0:G29}");
                                 columns.Bound(x => x.IsPreSelected)
-                                    .Width(100)
-                                    .Template(x => x.IsPreSelected.ToString().ToLower())
-                                    .Centered();
+                                    .Template(
+                                        @<img alt="" src="@Url.Content("~/Administration/Content/images/active-" + item.IsPreSelected.ToString().ToLowerInvariant() + ".gif")" />
+                                    )
+                                    .ClientTemplate("<img alt='' src='" + Url.Content("~/Administration/Content/images/") + "active-<#= IsPreSelected #>.gif' />")
+                                    .Centered()
+                                    .Width(100);
                                 columns.Bound(x => x.DisplayOrder)
                                     .Width(100)
                                     .Centered();
@@ -51,7 +56,7 @@
                                     .Title(T("Admin.Common.Edit").Text);
                                 columns.Command(commands =>
                                 {
-                                    commands.Delete();
+                                    commands.Delete().Text(T("Admin.Common.Delete").Text);
                                 })
                                 .Width(50)
                                 .Title(T("Admin.Common.Delete").Text);
@@ -65,7 +70,7 @@
     </tr>
     <tr>
         <td width="100%">
-            <input type="submit" id="btnAddNewValue" name="btnAddNewValue" value="@T("Admin.Catalog.Products.Variants.ProductVariantAttributes.Attributes.Values.AddNew")" onclick="javascript:OpenWindow('@(Url.Action("ProductAttributeValueCreatePopup", "ProductVariant", new { productAttributeAttributeId = Model.ProductVariantAttributeId, btnId = "btnRefresh", formId="productvariantattribute-form" }))', 800, 400, true); return false;" class="t-button" />
+            <input type="submit" id="btnAddNewValue" name="btnAddNewValue" value="@T("Admin.Catalog.Products.Variants.ProductVariantAttributes.Attributes.Values.AddNew")" onclick="javascript:OpenWindow('@(Url.Action("ProductAttributeValueCreatePopup", "ProductVariant", new { productAttributeAttributeId = Model.ProductVariantAttributeId, btnId = "btnRefresh", formId = "productvariantattribute-form" }))', 800, 400, true); return false;" class="t-button" />
             <input type="submit" id="btnRefresh" name="btnRefresh" style="display: none" />
             <script type="text/javascript">
                 $(document).ready(function () {

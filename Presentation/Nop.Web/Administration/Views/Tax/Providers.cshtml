@@ -2,7 +2,7 @@
 @using Telerik.Web.Mvc.UI
 @{    
     //page title
-    ViewBag.Title = @T("Admin.Configuration.Tax.Providers").Text;
+    ViewBag.Title = T("Admin.Configuration.Tax.Providers").Text;
 }
 <div class="section-header">
     <div class="title">
@@ -22,23 +22,27 @@
                     .BindTo(Model.Data)
                     .Columns(columns =>
                     {
-                        columns.Bound(x => x.FriendlyName).Width(250);
+                        columns.Bound(x => x.FriendlyName);
+                        columns.Bound(x => x.SystemName).Width(150);
                         columns.Bound(x => x.IsPrimaryTaxProvider)
-                            .Template(x => x.IsPrimaryTaxProvider.ToString().ToLower())
+                            .Template(
+                                @<img alt="" src="@Url.Content("~/Administration/Content/images/active-" + item.IsPrimaryTaxProvider.ToString().ToLowerInvariant() + ".gif")" />
+                            )
+                            .ClientTemplate("<img alt='' src='" + Url.Content("~/Administration/Content/images/") + "active-<#= IsPrimaryTaxProvider #>.gif' />")
+                            .Centered()
                             .Width(100)
                             .ReadOnly();
-                        columns.Command(commands => commands.Select())
+                        columns.Command(commands => commands.Select().Text(T("Admin.Configuration.Tax.Providers.Fields.MarkAsPrimaryProvider").Text))
                             .Title(T("Admin.Configuration.Tax.Providers.Fields.MarkAsPrimaryProvider").Text).Width(100);
                         columns.Template(
                                 @<div>
-                                    @Html.ActionLink(T("Admin.Configuration.Tax.Providers.Configure").Text, "ConfigureProvider", new { systemName = @item.SystemName })
+                                    @Html.ActionLink(T("Admin.Configuration.Tax.Providers.Configure").Text, "ConfigureProvider", new { systemName = item.SystemName })
                                 </div>
                             )
                             .ClientTemplate("<a href=\"ConfigureProvider?systemName=<#= SystemName #>\">" + T("Admin.Configuration.Tax.Providers.Configure").Text + "</a>")
                             .Width(100)
                             .Centered()
                             .Title(T("Admin.Configuration.Tax.Providers.Configure").Text);
-                        columns.Bound(x => x.SystemName).Width(250);
                     })
                     .DataBinding(dataBinding =>
                     {

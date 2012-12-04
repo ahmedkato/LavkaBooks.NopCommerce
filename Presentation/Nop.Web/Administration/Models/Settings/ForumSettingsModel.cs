@@ -1,10 +1,10 @@
 ﻿using System.Web.Mvc;
-using Nop.Core.Domain.Forums;
 using Nop.Web.Framework;
+using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Models.Settings
 {
-    public partial class ForumSettingsModel
+    public partial class ForumSettingsModel : BaseNopModel
     {
         [NopResourceDisplayName("Admin.Configuration.Settings.Forums.ForumsEnabled")]
         public bool ForumsEnabled { get; set; }
@@ -37,7 +37,7 @@ namespace Nop.Admin.Models.Settings
         public int PostsPageSize { get; set; }
 
         [NopResourceDisplayName("Admin.Configuration.Settings.Forums.ForumEditor")]
-        public EditorType ForumEditor { get; set; }
+        public int ForumEditor { get; set; }
 
         [NopResourceDisplayName("Admin.Configuration.Settings.Forums.SignaturesEnabled")]
         public bool SignaturesEnabled { get; set; }

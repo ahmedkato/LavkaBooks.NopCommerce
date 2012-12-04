@@ -57,12 +57,15 @@ namespace Nop.Services.Orders
         IPagedList<Order> SearchOrders(DateTime? startTime, DateTime? endTime,
             OrderStatus? os, PaymentStatus? ps, ShippingStatus? ss, string billingEmail,
             string orderGuid, int pageIndex, int pageSize);
-
+        
         /// <summary>
-        /// Load all orders
+        /// Gets all orders by affiliate identifier
         /// </summary>
-        /// <returns>Order collection</returns>
-        IList<Order> LoadAllOrders();
+        /// <param name="affiliateId">Affiliate identifier</param>
+        /// <param name="pageIndex">Page index</param>
+        /// <param name="pageSize">Page size</param>
+        /// <returns>Orders</returns>
+        IPagedList<Order> GetOrdersByAffiliateId(int affiliateId, int pageIndex, int pageSize);
 
         /// <summary>
         /// Gets all orders by customer identifier
@@ -70,13 +73,6 @@ namespace Nop.Services.Orders
         /// <param name="customerId">Customer identifier</param>
         /// <returns>Order collection</returns>
         IList<Order> GetOrdersByCustomerId(int customerId);
-
-        /// <summary>
-        /// Gets all orders by affiliate identifier
-        /// </summary>
-        /// <param name="affiliateId">Affiliate identifier</param>
-        /// <returns>Order collection</returns>
-        IList<Order> GetOrdersByAffiliateId(int affiliateId);
 
         /// <summary>
         /// Inserts an order
@@ -180,10 +176,13 @@ namespace Nop.Services.Orders
         /// <param name="customerId">The customer identifier; 0 to load all records</param>
         /// <param name="initialOrderId">The initial order identifier; 0 to load all records</param>
         /// <param name="initialOrderStatus">Initial order status identifier; null to load all records</param>
+        /// <param name="pageIndex">Page index</param>
+        /// <param name="pageSize">Page size</param>
         /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Recurring payment collection</returns>
-        IList<RecurringPayment> SearchRecurringPayments(int customerId,
-           int initialOrderId, OrderStatus? initialOrderStatus, bool showHidden = false);
+        IPagedList<RecurringPayment> SearchRecurringPayments(int customerId,
+            int initialOrderId, OrderStatus? initialOrderStatus,
+            int pageIndex, int pageSize, bool showHidden = false);
 
         #endregion
 
@@ -208,9 +207,12 @@ namespace Nop.Services.Orders
         /// <param name="customerId">Customer identifier; null to load all entries</param>
         /// <param name="orderProductVariantId">Order product variant identifier; null to load all entries</param>
         /// <param name="rs">Return request status; null to load all entries</param>
+        /// <param name="pageIndex">Page index</param>
+        /// <param name="pageSize">Page size</param>
         /// <returns>Return requests</returns>
-        IList<ReturnRequest> SearchReturnRequests(int customerId,
-            int orderProductVariantId, ReturnRequestStatus? rs);
+        IPagedList<ReturnRequest> SearchReturnRequests(int customerId,
+            int orderProductVariantId, ReturnRequestStatus? rs, 
+            int pageIndex, int pageSize);
         
         #endregion
     }

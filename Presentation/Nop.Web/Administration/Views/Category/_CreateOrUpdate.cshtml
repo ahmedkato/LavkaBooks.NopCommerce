@@ -9,6 +9,7 @@
     x.Add().Text(T("Admin.Common.SEO").Text).Content(TabSeo().ToHtmlString());
     x.Add().Text(T("Admin.Catalog.Categories.Products").Text).Content(TabProducts().ToHtmlString());
     x.Add().Text(T("Admin.Catalog.Categories.Discounts").Text).Content(TabDiscounts().ToHtmlString());
+    x.Add().Text(T("Admin.Catalog.Categories.Acl").Text).Content(TabAcl().ToHtmlString());
     
     //generate an event
     EngineContext.Current.Resolve<IEventPublisher>().Publish(new AdminTabStripCreated(x, "category-edit"));
@@ -157,7 +158,7 @@
                            @Html.NopLabelFor(model => model.Locales[item].MetaTitle):
                        </td>
                        <td class="adminData">
-                           @Html.TextAreaFor(model => model.Locales[item].MetaTitle)
+                           @Html.EditorFor(model => model.Locales[item].MetaTitle)
                            @Html.ValidationMessageFor(model => model.Locales[item].MetaTitle)
                        </td>
                    </tr>
@@ -166,7 +167,7 @@
                            @Html.NopLabelFor(model => model.Locales[item].SeName):
                        </td>
                        <td class="adminData">
-                           @Html.TextAreaFor(model => model.Locales[item].SeName)
+                           @Html.EditorFor(model => model.Locales[item].SeName)
                            @Html.ValidationMessageFor(model => model.Locales[item].SeName)
                        </td>
                    </tr>
@@ -201,7 +202,7 @@
                            @Html.NopLabelFor(model => model.MetaTitle):
                        </td>
                        <td class="adminData">
-                           @Html.TextAreaFor(x => x.MetaTitle)
+                           @Html.EditorFor(x => x.MetaTitle)
                            @Html.ValidationMessageFor(model => model.MetaTitle)
                        </td>
                    </tr>
@@ -210,7 +211,7 @@
                            @Html.NopLabelFor(model => model.SeName):
                        </td>
                        <td class="adminData">
-                           @Html.TextAreaFor(x => x.SeName)
+                           @Html.EditorFor(x => x.SeName)
                            @Html.ValidationMessageFor(model => model.SeName)
                        </td>
                    </tr>
@@ -279,8 +280,8 @@
                             .Centered();
                         columns.Command(commands =>
                         {
-                            commands.Edit();
-                            commands.Delete();
+                            commands.Edit().Text(T("Admin.Common.Edit").Text);
+                            commands.Delete().Text(T("Admin.Common.Delete").Text);
                         })
                         .Width(180);
                     })
@@ -333,6 +334,59 @@
         {
             @T("Admin.Catalog.Categories.Discounts.NoDiscounts")
         }
+}
+@helper TabAcl()
+{
+    
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            $("#@Html.FieldIdFor(model => model.SubjectToAcl)").click(toggleAcl);
+        
+            toggleAcl();
+        });
+
+
+        function toggleAcl() {
+            if ($('#@Html.FieldIdFor(model => model.SubjectToAcl)').is(':checked')) {
+                $('#pnl-acl').show();
+            }
+            else {
+                $('#pnl-acl').hide();
+            }
+        }
+
+    </script>
+    <table class="adminContent">
+        <tr>
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.SubjectToAcl):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.SubjectToAcl)
+                @Html.ValidationMessageFor(model => model.SubjectToAcl)
+            </td>
+        </tr>
+        <tr id="pnl-acl">
+            <td class="adminTitle">
+                @Html.NopLabelFor(model => model.AvailableCustomerRoles):
+            </td>
+            <td class="adminData">
+                @if (Model.AvailableCustomerRoles != null && Model.AvailableCustomerRoles.Count > 0)
+                {
+                    foreach (var customerRole in Model.AvailableCustomerRoles)
+                    {
+                    <div>
+                        <input type="checkbox" name="SelectedCustomerRoleIds" value="@customerRole.Id" checked="@(Model.SelectedCustomerRoleIds != null && Model.SelectedCustomerRoleIds.Contains(customerRole.Id))" />@customerRole.Name
+                    </div>
+                    }
+                }
+                else
+                {
+                    <div>No customer roles defined</div>
+                }</td>
+        </tr>
+    </table>
 }
 
 <script type="text/javascript">

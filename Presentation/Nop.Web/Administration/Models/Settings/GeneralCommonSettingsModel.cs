@@ -2,6 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Web.Mvc;
 using Nop.Core.Domain.Common;
+using Nop.Core.Domain.Seo;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Mvc;
 
@@ -27,7 +28,7 @@ namespace Nop.Admin.Models.Settings
 
         #region Nested classes
 
-        public partial class StoreInformationSettingsModel
+        public partial class StoreInformationSettingsModel : BaseNopModel
         {
             public StoreInformationSettingsModel()
             {
@@ -68,7 +69,7 @@ namespace Nop.Admin.Models.Settings
             public bool DisplayEuCookieLawWarning { get; set; }
         }
 
-        public partial class SeoSettingsModel
+        public partial class SeoSettingsModel : BaseNopModel
         {
             [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.PageTitleSeparator")]
             [AllowHtml]
@@ -97,7 +98,7 @@ namespace Nop.Admin.Models.Settings
             public bool CanonicalUrlsEnabled { get; set; }
         }
 
-        public partial class SecuritySettingsModel
+        public partial class SecuritySettingsModel : BaseNopModel
         {
             [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.EncryptionKey")]
             [AllowHtml]
@@ -163,7 +164,7 @@ namespace Nop.Admin.Models.Settings
             public string NonSharedSslUrl { get; set; }
         }
 
-        public partial class PdfSettingsModel
+        public partial class PdfSettingsModel : BaseNopModel
         {
             [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.PdfEnabled")]
             public bool Enabled { get; set; }
@@ -176,7 +177,7 @@ namespace Nop.Admin.Models.Settings
             public int LogoPictureId { get; set; }
         }
 
-        public partial class LocalizationSettingsModel
+        public partial class LocalizationSettingsModel : BaseNopModel
         {
             [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.UseImagesForLanguageSelection")]
             public bool UseImagesForLanguageSelection { get; set; }
@@ -185,7 +186,7 @@ namespace Nop.Admin.Models.Settings
             public bool SeoFriendlyUrlsForLanguagesEnabled { get; set; }
         }
 
-        public partial class FullTextSettingsModel
+        public partial class FullTextSettingsModel : BaseNopModel
         {
             public bool Supported { get; set; }
 

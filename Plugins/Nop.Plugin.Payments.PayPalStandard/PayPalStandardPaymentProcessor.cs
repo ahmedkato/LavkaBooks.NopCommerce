@@ -36,6 +36,7 @@ namespace Nop.Plugin.Payments.PayPalStandard
         private readonly IWebHelper _webHelper;
         private readonly ICheckoutAttributeParser _checkoutAttributeParser;
         private readonly ITaxService _taxService;
+        private readonly IOrderTotalCalculationService _orderTotalCalculationService;
         private readonly HttpContextBase _httpContext;
         #endregion
 
@@ -44,8 +45,8 @@ namespace Nop.Plugin.Payments.PayPalStandard
         public PayPalStandardPaymentProcessor(PayPalStandardPaymentSettings paypalStandardPaymentSettings,
             ISettingService settingService, ICurrencyService currencyService,
             CurrencySettings currencySettings, IWebHelper webHelper,
-            ICheckoutAttributeParser checkoutAttributeParser, ITaxService taxService,
-            HttpContextBase httpContext)
+            ICheckoutAttributeParser checkoutAttributeParser, ITaxService taxService, 
+            IOrderTotalCalculationService orderTotalCalculationService, HttpContextBase httpContext)
         {
             this._paypalStandardPaymentSettings = paypalStandardPaymentSettings;
             this._settingService = settingService;
@@ -54,6 +55,7 @@ namespace Nop.Plugin.Payments.PayPalStandard
             this._webHelper = webHelper;
             this._checkoutAttributeParser = checkoutAttributeParser;
             this._taxService = taxService;
+            this._orderTotalCalculationService = orderTotalCalculationService;
             this._httpContext = httpContext;
         }
 
@@ -349,10 +351,13 @@ namespace Nop.Plugin.Payments.PayPalStandard
         /// <summary>
         /// Gets additional handling fee
         /// </summary>
+        /// <param name="cart">Shoping cart</param>
         /// <returns>Additional handling fee</returns>
-        public decimal GetAdditionalHandlingFee()
+        public decimal GetAdditionalHandlingFee(IList<ShoppingCartItem> cart)
         {
-            return _paypalStandardPaymentSettings.AdditionalFee;
+            var result = this.CalculateAdditionalFee(_orderTotalCalculationService, cart,
+                _paypalStandardPaymentSettings.AdditionalFee, _paypalStandardPaymentSettings.AdditionalFeePercentage);
+            return result;
         }
 
         /// <summary>
@@ -424,14 +429,7 @@ namespace Nop.Plugin.Payments.PayPalStandard
         {
             if (order == null)
                 throw new ArgumentNullException("order");
-
-            //PayPal Standard is the redirection payment method
-            //It also validates whether order is also paid (after redirection) so customers will not be able to pay twice
             
-            //payment status should be Pending
-            if (order.PaymentStatus != PaymentStatus.Pending)
-                return false;
-
             //let's ensure that at least 1 minute passed after order is placed
             if ((DateTime.UtcNow - order.CreatedOnUtc).TotalMinutes < 1)
                 return false;
@@ -495,6 +493,8 @@ namespace Nop.Plugin.Payments.PayPalStandard
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayPalStandard.Fields.PDTValidateOrderTotal.Hint", "Check if PDT handler should validate order totals.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayPalStandard.Fields.AdditionalFee", "Additional fee");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayPalStandard.Fields.AdditionalFee.Hint", "Enter additional fee to charge your customers.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayPalStandard.Fields.AdditionalFeePercentage", "Additinal fee. Use percentage");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayPalStandard.Fields.AdditionalFeePercentage.Hint", "Determines whether to apply a percentage additional fee to the order total. If not enabled, a fixed value is used.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayPalStandard.Fields.PassProductNamesAndTotals", "Pass product names and order totals to PayPal");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayPalStandard.Fields.PassProductNamesAndTotals.Hint", "Check if product names and order totals should be passed to PayPal.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayPalStandard.Fields.EnableIpn", "Enable IPN (Instant Payment Notification)");
@@ -523,6 +523,8 @@ namespace Nop.Plugin.Payments.PayPalStandard
             this.DeletePluginLocaleResource("Plugins.Payments.PayPalStandard.Fields.PDTValidateOrderTotal.Hint");
             this.DeletePluginLocaleResource("Plugins.Payments.PayPalStandard.Fields.AdditionalFee");
             this.DeletePluginLocaleResource("Plugins.Payments.PayPalStandard.Fields.AdditionalFee.Hint");
+            this.DeletePluginLocaleResource("Plugins.Payments.PayPalStandard.Fields.AdditionalFeePercentage");
+            this.DeletePluginLocaleResource("Plugins.Payments.PayPalStandard.Fields.AdditionalFeePercentage.Hint");
             this.DeletePluginLocaleResource("Plugins.Payments.PayPalStandard.Fields.PassProductNamesAndTotals");
             this.DeletePluginLocaleResource("Plugins.Payments.PayPalStandard.Fields.PassProductNamesAndTotals.Hint");
             this.DeletePluginLocaleResource("Plugins.Payments.PayPalStandard.Fields.EnableIpn");

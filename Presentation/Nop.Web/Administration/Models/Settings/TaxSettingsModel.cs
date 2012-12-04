@@ -1,12 +1,12 @@
 ﻿using System.Collections.Generic;
 using System.Web.Mvc;
 using Nop.Admin.Models.Common;
-using Nop.Core.Domain.Tax;
 using Nop.Web.Framework;
+using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Models.Settings
 {
-    public partial class TaxSettingsModel
+    public partial class TaxSettingsModel : BaseNopModel
     {
         public TaxSettingsModel()
         {
@@ -21,7 +21,7 @@ namespace Nop.Admin.Models.Settings
         [NopResourceDisplayName("Admin.Configuration.Settings.Tax.AllowCustomersToSelectTaxDisplayType")]
         public bool AllowCustomersToSelectTaxDisplayType { get; set; }
         [NopResourceDisplayName("Admin.Configuration.Settings.Tax.TaxDisplayType")]
-        public TaxDisplayType TaxDisplayType { get; set; }
+        public int TaxDisplayType { get; set; }
         [NopResourceDisplayName("Admin.Configuration.Settings.Tax.DisplayTaxSuffix")]
         public bool DisplayTaxSuffix { get; set; }
         [NopResourceDisplayName("Admin.Configuration.Settings.Tax.DisplayTaxRates")]
@@ -36,7 +36,7 @@ namespace Nop.Admin.Models.Settings
 
 
         [NopResourceDisplayName("Admin.Configuration.Settings.Tax.TaxBasedOn")]
-        public TaxBasedOn TaxBasedOn { get; set; }
+        public int TaxBasedOn { get; set; }
         [NopResourceDisplayName("Admin.Configuration.Settings.Tax.DefaultTaxAddress")]
         public AddressModel DefaultTaxAddress { get; set; }
        

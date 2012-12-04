@@ -1,14 +1,17 @@
 ﻿using System;
 using System.Globalization;
+using System.Linq;
 using System.Threading;
-using System.Web.Configuration;
+using System.Web;
 using System.Web.Hosting;
 using System.Web.Mvc;
 using System.Web.Routing;
+using System.Web.WebPages;
 using FluentValidation.Mvc;
 using Nop.Core;
 using Nop.Core.Data;
 using Nop.Core.Domain;
+using Nop.Core.Domain.Common;
 using Nop.Core.Infrastructure;
 using Nop.Services.Logging;
 using Nop.Services.Tasks;
@@ -52,6 +55,15 @@ namespace Nop.Web
 
         protected void Application_Start()
         {
+            //we use our own mobile devices support (".Mobile" is reserved). that's why we disable it.
+            var mobileDisplayMode = DisplayModeProvider
+                .Instance
+                .Modes
+                .Where(x => x.DisplayModeId == DisplayModeProvider.MobileDisplayModeId)
+                .FirstOrDefault();
+            if (mobileDisplayMode != null)
+                DisplayModeProvider.Instance.Modes.Remove(mobileDisplayMode);
+
             //initialize engine context
             EngineContext.Initialize(false);
 
@@ -75,40 +87,24 @@ namespace Nop.Web
             //Add some functionality on top of the default ModelMetadataProvider
             ModelMetadataProviders.Current = new NopMetadataProvider();
 
-            //Registering some regular mvc stuf
+            //Registering some regular mvc stuff
             AreaRegistration.RegisterAllAreas();
-            if (databaseInstalled &&
-                EngineContext.Current.Resolve<StoreInformationSettings>().DisplayMiniProfilerInPublicStore)
+            RegisterGlobalFilters(GlobalFilters.Filters);
+            RegisterRoutes(RouteTable.Routes);
+            //StackExchange profiler
+            if (databaseInstalled && EngineContext.Current.Resolve<StoreInformationSettings>().DisplayMiniProfilerInPublicStore)
             {
                 GlobalFilters.Filters.Add(new ProfilingActionFilter());
             }
-            RegisterGlobalFilters(GlobalFilters.Filters);
-            RegisterRoutes(RouteTable.Routes);
             
+            //fluent validation
             DataAnnotationsModelValidatorProvider.AddImplicitRequiredAttributeForValueTypes = false;
-
             ModelValidatorProviders.Providers.Add(new FluentValidationModelValidatorProvider(new NopValidatorFactory()));
 
             //register virtual path provider for embedded views
             var embeddedViewResolver = EngineContext.Current.Resolve<IEmbeddedViewResolver>();
             var embeddedProvider = new EmbeddedViewVirtualPathProvider(embeddedViewResolver.GetEmbeddedViews());
             HostingEnvironment.RegisterVirtualPathProvider(embeddedProvider);
-
-            //mobile device support
-            //if (databaseInstalled)
-            //{
-            //    if (EngineContext.Current.Resolve<StoreInformationSettings>().MobileDevicesSupported)
-            //    {
-            //        //Enable the mobile detection provider (if enabled)
-            //        HttpCapabilitiesBase.BrowserCapabilitiesProvider = new FiftyOne.Foundation.Mobile.Detection.MobileCapabilitiesProvider();
-            //    }
-            //    else
-            //    {
-            //        //set BrowserCapabilitiesProvider to null because 51Degrees assembly always sets it to MobileCapabilitiesProvider
-            //        //which does not support our browserCaps.config file
-            //        HttpCapabilitiesBase.BrowserCapabilitiesProvider = null;
-            //    }
-            //}
 
             //start scheduled tasks
             if (databaseInstalled)
@@ -147,7 +143,6 @@ namespace Nop.Web
 
         protected void Application_Error(Object sender, EventArgs e)
         {
-            //disable compression (if enabled). More info - http://stackoverflow.com/questions/3960707/asp-net-mvc-weird-characters-in-error-page
             //log error
             LogException(Server.GetLastError());
         }
@@ -213,9 +208,16 @@ namespace Nop.Web
             
             if (!DataSettingsHelper.DatabaseIsInstalled())
                 return;
-            
+
+            //ignore 404 HTTP errors
+            var httpException = exc as HttpException;
+            if (httpException != null && httpException.GetHttpCode() == 404 &&
+                !EngineContext.Current.Resolve<CommonSettings>().Log404Errors)
+                return;
+
             try
             {
+                //log
                 var logger = EngineContext.Current.Resolve<ILogger>();
                 var workContext = EngineContext.Current.Resolve<IWorkContext>();
                 logger.Error(exc.Message, exc, workContext.CurrentCustomer);

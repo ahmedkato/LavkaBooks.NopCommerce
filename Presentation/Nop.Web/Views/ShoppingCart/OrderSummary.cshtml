@@ -55,8 +55,7 @@
                     }
                     @if (Model.ShowProductImages)
                     {
-                        <th class="picture">
-                        </th>
+                        <th class="picture"></th>
                     }
                     <th>
                         @T("ShoppingCart.Product(s)")
@@ -95,7 +94,7 @@
                             </td>
                         }
                         <td class="product">
-                            <a href="@Url.RouteUrl("Product", new { productId = item.ProductId, SeName = item.ProductSeName })" title="View details">@item.ProductName</a>
+                            <a href="@Url.RouteUrl("Product", new { SeName = item.ProductSeName })" title="View details">@item.ProductName</a>
                             @if (!String.IsNullOrEmpty(item.AttributeInfo))
                             {
                                 <div class="attributes">
@@ -131,7 +130,7 @@
                                 <select name="itemquantity@(item.Id)" class="qty-dropdown">
                                     @foreach (var qty in item.AllowedQuantities)
                                     {
-                                        <option @(qty.Selected ? Html.Raw(" selected=\"selected\"") : null) value="@qty.Value">@qty.Value</option>
+                                        <option selected="@qty.Selected" value="@qty.Value">@qty.Value</option>
                                     }
                                 </select>
                                 }
@@ -151,8 +150,7 @@
                             @if (!String.IsNullOrEmpty(item.Discount))
                             {
                                 <div class="discount">
-                                    @T("ShoppingCart.ItemYouSave")<text>:</text>
-                                    <text>&nbsp; &nbsp;</text>@item.Discount
+                                    @T("ShoppingCart.ItemYouSave"): @item.Discount
                                 </div>
                             }
                         </td>
@@ -188,7 +186,6 @@
         </div>
         <div class="clear">
         </div>
-        }
         <div class="cart-footer">
             @if (Model.IsEditable)
             {
@@ -211,16 +208,6 @@
                     </div>
                     if (Model.TermsOfServiceEnabled)
                     {
-                    <script language="javascript" type="text/javascript">
-                        function accepttermsofservice() {
-                            if (!$('#termsofservice').is(':checked')) {
-                                $("#terms-of-service-warning-box").dialog();
-                                return false;
-                            }
-                            else
-                                return true;
-                        }
-                    </script>
                     <div id="terms-of-service-warning-box" title="@T("Checkout.TermsOfService")" style="display:none;">
                         <p>@T("Checkout.TermsOfService.PleaseAccept")</p>
                     </div>
@@ -230,8 +217,8 @@
                         @*uncomment below to how simple pop-up*@ @*<span class="read" onclick="javascript:OpenWindow('@Url.RouteUrl("TopicPopup", new { SystemName = "conditionsofUse" })', 450, 500, true)">@T("Checkout.TermsOfService.Read")</span>*@
                         @*use fancybox to how nice pop-up*@
                         @{
-                        Html.AddScriptParts(@Url.Content("~/Scripts/jquery.fancybox-1.3.4.pack.js"));
-                        Html.AddCssFileParts(@Url.Content("~/Content/fancybox/jquery.fancybox-1.3.4.css"));
+                        Html.AddScriptParts("~/Scripts/jquery.fancybox-1.3.4.pack.js");
+                        Html.AddCssFileParts("~/Content/fancybox/jquery.fancybox-1.3.4.css");
                         }
                         <a class="read" href='@Url.RouteUrl("TopicPopup", new { SystemName = "conditionsofUse" })'>@T("Checkout.TermsOfService.Read")</a>
                         <script type="text/javascript">
@@ -246,34 +233,36 @@
                         </script>
                     </div>
                     }
-                            
                     <div class="clear">
                     </div>
                     <div class="checkout-buttons">
                         @if (String.IsNullOrEmpty(Model.MinOrderSubtotalWarning))
                         {
-                            <script language="javascript" type="text/javascript">
-                                        function startcheckout() {
-                                            //terms of services
-                                            var termOfServiceOk = true;
-                                            @if (Model.TermsOfServiceEnabled)
-                                            {
+                            <script type="text/javascript">
+                                $(document).ready(function () {
+                                    $('#checkout').click(function () {
+                                        //terms of services
+                                        var termOfServiceOk = true;
+                                        @if (Model.TermsOfServiceEnabled)
+                                        {
                                                 <text>
-                                                termOfServiceOk = accepttermsofservice();
-                                                </text>
-                                            }
-                                            if (termOfServiceOk)
-                                            {
-                                                $('#startcheckout').trigger("click");
-                                            }
+                                        if (!$('#termsofservice').is(':checked')) {
+                                            $("#terms-of-service-warning-box").dialog();
+                                            termOfServiceOk = false;
                                         }
+                                        else {
+                                            termOfServiceOk = true;
+                                        }
+                                                </text>
+                                        }
+                                        if (termOfServiceOk) {
+                                            $('#startcheckout').trigger("click");
+                                        }
+                                    });
+                                });
                             </script>
-                            <input type="submit" name="checkout" value="@T("Checkout.Button")" id="checkout" class="button-1 checkout-button" onclick="startcheckout()" />
+                            <input type="button" id="checkout" name="checkout" value="@T("Checkout.Button")" class="button-1 checkout-button" onclick="startcheckout(); return false;" />
                         }
-                    </div>
-                    <div class="addon-buttons">
-                        @*Payment method buttons (e.g. GoogleCheckoutButton, Paypal Express)*@
-                        @Html.Partial("_ButtonPaymentMethod", Model)
                     </div>
                 }
             </div>
@@ -295,6 +284,14 @@
                 @Html.Action("CrossSellProducts", "Catalog")
             }
         </div>
+        }
+        if (Model.IsEditable)
+        {
+        <div class="addon-buttons">
+            @*Payment method buttons (e.g. GoogleCheckoutButton, Paypal Express)*@
+            @Html.Partial("_ButtonPaymentMethod", Model)
+        </div>
+        }
     }
     else
     {

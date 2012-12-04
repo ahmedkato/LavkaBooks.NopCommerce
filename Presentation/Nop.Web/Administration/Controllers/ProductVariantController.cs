@@ -32,6 +32,7 @@ namespace Nop.Admin.Controllers
         #region Fields
 
         private readonly IProductService _productService;
+        private readonly IProductTagService _productTagService;
         private readonly IPictureService _pictureService;
         private readonly ILanguageService _languageService;
         private readonly ILocalizedEntityService _localizedEntityService;
@@ -61,7 +62,8 @@ namespace Nop.Admin.Controllers
 
         #region Constructors
 
-        public ProductVariantController(IProductService productService, IPictureService pictureService,
+        public ProductVariantController(IProductService productService,
+            IProductTagService productTagService, IPictureService pictureService,
             ILanguageService languageService, ILocalizedEntityService localizedEntityService,
             IDiscountService discountService, ICustomerService customerService,
             ILocalizationService localizationService, IProductAttributeService productAttributeService,
@@ -78,6 +80,7 @@ namespace Nop.Admin.Controllers
         {
             this._localizedEntityService = localizedEntityService;
             this._pictureService = pictureService;
+            this._productTagService = productTagService;
             this._languageService = languageService;
             this._productService = productService;
             this._discountService = discountService;
@@ -193,7 +196,7 @@ namespace Nop.Admin.Controllers
             if (model == null)
                 throw new ArgumentNullException("model");
 
-            var discounts = _discountService.GetAllDiscounts(DiscountType.AssignedToSkus, true);
+            var discounts = _discountService.GetAllDiscounts(DiscountType.AssignedToSkus, null, true);
             model.AvailableDiscounts = discounts.ToList();
 
             if (!excludeProperties)
@@ -254,7 +257,17 @@ namespace Nop.Admin.Controllers
                 model.ProductVariantAttributes.Add(pvaModel);
             }
         }
-        
+
+        [NonAction]
+        protected void UpdateProductTagTotals(ProductVariant variant)
+        {
+            //we do not use variant.Product property because it's null when creating a new product variant
+            var product = _productService.GetProductById(variant.ProductId);
+            var productTags = product.ProductTags;
+            foreach (var productTag in productTags)
+                _productTagService.UpdateProductTagTotals(productTag);
+        }
+
         #endregion
 
         #region List / Create / Edit / Delete
@@ -301,7 +314,7 @@ namespace Nop.Admin.Controllers
                 //locales
                 UpdateLocales(variant, model);
                 //discounts
-                var allDiscounts = _discountService.GetAllDiscounts(DiscountType.AssignedToSkus, true);
+                var allDiscounts = _discountService.GetAllDiscounts(DiscountType.AssignedToSkus, null, true);
                 foreach (var discount in allDiscounts)
                 {
                     if (model.SelectedDiscountIds != null && model.SelectedDiscountIds.Contains(discount.Id))
@@ -312,6 +325,8 @@ namespace Nop.Admin.Controllers
                 _productService.UpdateHasDiscountsApplied(variant);
                 //update picture seo file name
                 UpdatePictureSeoNames(variant);
+                //update product tag totals
+                UpdateProductTagTotals(variant);
 
                 //activity log
                 _customerActivityService.InsertActivity("AddNewProductVariant", _localizationService.GetResource("ActivityLog.AddNewProductVariant"), variant.Name);
@@ -384,7 +399,7 @@ namespace Nop.Admin.Controllers
                 //locales
                 UpdateLocales(variant, model);
                 //discounts
-                var allDiscounts = _discountService.GetAllDiscounts(DiscountType.AssignedToSkus, true);
+                var allDiscounts = _discountService.GetAllDiscounts(DiscountType.AssignedToSkus, null, true);
                 foreach (var discount in allDiscounts)
                 {
                     if (model.SelectedDiscountIds != null && model.SelectedDiscountIds.Contains(discount.Id))
@@ -412,6 +427,8 @@ namespace Nop.Admin.Controllers
                 }
                 //update picture seo file name
                 UpdatePictureSeoNames(variant);
+                //update product tag totals
+                UpdateProductTagTotals(variant);
                 //back in stock notifications
                 if (variant.ManageInventoryMethod == ManageInventoryMethod.ManageStock &&
                     variant.BackorderMode == BackorderMode.NoBackorders &&
@@ -454,6 +471,8 @@ namespace Nop.Admin.Controllers
 
             var productId = variant.ProductId;
             _productService.DeleteProductVariant(variant);
+            //update product tag totals
+            UpdateProductTagTotals(variant);
 
             //activity log
             _customerActivityService.InsertActivity("DeleteProductVariant", _localizationService.GetResource("ActivityLog.DeleteProductVariant"), variant.Name);
@@ -467,17 +486,17 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
 
-            var variants = _productService.GetLowStockProductVariants().Take(_adminAreaSettings.GridPageSize).ToList();
+            var allVariants = _productService.GetLowStockProductVariants();
             var model = new GridModel<ProductVariantModel>()
             {
-                Data = variants.Select(x =>
+                Data = allVariants.Take(_adminAreaSettings.GridPageSize).Select(x =>
                 {
                     var variantModel = x.ToModel();
                     //Full product variant name
                     variantModel.Name = !String.IsNullOrEmpty(x.Name) ? string.Format("{0} ({1})", x.Product.Name, x.Name) : x.Product.Name;
                     return variantModel;
                 }),
-                Total = variants.Count
+                Total = allVariants.Count
             };
 
             return View(model);
@@ -488,18 +507,17 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
                 return AccessDeniedView();
 
-            var variants = _productService.GetLowStockProductVariants();
-
+            var allVariants = _productService.GetLowStockProductVariants();
             var model = new GridModel<ProductVariantModel>()
             {
-                Data = variants.PagedForCommand(command).Select(x =>
+                Data = allVariants.PagedForCommand(command).Select(x =>
                 {
                     var variantModel = x.ToModel();
                     //Full product variant name
                     variantModel.Name = !String.IsNullOrEmpty(x.Name) ? string.Format("{0} ({1})", x.Product.Name, x.Name) : x.Product.Name;
                     return variantModel;
                 }),
-                Total = variants.Count
+                Total = allVariants.Count
             };
             return new JsonResult
             {
@@ -519,7 +537,7 @@ namespace Nop.Admin.Controllers
             var model = new BulkEditListModel();
             //categories
             model.AvailableCategories.Add(new SelectListItem() { Text = _localizationService.GetResource("Admin.Common.All"), Value = "0" });
-            foreach (var c in _categoryService.GetAllCategories(true))
+            foreach (var c in _categoryService.GetAllCategories(showHidden: true))
                 model.AvailableCategories.Add(new SelectListItem() { Text = c.GetCategoryNameWithPrefix(_categoryService), Value = c.Id.ToString() });
 
             //manufacturers

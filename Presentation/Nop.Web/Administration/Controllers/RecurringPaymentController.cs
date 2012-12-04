@@ -3,6 +3,7 @@ using System.Linq;
 using System.Web.Mvc;
 using Nop.Admin.Models.Orders;
 using Nop.Core;
+using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Orders;
 using Nop.Services.Customers;
 using Nop.Services.Helpers;
@@ -132,16 +133,16 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageOrders))
                 return AccessDeniedView();
 
-            var payments = _orderService.SearchRecurringPayments(0, 0, null, true);
+            var payments = _orderService.SearchRecurringPayments(0, 0, null, command.Page - 1, command.PageSize, true);
             var gridModel = new GridModel<RecurringPaymentModel>
             {
-                Data = payments.PagedForCommand(command).Select(x =>
+                Data = payments.Select(x =>
                 {
                     var m = new RecurringPaymentModel();
                     PrepareRecurringPaymentModel(m, x, false);
                     return m;
                 }),
-                Total = payments.Count,
+                Total = payments.TotalCount,
             };
             return new JsonResult
             {

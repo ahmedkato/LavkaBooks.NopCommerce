@@ -23,11 +23,11 @@ namespace Nop.Data.Mapping.Orders
             this.Property(o => o.OrderTotal).HasPrecision(18, 4);
             this.Property(o => o.RefundedAmount).HasPrecision(18, 4);
 
-            this.Property(o => o.TaxRates).IsMaxLength();
-            this.Property(o => o.AuthorizationTransactionCode).IsMaxLength();
-            this.Property(o => o.AuthorizationTransactionResult).IsMaxLength();
-            this.Property(o => o.CaptureTransactionResult).IsMaxLength();
-            this.Property(o => o.PurchaseOrderNumber).IsMaxLength();
+            this.Property(o => o.TaxRates);
+            this.Property(o => o.AuthorizationTransactionCode);
+            this.Property(o => o.AuthorizationTransactionResult);
+            this.Property(o => o.CaptureTransactionResult);
+            this.Property(o => o.PurchaseOrderNumber);
 
             this.Ignore(o => o.OrderStatus);
             this.Ignore(o => o.PaymentStatus);
@@ -41,8 +41,10 @@ namespace Nop.Data.Mapping.Orders
 
 
 
-
-
+            this.HasOptional(o => o.Affiliate)
+                .WithMany()
+                .HasForeignKey(o => o.AffiliateId);
+            
             //code below is commented because it causes some issues on big databases - http://www.nopcommerce.com/boards/t/11126/bug-version-20-command-confirm-takes-several-minutes-using-big-databases.aspx
             //this.HasRequired(o => o.BillingAddress).WithOptional().Map(x => x.MapKey("BillingAddressId")).WillCascadeOnDelete(false);
             //this.HasOptional(o => o.ShippingAddress).WithOptionalDependent().Map(x => x.MapKey("ShippingAddressId")).WillCascadeOnDelete(false);

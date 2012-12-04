@@ -24,12 +24,12 @@ namespace Nop.Data.Tests.Catalog
                 MetaKeywords = "Meta keywords",
                 MetaDescription = "Meta description",
                 MetaTitle = "Meta title",
-                SeName = "SE name",
                 AllowCustomerReviews = true,
                 ApprovedRatingSum = 2,
                 NotApprovedRatingSum = 3,
                 ApprovedTotalReviews = 4,
                 NotApprovedTotalReviews = 5,
+                SubjectToAcl = true,
                 Published = true,
                 Deleted = false,
                 CreatedOnUtc = new DateTime(2010, 01, 01),
@@ -46,12 +46,12 @@ namespace Nop.Data.Tests.Catalog
             fromDb.ShowOnHomePage.ShouldEqual(false);
             fromDb.MetaKeywords.ShouldEqual("Meta keywords");
             fromDb.MetaDescription.ShouldEqual("Meta description");
-            fromDb.SeName.ShouldEqual("SE name");
             fromDb.AllowCustomerReviews.ShouldEqual(true);
             fromDb.ApprovedRatingSum.ShouldEqual(2);
             fromDb.NotApprovedRatingSum.ShouldEqual(3);
             fromDb.ApprovedTotalReviews.ShouldEqual(4);
             fromDb.NotApprovedTotalReviews.ShouldEqual(5);
+            fromDb.SubjectToAcl.ShouldEqual(true);
             fromDb.Published.ShouldEqual(true);
             fromDb.Deleted.ShouldEqual(false);
             fromDb.CreatedOnUtc.ShouldEqual(new DateTime(2010, 01, 01));
@@ -112,7 +112,6 @@ namespace Nop.Data.Tests.Catalog
                             MetaKeywords = "Meta keywords",
                             MetaDescription = "Meta description",
                             MetaTitle = "Meta title",
-                            SeName = "SE name",
                             ParentCategoryId = 2,
                             PictureId = 3,
                             PageSize = 4,
@@ -162,7 +161,6 @@ namespace Nop.Data.Tests.Catalog
                             MetaKeywords = "Meta keywords",
                             MetaDescription = "Meta description",
                             MetaTitle = "Meta title",
-                            SeName = "SE name",
                             PictureId = 3,
                             PageSize = 4,
                             PriceRanges = "1-3;",

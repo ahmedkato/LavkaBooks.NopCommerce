@@ -1,16 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
-using System.Text;
 using Nop.Core;
 using Nop.Core.Data;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Media;
 using Nop.Services.Configuration;
 using Nop.Services.Events;
+using Nop.Services.Logging;
 using Nop.Services.Seo;
 
 namespace Nop.Services.Media
@@ -28,6 +29,7 @@ namespace Nop.Services.Media
         private readonly IRepository<ProductPicture> _productPictureRepository;
         private readonly ISettingService _settingService;
         private readonly IWebHelper _webHelper;
+        private readonly ILogger _logger;
         private readonly IEventPublisher _eventPublisher;
         private readonly MediaSettings _mediaSettings;
 
@@ -42,18 +44,20 @@ namespace Nop.Services.Media
         /// <param name="productPictureRepository">Product picture repository</param>
         /// <param name="settingService">Setting service</param>
         /// <param name="webHelper">Web helper</param>
+        /// <param name="logger">Logger</param>
         /// <param name="eventPublisher">Event publisher</param>
         /// <param name="mediaSettings">Media settings</param>
         public PictureService(IRepository<Picture> pictureRepository,
             IRepository<ProductPicture> productPictureRepository,
             ISettingService settingService, IWebHelper webHelper,
-            IEventPublisher eventPublisher,
+            ILogger logger, IEventPublisher eventPublisher,
             MediaSettings mediaSettings)
         {
             this._pictureRepository = pictureRepository;
             this._productPictureRepository = productPictureRepository;
             this._settingService = settingService;
             this._webHelper = webHelper;
+            this._logger = logger;
             this._eventPublisher = eventPublisher;
             this._mediaSettings = mediaSettings;
         }
@@ -94,7 +98,7 @@ namespace Nop.Services.Media
         /// </summary>
         /// <param name="mimeType">Mime type</param>
         /// <returns>ImageCodecInfo</returns>
-        protected virtual  ImageCodecInfo GetImageCodecInfoFromMimeType(string mimeType)
+        protected virtual ImageCodecInfo GetImageCodecInfoFromMimeType(string mimeType)
         {
             var info = ImageCodecInfo.GetImageEncoders();
             foreach (var ici in info)
@@ -108,7 +112,7 @@ namespace Nop.Services.Media
         /// </summary>
         /// <param name="fileExt">File extension</param>
         /// <returns>ImageCodecInfo</returns>
-        protected virtual  ImageCodecInfo GetImageCodecInfoFromExtension(string fileExt)
+        protected virtual ImageCodecInfo GetImageCodecInfoFromExtension(string fileExt)
         {
             fileExt = fileExt.TrimStart(".".ToCharArray()).ToLower().Trim();
             switch (fileExt)
@@ -133,7 +137,7 @@ namespace Nop.Services.Media
         /// <param name="pictureId">Picture identifier</param>
         /// <param name="pictureBinary">Picture binary</param>
         /// <param name="mimeType">MIME type</param>
-        protected virtual  void SavePictureInFile(int pictureId, byte[] pictureBinary, string mimeType)
+        protected virtual void SavePictureInFile(int pictureId, byte[] pictureBinary, string mimeType)
         {
             string lastPart = GetFileExtensionFromMimeType(mimeType);
             string localFilename = string.Format("{0}_0.{1}", pictureId.ToString("0000000"), lastPart);            
@@ -144,7 +148,7 @@ namespace Nop.Services.Media
         /// Delete a picture on file system
         /// </summary>
         /// <param name="picture">Picture</param>
-        protected virtual  void DeletePictureOnFileSystem(Picture picture)
+        protected virtual void DeletePictureOnFileSystem(Picture picture)
         {
             if (picture == null)
                 throw new ArgumentNullException("picture");
@@ -164,7 +168,7 @@ namespace Nop.Services.Media
         /// <param name="originalSize">The original picture size</param>
         /// <param name="targetSize">The target picture size (longest side)</param>
         /// <returns></returns>
-        protected virtual  Size CalculateDimensions(Size originalSize, int targetSize)
+        protected virtual Size CalculateDimensions(Size originalSize, int targetSize)
         {
             var newSize = new Size();
             if (originalSize.Height > originalSize.Width) // portrait 
@@ -184,7 +188,7 @@ namespace Nop.Services.Media
         /// Delete picture thumbs
         /// </summary>
         /// <param name="picture">Picture</param>
-        protected virtual  void DeletePictureThumbs(Picture picture)
+        protected virtual void DeletePictureThumbs(Picture picture)
         {
             string filter = string.Format("{0}*.*", picture.Id.ToString("0000000"));
             string[] currentFiles = System.IO.Directory.GetFiles(this.LocalThumbImagePath, filter);
@@ -192,6 +196,50 @@ namespace Nop.Services.Media
                 File.Delete(Path.Combine(this.LocalThumbImagePath, currentFileName));
         }
 
+        /// <summary>
+        /// Validates input picture dimensions
+        /// </summary>
+        /// <param name="pictureBinary">Picture binary</param>
+        /// <param name="mimeType">MIME type</param>
+        /// <param name="maxSize">Maximum image size</param>
+        /// <returns>Picture binary or throws an exception</returns>
+        protected virtual byte[] ValidatePicture(byte[] pictureBinary, string mimeType)
+        {
+            using (var stream1 = new MemoryStream(pictureBinary))
+            {
+                using (var b = new Bitmap(stream1))
+                {
+                    var maxSize = _mediaSettings.MaximumImageSize;
+                    if ((b.Height <= maxSize) && (b.Width <= maxSize))
+                        return pictureBinary;
+                    
+                    var newSize = CalculateDimensions(b.Size, maxSize);
+                    using (var newBitMap = new Bitmap(newSize.Width, newSize.Height))
+                    {
+                        using (var g = Graphics.FromImage(newBitMap))
+                        {
+                            g.SmoothingMode = SmoothingMode.HighQuality;
+                            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                            g.CompositingQuality =CompositingQuality.HighQuality;
+                            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                            g.DrawImage(b, 0, 0, newSize.Width, newSize.Height);
+
+                            using (var stream2 = new MemoryStream())
+                            {
+                                var ep = new EncoderParameters();
+                                ep.Param[0] = new EncoderParameter(Encoder.Quality, this.ImageQuality);
+                                ImageCodecInfo ici = GetImageCodecInfoFromMimeType(mimeType);
+                                if (ici == null)
+                                    ici = GetImageCodecInfoFromMimeType("image/jpeg");
+                                newBitMap.Save(stream2, ici, ep);
+                                return stream2.GetBuffer();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
         #endregion
 
         #region Methods
@@ -203,28 +251,7 @@ namespace Nop.Services.Media
         /// <returns>Result</returns>
         public virtual string GetPictureSeName(string name)
         {
-            //if (String.IsNullOrEmpty(name))
-            //    return name;
-
-            //string okChars = "abcdefghijklmnopqrstuvwxyz1234567890 _-";
-            //name = name.Trim().ToLowerInvariant();
-
-            //var sb = new StringBuilder();
-            //foreach (char c in name.ToCharArray())
-            //{
-            //    string c2 = c.ToString();
-            //    if (okChars.Contains(c2))
-            //        sb.Append(c2);
-            //}
-            //string name2 = sb.ToString();
-            //name2 = name2.Replace(" ", "_");
-            //name2 = name2.Replace("-", "_");
-            //while (name2.Contains("__"))
-            //    name2 = name2.Replace("__", "_");
-            //return name2.ToLowerInvariant();
-
-            //use SeoExtensions implementation
-            return SeoExtensions.GetSeName(name, true, false, false);
+            return SeoExtensions.GetSeName(name, true, false);
         }
 
         /// <summary>
@@ -240,13 +267,13 @@ namespace Nop.Services.Media
             switch (defaultPictureType)
             {
                 case PictureType.Entity:
-                    defaultImageName = _settingService.GetSettingByKey("Media.DefaultImageName", "noDefaultImage.gif");
+                    defaultImageName = _settingService.GetSettingByKey("Media.DefaultImageName", "default-image.gif");
                     break;
                 case PictureType.Avatar:
-                    defaultImageName = _settingService.GetSettingByKey("Media.Customer.DefaultAvatarImageName", "defaultAvatar.jpg");
+                    defaultImageName = _settingService.GetSettingByKey("Media.Customer.DefaultAvatarImageName", "default-avatar.jpg");
                     break;
                 default:
-                    defaultImageName = _settingService.GetSettingByKey("Media.DefaultImageName", "noDefaultImage.gif");
+                    defaultImageName = _settingService.GetSettingByKey("Media.DefaultImageName", "default-image.gif");
                     break;
             }
 
@@ -269,30 +296,33 @@ namespace Nop.Services.Media
                         fileExtension);
                     if (!File.Exists(Path.Combine(LocalThumbImagePath, fname)))
                     {
-                        var b = new Bitmap(filePath);
+                        using (var b = new Bitmap(filePath))
+                        {
+                            var newSize = CalculateDimensions(b.Size, targetSize);
 
-                        var newSize = CalculateDimensions(b.Size, targetSize);
+                            if (newSize.Width < 1)
+                                newSize.Width = 1;
+                            if (newSize.Height < 1)
+                                newSize.Height = 1;
 
-                        if (newSize.Width < 1)
-                            newSize.Width = 1;
-                        if (newSize.Height < 1)
-                            newSize.Height = 1;
-
-                        var newBitMap = new Bitmap(newSize.Width, newSize.Height);
-                        var g = Graphics.FromImage(newBitMap);
-                        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-                        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                        g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
-                        g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-                        g.DrawImage(b, 0, 0, newSize.Width, newSize.Height);
-                        var ep = new EncoderParameters();
-                        ep.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, this.ImageQuality);
-                        ImageCodecInfo ici = GetImageCodecInfoFromExtension(fileExtension);
-                        if (ici == null)
-                            ici = GetImageCodecInfoFromMimeType("image/jpeg");
-                        newBitMap.Save(Path.Combine(LocalThumbImagePath, fname), ici, ep);
-                        newBitMap.Dispose();
-                        b.Dispose();
+                            using (var newBitMap = new Bitmap(newSize.Width, newSize.Height))
+                            {
+                                using (var g = Graphics.FromImage(newBitMap))
+                                {
+                                    g.SmoothingMode = SmoothingMode.HighQuality;
+                                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                                    g.CompositingQuality = CompositingQuality.HighQuality;
+                                    g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                                    g.DrawImage(b, 0, 0, newSize.Width, newSize.Height);
+                                    var ep = new EncoderParameters();
+                                    ep.Param[0] = new EncoderParameter(Encoder.Quality, this.ImageQuality);
+                                    ImageCodecInfo ici = GetImageCodecInfoFromExtension(fileExtension);
+                                    if (ici == null)
+                                        ici = GetImageCodecInfoFromMimeType("image/jpeg");
+                                    newBitMap.Save(Path.Combine(LocalThumbImagePath, fname), ici, ep);
+                                }
+                            }
+                        }
                     }
                     return (useSsl.HasValue
                                ? _webHelper.GetStoreLocation(useSsl.Value)
@@ -372,7 +402,10 @@ namespace Nop.Services.Media
         public virtual string GetPictureUrl(Picture picture, int targetSize = 0, bool showDefaultPicture = true, bool? useSsl = null)
         {
             string url = string.Empty;
-            if (picture == null || LoadPictureBinary(picture).Length == 0)
+            byte[] pictureBinary = null;
+            if (picture != null)
+                pictureBinary = LoadPictureBinary(picture);
+            if (picture == null || pictureBinary == null || pictureBinary.Length == 0)
             {
                 if(showDefaultPicture)
                 {
@@ -387,7 +420,13 @@ namespace Nop.Services.Media
             {
                 DeletePictureThumbs(picture);
 
-                picture = UpdatePicture(picture.Id, LoadPictureBinary(picture), picture.MimeType, picture.SeoFilename, false);
+                //we do not validate picture binary here to ensure that no exception ("Parameter is not valid") will be thrown
+                picture = UpdatePicture(picture.Id, 
+                    pictureBinary, 
+                    picture.MimeType, 
+                    picture.SeoFilename, 
+                    false, 
+                    false);
             }
             lock (s_lock)
             {
@@ -404,7 +443,7 @@ namespace Nop.Services.Media
                         {
                             System.IO.Directory.CreateDirectory(this.LocalThumbImagePath);
                         }
-                        File.WriteAllBytes(Path.Combine(this.LocalThumbImagePath, localFilename), LoadPictureBinary(picture));
+                        File.WriteAllBytes(Path.Combine(this.LocalThumbImagePath, localFilename), pictureBinary);
                     }
                 }
                 else
@@ -418,10 +457,23 @@ namespace Nop.Services.Media
                         {
                             System.IO.Directory.CreateDirectory(this.LocalThumbImagePath);
                         }
-                        using (var stream = new MemoryStream(LoadPictureBinary(picture)))
+                        using (var stream = new MemoryStream(pictureBinary))
                         {
-                            var b = new Bitmap(stream);
-
+                            Bitmap b = null;
+                            try
+                            {
+                                //try-catch to ensure that picture binary is really OK. Otherwise, we can get "Parameter is not valid" exception if binary is corrupted for some reasons
+                                b = new Bitmap(stream);
+                            }
+                            catch (ArgumentException exc)
+                            {
+                                _logger.Error(string.Format("Error generating picture thumb. ID={0}", picture.Id), exc);
+                            }
+                            if (b == null)
+                            {
+                                //bitmap could not be loaded for some reasons
+                                return url;
+                            }
                             var newSize = CalculateDimensions(b.Size, targetSize);
 
                             if (newSize.Width < 1)
@@ -429,20 +481,23 @@ namespace Nop.Services.Media
                             if (newSize.Height < 1)
                                 newSize.Height = 1;
 
-                            var newBitMap = new Bitmap(newSize.Width, newSize.Height);
-                            var g = Graphics.FromImage(newBitMap);
-                            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-                            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                            g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
-                            g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-                            g.DrawImage(b, 0, 0, newSize.Width, newSize.Height);
-                            var ep = new EncoderParameters();
-                            ep.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, this.ImageQuality);
-                            ImageCodecInfo ici = GetImageCodecInfoFromExtension(lastPart);
-                            if (ici == null)
-                                ici = GetImageCodecInfoFromMimeType("image/jpeg");
-                            newBitMap.Save(Path.Combine(this.LocalThumbImagePath, localFilename), ici, ep);
-                            newBitMap.Dispose();
+                            using (var newBitMap = new Bitmap(newSize.Width, newSize.Height))
+                            {
+                                using (var g = Graphics.FromImage(newBitMap))
+                                {
+                                    g.SmoothingMode = SmoothingMode.HighQuality;
+                                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                                    g.CompositingQuality = CompositingQuality.HighQuality;
+                                    g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                                    g.DrawImage(b, 0, 0, newSize.Width, newSize.Height);
+                                    var ep = new EncoderParameters();
+                                    ep.Param[0] = new EncoderParameter(Encoder.Quality, this.ImageQuality);
+                                    ImageCodecInfo ici = GetImageCodecInfoFromExtension(lastPart);
+                                    if (ici == null)
+                                        ici = GetImageCodecInfoFromMimeType("image/jpeg");
+                                    newBitMap.Save(Path.Combine(this.LocalThumbImagePath, localFilename), ici, ep);
+                                }
+                            }
                             b.Dispose();
                         }
                     }
@@ -470,7 +525,7 @@ namespace Nop.Services.Media
             else
                 return Path.Combine(this.LocalThumbImagePath, Path.GetFileName(url));
         }
-
+        
         /// <summary>
         /// Gets a picture
         /// </summary>
@@ -508,50 +563,6 @@ namespace Nop.Services.Media
             _eventPublisher.EntityDeleted(picture);
         }
 
-        /// <summary>
-        /// Validates input picture dimensions
-        /// </summary>
-        /// <param name="pictureBinary">Picture binary</param>
-        /// <param name="mimeType">MIME type</param>
-        /// <returns>Picture binary or throws an exception</returns>
-        public virtual byte[] ValidatePicture(byte[] pictureBinary, string mimeType)
-        {
-            using (var stream = new MemoryStream(pictureBinary))
-            {
-                var b = new Bitmap(stream);
-                int maxSize = _mediaSettings.MaximumImageSize;
-
-                if ((b.Height > maxSize) || (b.Width > maxSize))
-                {
-                    var newSize = CalculateDimensions(b.Size, maxSize);
-                    var newBitMap = new Bitmap(newSize.Width, newSize.Height);
-                    var g = Graphics.FromImage(newBitMap);
-                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                    g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
-                    g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-                    g.DrawImage(b, 0, 0, newSize.Width, newSize.Height);
-
-                    var m = new MemoryStream();
-                    var ep = new EncoderParameters();
-                    ep.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, this.ImageQuality);
-                    ImageCodecInfo ici = GetImageCodecInfoFromMimeType(mimeType);
-                    if (ici == null)
-                        ici = GetImageCodecInfoFromMimeType("image/jpeg");
-                    newBitMap.Save(m, ici, ep);
-                    newBitMap.Dispose();
-                    b.Dispose();
-
-                    return m.GetBuffer();
-                }
-                else
-                {
-                    b.Dispose();
-                    return pictureBinary;
-                }
-            }
-        }
-        
         /// <summary>
         /// Gets a collection of pictures
         /// </summary>
@@ -609,23 +620,26 @@ namespace Nop.Services.Media
         /// <param name="mimeType">The picture MIME type</param>
         /// <param name="seoFilename">The SEO filename</param>
         /// <param name="isNew">A value indicating whether the picture is new</param>
+        /// <param name="validateBinary">A value indicating whether to validated provided picture binary</param>
         /// <returns>Picture</returns>
-        public virtual Picture InsertPicture(byte[] pictureBinary, string mimeType, string seoFilename, bool isNew)
+        public virtual Picture InsertPicture(byte[] pictureBinary, string mimeType, string seoFilename,
+            bool isNew, bool validateBinary = true)
         {
             mimeType = CommonHelper.EnsureNotNull(mimeType);
             mimeType = CommonHelper.EnsureMaximumLength(mimeType, 20);
 
             seoFilename = CommonHelper.EnsureMaximumLength(seoFilename, 100);
 
-            pictureBinary = ValidatePicture(pictureBinary, mimeType);
+            if (validateBinary)
+                pictureBinary = ValidatePicture(pictureBinary, mimeType);
 
-            
-            var picture = new Picture();
-            picture.PictureBinary = (this.StoreInDb ? pictureBinary : new byte[0]);
-            picture.MimeType = mimeType;
-            picture.SeoFilename = seoFilename;
-            picture.IsNew = isNew;
-
+            var picture = new Picture()
+                              {
+                                  PictureBinary = this.StoreInDb ? pictureBinary : new byte[0],
+                                  MimeType = mimeType,
+                                  SeoFilename = seoFilename,
+                                  IsNew = isNew,
+                              };
             _pictureRepository.Insert(picture);
 
             if(!this.StoreInDb)
@@ -645,15 +659,18 @@ namespace Nop.Services.Media
         /// <param name="mimeType">The picture MIME type</param>
         /// <param name="seoFilename">The SEO filename</param>
         /// <param name="isNew">A value indicating whether the picture is new</param>
+        /// <param name="validateBinary">A value indicating whether to validated provided picture binary</param>
         /// <returns>Picture</returns>
-        public virtual Picture UpdatePicture(int pictureId, byte[] pictureBinary, string mimeType, string seoFilename, bool isNew)
+        public virtual Picture UpdatePicture(int pictureId, byte[] pictureBinary, string mimeType,
+            string seoFilename, bool isNew, bool validateBinary = true)
         {
             mimeType = CommonHelper.EnsureNotNull(mimeType);
             mimeType = CommonHelper.EnsureMaximumLength(mimeType, 20);
 
             seoFilename = CommonHelper.EnsureMaximumLength(seoFilename, 100);
 
-            ValidatePicture(pictureBinary, mimeType);
+            if (validateBinary)
+                pictureBinary = ValidatePicture(pictureBinary, mimeType);
 
             var picture = GetPictureById(pictureId);
             if (picture == null)
@@ -753,26 +770,27 @@ namespace Nop.Services.Media
                 //check whether it's a new value
                 if (this.StoreInDb != value)
                 {
-                    //save the nwe setting value
+                    //save the new setting value
                     _settingService.SetSetting<bool>("Media.Images.StoreInDB", value);
 
                     //update all picture objects
                     var pictures = this.GetPictures(0, int.MaxValue);
-                    for (int i = 0; i < pictures.Count; i++)
+                    foreach (var picture in pictures)
                     {
-                        var picture = pictures[i];
                         var pictureBinary = LoadPictureBinary(picture, !value);
-                        
+
                         //delete from file system
                         if (value)
                             DeletePictureOnFileSystem(picture);
 
                         //just update a picture (all required logic is in UpdatePicture method)
-                        picture = UpdatePicture(picture.Id,
-                            pictureBinary,
-                            picture.MimeType,
-                            picture.SeoFilename,
-                            true);
+                        UpdatePicture(picture.Id,
+                                      pictureBinary,
+                                      picture.MimeType,
+                                      picture.SeoFilename,
+                                      true,
+                                      false);
+                        //we do not validate picture binary here to ensure that no exception ("Parameter is not valid") will be thrown when "moving" pictures
                     }
                 }
             }

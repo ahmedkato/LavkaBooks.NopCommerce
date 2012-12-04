@@ -2,13 +2,15 @@ using System;
 using System.Collections.Generic;
 using Nop.Core.Domain.Discounts;
 using Nop.Core.Domain.Localization;
+using Nop.Core.Domain.Security;
+using Nop.Core.Domain.Seo;
 
 namespace Nop.Core.Domain.Catalog
 {
     /// <summary>
     /// Represents a category
     /// </summary>
-    public partial class Category : BaseEntity, ILocalizedEntity
+    public partial class Category : BaseEntity, ILocalizedEntity, ISlugSupported, IAclSupported
     {
         private ICollection<Discount> _appliedDiscounts;
 
@@ -41,11 +43,6 @@ namespace Nop.Core.Domain.Catalog
         /// Gets or sets the meta title
         /// </summary>
         public virtual string MetaTitle { get; set; }
-
-        /// <summary>
-        /// Gets or sets the search-engine name
-        /// </summary>
-        public virtual string SeName { get; set; }
 
         /// <summary>
         /// Gets or sets the parent category identifier
@@ -90,6 +87,11 @@ namespace Nop.Core.Domain.Catalog
         /// </remarks>
         /// </summary>
         public virtual bool HasDiscountsApplied { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the entity is subject to ACL
+        /// </summary>
+        public virtual bool SubjectToAcl { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the entity is published

@@ -4,7 +4,7 @@
 @{
     var gridPageSize = EngineContext.Current.Resolve<Nop.Core.Domain.Common.AdminAreaSettings>().GridPageSize;
     //page title
-    ViewBag.Title = @T("Admin.Configuration.Languages.Localization").Text;
+    ViewBag.Title = T("Admin.Configuration.Languages.Localization").Text;
 }
 <div class="section-header">
     <div class="title">
@@ -55,8 +55,8 @@
                         columns.Bound(x => x.Value).EditorTemplateName("String");
                         columns.Command(commands =>
                         {
-                            commands.Edit();
-                            commands.Delete();
+                            commands.Edit().Text(T("Admin.Common.Edit").Text);
+                            commands.Delete().Text(T("Admin.Common.Delete").Text);
                         }).Width(180);
 
                     })

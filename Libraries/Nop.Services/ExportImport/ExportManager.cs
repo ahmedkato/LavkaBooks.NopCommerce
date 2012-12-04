@@ -15,6 +15,7 @@ using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Media;
 using Nop.Services.Messages;
+using Nop.Services.Seo;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 
@@ -23,7 +24,7 @@ namespace Nop.Services.ExportImport
     /// <summary>
     /// Export manager
     /// </summary>
-public partial class ExportManager : IExportManager
+    public partial class ExportManager : IExportManager
     {
         #region Fields
 
@@ -72,7 +73,7 @@ public partial class ExportManager : IExportManager
                     xmlWriter.WriteElementString("MetaKeywords", null, category.MetaKeywords);
                     xmlWriter.WriteElementString("MetaDescription", null, category.MetaDescription);
                     xmlWriter.WriteElementString("MetaTitle", null, category.MetaTitle);
-                    xmlWriter.WriteElementString("SeName", null, category.SeName);
+                    xmlWriter.WriteElementString("SeName", null, category.GetSeName(0));
                     xmlWriter.WriteElementString("ParentCategoryId", null, category.ParentCategoryId.ToString());
                     xmlWriter.WriteElementString("PictureId", null, category.PictureId.ToString());
                     xmlWriter.WriteElementString("PageSize", null, category.PageSize.ToString());
@@ -141,7 +142,7 @@ public partial class ExportManager : IExportManager
                 xmlWriter.WriteElementString("MetaKeywords", null, manufacturer.MetaKeywords);
                 xmlWriter.WriteElementString("MetaDescription", null, manufacturer.MetaDescription);
                 xmlWriter.WriteElementString("MetaTitle", null, manufacturer.MetaTitle);
-                xmlWriter.WriteElementString("SEName", null, manufacturer.SeName);
+                xmlWriter.WriteElementString("SEName", null, manufacturer.GetSeName(0));
                 xmlWriter.WriteElementString("PictureId", null, manufacturer.PictureId.ToString());
                 xmlWriter.WriteElementString("PageSize", null, manufacturer.PageSize.ToString());
                 xmlWriter.WriteElementString("AllowCustomersToSelectPageSize", null, manufacturer.AllowCustomersToSelectPageSize.ToString());
@@ -230,7 +231,7 @@ public partial class ExportManager : IExportManager
                 xmlWriter.WriteElementString("MetaKeywords", null, product.MetaKeywords);
                 xmlWriter.WriteElementString("MetaDescription", null, product.MetaDescription);
                 xmlWriter.WriteElementString("MetaTitle", null, product.MetaTitle);
-                xmlWriter.WriteElementString("SEName", null, product.SeName);
+                xmlWriter.WriteElementString("SEName", null, product.GetSeName(0));
                 xmlWriter.WriteElementString("AllowCustomerReviews", null, product.AllowCustomerReviews.ToString());
                 xmlWriter.WriteElementString("Published", null, product.Published.ToString());
                 xmlWriter.WriteElementString("CreatedOnUtc", null, product.CreatedOnUtc.ToString());
@@ -440,13 +441,15 @@ public partial class ExportManager : IExportManager
         /// <summary>
         /// Export products to XLSX
         /// </summary>
-        /// <param name="filePath">File path to use</param>
+        /// <param name="stream">Stream</param>
         /// <param name="products">Products</param>
-        public virtual void ExportProductsToXlsx(string filePath, IList<Product> products)
+        public virtual void ExportProductsToXlsx(Stream stream, IList<Product> products)
         {
-            var newFile = new FileInfo(filePath);
+            if (stream == null)
+                throw new ArgumentNullException("stream");
+
             // ok, we can run the real code of the sample now
-            using (var xlPackage = new ExcelPackage(newFile))
+            using (var xlPackage = new ExcelPackage(stream))
             {
                 // uncomment this line if you want the XML written out to the outputDir
                 //xlPackage.DebugMode = true; 
@@ -570,7 +573,7 @@ public partial class ExportManager : IExportManager
                         worksheet.Cells[row, col].Value = p.MetaTitle;
                         col++;
 
-                        worksheet.Cells[row, col].Value = p.SeName;
+                        worksheet.Cells[row, col].Value = p.GetSeName(0);
                         col++;
 
                         worksheet.Cells[row, col].Value = p.AllowCustomerReviews;
@@ -958,13 +961,15 @@ public partial class ExportManager : IExportManager
         /// <summary>
         /// Export orders to XLSX
         /// </summary>
-        /// <param name="filePath">File path to use</param>
+        /// <param name="stream">Stream</param>
         /// <param name="orders">Orders</param>
-        public virtual void ExportOrdersToXlsx(string filePath, IList<Order> orders)
+        public virtual void ExportOrdersToXlsx(Stream stream, IList<Order> orders)
         {
-            var newFile = new FileInfo(filePath);
+            if (stream == null)
+                throw new ArgumentNullException("stream");
+
             // ok, we can run the real code of the sample now
-            using (var xlPackage = new ExcelPackage(newFile))
+            using (var xlPackage = new ExcelPackage(stream))
             {
                 // uncomment this line if you want the XML written out to the outputDir
                 //xlPackage.DebugMode = true; 
@@ -1237,13 +1242,15 @@ public partial class ExportManager : IExportManager
         /// <summary>
         /// Export customer list to XLSX
         /// </summary>
-        /// <param name="filePath">File path to use</param>
+        /// <param name="stream">Stream</param>
         /// <param name="customers">Customers</param>
-        public virtual void ExportCustomersToXlsx(string filePath, IList<Customer> customers)
+        public virtual void ExportCustomersToXlsx(Stream stream, IList<Customer> customers)
         {
-            var newFile = new FileInfo(filePath);
+            if (stream == null)
+                throw new ArgumentNullException("stream");
+
             // ok, we can run the real code of the sample now
-            using (var xlPackage = new ExcelPackage(newFile))
+            using (var xlPackage = new ExcelPackage(stream))
             {
                 // uncomment this line if you want the XML written out to the outputDir
                 //xlPackage.DebugMode = true; 

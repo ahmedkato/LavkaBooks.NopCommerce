@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Web.ModelBinding;
 using System.Web.Mvc;
 using Nop.Admin.Models.Common;
 using Nop.Admin.Models.Customers;
@@ -70,6 +72,7 @@ namespace Nop.Admin.Controllers
         private readonly ForumSettings _forumSettings;
         private readonly IForumService _forumService;
         private readonly IOpenAuthenticationService _openAuthenticationService;
+        private readonly AddressSettings _addressSettings;
 
         #endregion
 
@@ -91,7 +94,8 @@ namespace Nop.Admin.Controllers
             IPermissionService permissionService, AdminAreaSettings adminAreaSettings,
             IQueuedEmailService queuedEmailService, EmailAccountSettings emailAccountSettings,
             IEmailAccountService emailAccountService, ForumSettings forumSettings,
-            IForumService forumService, IOpenAuthenticationService openAuthenticationService)
+            IForumService forumService, IOpenAuthenticationService openAuthenticationService,
+            AddressSettings addressSettings)
         {
             this._customerService = customerService;
             this._genericAttributeService = genericAttributeService;
@@ -121,6 +125,7 @@ namespace Nop.Admin.Controllers
             this._forumSettings = forumSettings;
             this._forumService = forumService;
             this._openAuthenticationService = openAuthenticationService;
+            this._addressSettings = addressSettings;
         }
 
         #endregion
@@ -279,8 +284,10 @@ namespace Nop.Admin.Controllers
         }
 
         [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult CustomerList(GridCommand command, CustomerListModel model)
+        public ActionResult CustomerList(GridCommand command, CustomerListModel model,
+            [ModelBinderAttribute(typeof(CommaSeparatedModelBinder))] int[] searchCustomerRoleIds)
         {
+            //we use own own binder for searchCustomerRoleIds property 
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCustomers))
                 return AccessDeniedView();
 
@@ -292,7 +299,7 @@ namespace Nop.Admin.Controllers
                 searchMonthOfBirth = Convert.ToInt32(model.SearchMonthOfBirth);
 
             var customers = _customerService.GetAllCustomers(null, null,
-                model.SearchCustomerRoleIds, model.SearchEmail, model.SearchUsername,
+                searchCustomerRoleIds, model.SearchEmail, model.SearchUsername,
                 model.SearchFirstName, model.SearchLastName,
                 searchDayOfBirth, searchMonthOfBirth,
                 model.SearchCompany, model.SearchPhone, model.SearchZipPostalCode,
@@ -384,7 +391,7 @@ namespace Nop.Admin.Controllers
             }
             if (!String.IsNullOrWhiteSpace(model.Username) & _customerSettings.UsernamesEnabled)
             {
-                var cust2 = _customerService.GetCustomerByEmail(model.Username);
+                var cust2 = _customerService.GetCustomerByUsername(model.Username);
                 if (cust2 != null)
                     ModelState.AddModelError("", "Username is already registered");
             }
@@ -1101,18 +1108,23 @@ namespace Nop.Admin.Controllers
                 Data = addresses.Select(x =>
                 {
                     var model = x.ToModel();
-                    if (x.Country != null)
-                        model.CountryName = x.Country.Name;
-                    if (x.StateProvince != null)
-                        model.StateProvinceName = x.StateProvince.Name;
-                    model.AddressHtml = string.Format("<div>{0}<br />{1}<br />{2}<br />{3}, {4}, {5}<br />{6}<br /></div>", 
-                        Server.HtmlEncode(model.Company),
-                        Server.HtmlEncode(model.Address1),
-                        Server.HtmlEncode(model.Address2),
-                        Server.HtmlEncode(model.City),
-                        Server.HtmlEncode(model.StateProvinceName),
-                        Server.HtmlEncode(model.ZipPostalCode),
-                        Server.HtmlEncode(model.CountryName));
+                    var addressHtmlSb = new StringBuilder("<div>");
+                    if (_addressSettings.CompanyEnabled && !String.IsNullOrEmpty(model.Company))
+                        addressHtmlSb.AppendFormat("{0}<br />", Server.HtmlEncode(model.Company));
+                    if (_addressSettings.StreetAddressEnabled && !String.IsNullOrEmpty(model.Address1))
+                        addressHtmlSb.AppendFormat("{0}<br />", Server.HtmlEncode(model.Address1));
+                    if (_addressSettings.StreetAddress2Enabled && !String.IsNullOrEmpty(model.Address2))
+                        addressHtmlSb.AppendFormat("{0}<br />", Server.HtmlEncode(model.Address2));
+                    if (_addressSettings.CityEnabled && !String.IsNullOrEmpty(model.City))
+                        addressHtmlSb.AppendFormat("{0},", Server.HtmlEncode(model.City));
+                    if (_addressSettings.StateProvinceEnabled && !String.IsNullOrEmpty(model.StateProvinceName))
+                        addressHtmlSb.AppendFormat("{0},", Server.HtmlEncode(model.StateProvinceName));
+                    if (_addressSettings.ZipPostalCodeEnabled && !String.IsNullOrEmpty(model.ZipPostalCode))
+                        addressHtmlSb.AppendFormat("{0}<br />", Server.HtmlEncode(model.ZipPostalCode));
+                    if (_addressSettings.CountryEnabled && !String.IsNullOrEmpty(model.CountryName))
+                        addressHtmlSb.AppendFormat("{0}", Server.HtmlEncode(model.CountryName));
+                    addressHtmlSb.Append("</div>");
+                    model.AddressHtml = addressHtmlSb.ToString();
                     return model;
                 }),
                 Total = addresses.Count
@@ -1155,6 +1167,28 @@ namespace Nop.Admin.Controllers
             var model = new CustomerAddressModel();
             model.Address = new AddressModel();
             model.CustomerId = customerId;
+            model.Address.FirstNameEnabled = true;
+            model.Address.FirstNameRequired = true;
+            model.Address.LastNameEnabled = true;
+            model.Address.LastNameRequired = true;
+            model.Address.EmailEnabled = true;
+            model.Address.EmailRequired = true;
+            model.Address.CompanyEnabled = _addressSettings.CompanyEnabled;
+            model.Address.CompanyRequired = _addressSettings.CompanyRequired;
+            model.Address.CountryEnabled = _addressSettings.CountryEnabled;
+            model.Address.StateProvinceEnabled = _addressSettings.StateProvinceEnabled;
+            model.Address.CityEnabled = _addressSettings.CityEnabled;
+            model.Address.CityRequired = _addressSettings.CityRequired;
+            model.Address.StreetAddressEnabled = _addressSettings.StreetAddressEnabled;
+            model.Address.StreetAddressRequired = _addressSettings.StreetAddressRequired;
+            model.Address.StreetAddress2Enabled = _addressSettings.StreetAddress2Enabled;
+            model.Address.StreetAddress2Required = _addressSettings.StreetAddress2Required;
+            model.Address.ZipPostalCodeEnabled = _addressSettings.ZipPostalCodeEnabled;
+            model.Address.ZipPostalCodeRequired = _addressSettings.ZipPostalCodeRequired;
+            model.Address.PhoneEnabled = _addressSettings.PhoneEnabled;
+            model.Address.PhoneRequired = _addressSettings.PhoneRequired;
+            model.Address.FaxEnabled = _addressSettings.FaxEnabled;
+            model.Address.FaxRequired = _addressSettings.FaxRequired;
             //countries
             model.Address.AvailableCountries.Add(new SelectListItem() { Text = _localizationService.GetResource("Admin.Address.SelectCountry"), Value = "0" });
             foreach (var c in _countryService.GetAllCountries(true))
@@ -1227,6 +1261,28 @@ namespace Nop.Admin.Controllers
             var model = new CustomerAddressModel();
             model.CustomerId = customerId;
             model.Address = address.ToModel();
+            model.Address.FirstNameEnabled = true;
+            model.Address.FirstNameRequired = true;
+            model.Address.LastNameEnabled = true;
+            model.Address.LastNameRequired = true;
+            model.Address.EmailEnabled = true;
+            model.Address.EmailRequired = true;
+            model.Address.CompanyEnabled = _addressSettings.CompanyEnabled;
+            model.Address.CompanyRequired = _addressSettings.CompanyRequired;
+            model.Address.CountryEnabled = _addressSettings.CountryEnabled;
+            model.Address.StateProvinceEnabled = _addressSettings.StateProvinceEnabled;
+            model.Address.CityEnabled = _addressSettings.CityEnabled;
+            model.Address.CityRequired = _addressSettings.CityRequired;
+            model.Address.StreetAddressEnabled = _addressSettings.StreetAddressEnabled;
+            model.Address.StreetAddressRequired = _addressSettings.StreetAddressRequired;
+            model.Address.StreetAddress2Enabled = _addressSettings.StreetAddress2Enabled;
+            model.Address.StreetAddress2Required = _addressSettings.StreetAddress2Required;
+            model.Address.ZipPostalCodeEnabled = _addressSettings.ZipPostalCodeEnabled;
+            model.Address.ZipPostalCodeRequired = _addressSettings.ZipPostalCodeRequired;
+            model.Address.PhoneEnabled = _addressSettings.PhoneEnabled;
+            model.Address.PhoneRequired = _addressSettings.PhoneRequired;
+            model.Address.FaxEnabled = _addressSettings.FaxEnabled;
+            model.Address.FaxRequired = _addressSettings.FaxRequired;
             //countries
             model.Address.AvailableCountries.Add(new SelectListItem() { Text = _localizationService.GetResource("Admin.Address.SelectCountry"), Value = "0" });
             foreach (var c in _countryService.GetAllCountries(true))
@@ -1272,6 +1328,28 @@ namespace Nop.Admin.Controllers
             //If we got this far, something failed, redisplay form
             model.CustomerId = customer.Id;
             model.Address = address.ToModel();
+            model.Address.FirstNameEnabled = true;
+            model.Address.FirstNameRequired = true;
+            model.Address.LastNameEnabled = true;
+            model.Address.LastNameRequired = true;
+            model.Address.EmailEnabled = true;
+            model.Address.EmailRequired = true;
+            model.Address.CompanyEnabled = _addressSettings.CompanyEnabled;
+            model.Address.CompanyRequired = _addressSettings.CompanyRequired;
+            model.Address.CountryEnabled = _addressSettings.CountryEnabled;
+            model.Address.StateProvinceEnabled = _addressSettings.StateProvinceEnabled;
+            model.Address.CityEnabled = _addressSettings.CityEnabled;
+            model.Address.CityRequired = _addressSettings.CityRequired;
+            model.Address.StreetAddressEnabled = _addressSettings.StreetAddressEnabled;
+            model.Address.StreetAddressRequired = _addressSettings.StreetAddressRequired;
+            model.Address.StreetAddress2Enabled = _addressSettings.StreetAddress2Enabled;
+            model.Address.StreetAddress2Required = _addressSettings.StreetAddress2Required;
+            model.Address.ZipPostalCodeEnabled = _addressSettings.ZipPostalCodeEnabled;
+            model.Address.ZipPostalCodeRequired = _addressSettings.ZipPostalCodeRequired;
+            model.Address.PhoneEnabled = _addressSettings.PhoneEnabled;
+            model.Address.PhoneRequired = _addressSettings.PhoneRequired;
+            model.Address.FaxEnabled = _addressSettings.FaxEnabled;
+            model.Address.FaxRequired = _addressSettings.FaxRequired;
             //countries
             model.Address.AvailableCountries.Add(new SelectListItem() { Text = _localizationService.GetResource("Admin.Address.SelectCountry"), Value = "0" });
             foreach (var c in _countryService.GetAllCountries(true))
@@ -1540,13 +1618,13 @@ namespace Nop.Admin.Controllers
                     null, null, null, 0, 0, null, null, null, 
                     false, null, 0, int.MaxValue);
 
-                string fileName = string.Format("customers_{0}_{1}.xlsx", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"), CommonHelper.GenerateRandomDigitCode(4));
-                string filePath = System.IO.Path.Combine(Request.PhysicalApplicationPath, "content\\files\\ExportImport", fileName);
-
-                _exportManager.ExportCustomersToXlsx(filePath, customers);
-
-                var bytes = System.IO.File.ReadAllBytes(filePath);
-                return File(bytes, "text/xls", fileName);
+                byte[] bytes = null;
+                using (var stream = new MemoryStream())
+                {
+                    _exportManager.ExportCustomersToXlsx(stream, customers);
+                    bytes = stream.ToArray();
+                }
+                return File(bytes, "text/xls", "customers.xlsx");
             }
             catch (Exception exc)
             {
@@ -1570,13 +1648,13 @@ namespace Nop.Admin.Controllers
                 customers.AddRange(_customerService.GetCustomersByIds(ids));
             }
 
-            string fileName = string.Format("customers_{0}_{1}.xlsx", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"), CommonHelper.GenerateRandomDigitCode(4));
-            string filePath = System.IO.Path.Combine(Request.PhysicalApplicationPath, "content\\files\\ExportImport", fileName);
-
-            _exportManager.ExportCustomersToXlsx(filePath, customers);
-
-            var bytes = System.IO.File.ReadAllBytes(filePath);
-            return File(bytes, "text/xls", fileName);
+            byte[] bytes = null;
+            using (var stream = new MemoryStream())
+            {
+                _exportManager.ExportCustomersToXlsx(stream, customers);
+                bytes = stream.ToArray();
+            }
+            return File(bytes, "text/xls", "customers.xlsx");
         }
 
         public ActionResult ExportXmlAll()
@@ -1590,9 +1668,8 @@ namespace Nop.Admin.Controllers
                     null, null, null, 0, 0, null, null, null, 
                     false, null, 0, int.MaxValue);
                 
-                var fileName = string.Format("customers_{0}.xml", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"));
                 var xml = _exportManager.ExportCustomersToXml(customers);
-                return new XmlDownloadResult(xml, fileName);
+                return new XmlDownloadResult(xml, "customers.xml");
             }
             catch (Exception exc)
             {
@@ -1616,9 +1693,8 @@ namespace Nop.Admin.Controllers
                 customers.AddRange(_customerService.GetCustomersByIds(ids));
             }
 
-            var fileName = string.Format("customers_{0}.xml", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"));
             var xml = _exportManager.ExportCustomersToXml(customers);
-            return new XmlDownloadResult(xml, fileName);
+            return new XmlDownloadResult(xml, "customers.xml");
         }
 
         #endregion

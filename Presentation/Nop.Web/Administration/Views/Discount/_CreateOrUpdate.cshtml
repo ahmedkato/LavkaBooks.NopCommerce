@@ -4,7 +4,7 @@
 @using Telerik.Web.Mvc.UI;
 @using Nop.Web.Framework.UI;
 @{
-    Html.AddScriptParts(@Url.Content("~/Administration/Scripts/jquery.tmpl.min.js"));
+    Html.AddScriptParts("~/Administration/Scripts/jquery.tmpl.min.js");
 }
 @Html.ValidationSummary(false)
 @Html.HiddenFor(model => model.Id)
@@ -443,7 +443,7 @@
                         columns.Bound(x => x.CreatedOn).Width(200);
                         columns.Command(commands =>
                         {
-                            commands.Delete();
+                            commands.Delete().Text(T("Admin.Common.Delete").Text);
                         }).Width(100).Title(T("Admin.Common.Delete").Text);
 
                     })

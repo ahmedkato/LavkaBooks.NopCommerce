@@ -184,6 +184,106 @@ namespace Nop.Services.Orders
         #region Utilities
 
         /// <summary>
+        /// Award reward points
+        /// </summary>
+        /// <param name="order">Order</param>
+        protected void AwardRewardPoints(Order order)
+        {
+            if (!_rewardPointsSettings.Enabled)
+                return;
+
+            if (_rewardPointsSettings.PointsForPurchases_Amount <= decimal.Zero)
+                return;
+
+            //Ensure that reward points are applied only to registered users
+            if (order.Customer == null || order.Customer.IsGuest())
+                return;
+
+            int points = (int)Math.Truncate(order.OrderTotal / _rewardPointsSettings.PointsForPurchases_Amount * _rewardPointsSettings.PointsForPurchases_Points);
+            if (points == 0)
+                return;
+
+            //Ensure that reward points were not added before. We should not add reward points if they were already earned for this order
+            if (order.RewardPointsWereAdded)
+                return;
+
+            //add reward points
+            order.Customer.AddRewardPointsHistoryEntry(points, string.Format(_localizationService.GetResource("RewardPoints.Message.EarnedForOrder"), order.Id));
+            order.RewardPointsWereAdded = true;
+            _orderService.UpdateOrder(order);
+        }
+
+        /// <summary>
+        /// Award reward points
+        /// </summary>
+        /// <param name="order">Order</param>
+        protected void ReduceRewardPoints(Order order)
+        {
+            if (!_rewardPointsSettings.Enabled)
+                return;
+
+            if (_rewardPointsSettings.PointsForPurchases_Amount <= decimal.Zero)
+                return;
+
+            //Ensure that reward points are applied only to registered users
+            if (order.Customer == null || order.Customer.IsGuest())
+                return;
+
+            int points = (int)Math.Truncate(order.OrderTotal / _rewardPointsSettings.PointsForPurchases_Amount * _rewardPointsSettings.PointsForPurchases_Points);
+            if (points == 0)
+                return;
+
+            //ensure that reward points were already earned for this order before
+            if (!order.RewardPointsWereAdded)
+                return;
+
+            //reduce reward points
+            order.Customer.AddRewardPointsHistoryEntry(-points, string.Format(_localizationService.GetResource("RewardPoints.Message.ReducedForOrder"), order.Id));
+            _orderService.UpdateOrder(order);
+        }
+
+        /// <summary>
+        /// Set IsActivated value for purchase gift cards for particular order
+        /// </summary>
+        /// <param name="order">Order</param>
+        /// <param name="activate">A value indicating whether to activate gift cards; true - actuvate, false - deactivate</param>
+        protected void SetActivatedValueForPurchasedGiftCards(Order order, bool activate)
+        {
+            var giftCards = _giftCardService.GetAllGiftCards(order.Id, null, null, !activate, "", 0, int.MaxValue);
+            foreach (var gc in giftCards)
+            {
+                if (activate)
+                {
+                    //activate
+                    bool isRecipientNotified = gc.IsRecipientNotified;
+                    if (gc.GiftCardType == GiftCardType.Virtual)
+                    {
+                        //send email for virtual gift card
+                        if (!String.IsNullOrEmpty(gc.RecipientEmail) &&
+                            !String.IsNullOrEmpty(gc.SenderEmail))
+                        {
+                            var customerLang = _languageService.GetLanguageById(order.CustomerLanguageId);
+                            if (customerLang == null)
+                                customerLang = _languageService.GetAllLanguages().FirstOrDefault();
+                            int queuedEmailId = _workflowMessageService.SendGiftCardNotification(gc, customerLang.Id);
+                            if (queuedEmailId > 0)
+                                isRecipientNotified = true;
+                        }
+                    }
+                    gc.IsGiftCardActivated = true;
+                    gc.IsRecipientNotified = isRecipientNotified;
+                    _giftCardService.UpdateGiftCard(gc);
+                }
+                else
+                {
+                    //deactivate
+                    gc.IsGiftCardActivated = false;
+                    _giftCardService.UpdateGiftCard(gc);
+                }
+            }
+        }
+
+        /// <summary>
         /// Sets an order status
         /// </summary>
         /// <param name="order">Order</param>
@@ -250,87 +350,27 @@ namespace Nop.Services.Orders
             }
 
             //reward points
-            if (_rewardPointsSettings.Enabled)
+            if (_rewardPointsSettings.PointsForPurchases_Awarded == order.OrderStatus)
             {
-                if (_rewardPointsSettings.PointsForPurchases_Amount > decimal.Zero)
-                {
-                    //Ensure that reward points are applied only to registered users
-                    if (order.Customer != null && !order.Customer.IsGuest())
-                    {
-                        int points = (int)Math.Truncate(order.OrderTotal / _rewardPointsSettings.PointsForPurchases_Amount * _rewardPointsSettings.PointsForPurchases_Points);
-                        if (points != 0)
-                        {
-                            if (_rewardPointsSettings.PointsForPurchases_Awarded == order.OrderStatus)
-                            {
-                                //Ensure that reward points were not added before. We should not add reward points if they were already earned for this order
-                                if (!order.RewardPointsWereAdded)
-                                {
-                                    //add reward points
-                                    order.Customer.AddRewardPointsHistoryEntry(points,
-                                        string.Format(_localizationService.GetResource("RewardPoints.Message.EarnedForOrder"),
-                                        order.Id));
-                                    order.RewardPointsWereAdded = true;
-                                    _orderService.UpdateOrder(order);
-                                }
-                            }
-
-
-                            if (_rewardPointsSettings.PointsForPurchases_Canceled == order.OrderStatus)
-                            {
-                                //ensure that reward points were added before. We should not reduce reward points if they were already earned for this order
-                                if (order.RewardPointsWereAdded)
-                                {
-                                    //reduce reward points
-                                    order.Customer.AddRewardPointsHistoryEntry(-points,
-                                        string.Format(_localizationService.GetResource("RewardPoints.Message.ReducedForOrder"),
-                                        order.Id));
-                                    _orderService.UpdateOrder(order);
-                                }
-                            }
-                        }
-                    }
-                }
+                AwardRewardPoints(order);
+            }
+            if (_rewardPointsSettings.PointsForPurchases_Canceled == order.OrderStatus)
+            {
+                ReduceRewardPoints(order);
             }
 
             //gift cards activation
             if (_orderSettings.GiftCards_Activated_OrderStatusId > 0 &&
                _orderSettings.GiftCards_Activated_OrderStatusId == (int)order.OrderStatus)
             {
-                var giftCards = _giftCardService.GetAllGiftCards(order.Id, null, null, false);
-                foreach (var gc in giftCards)
-                {
-                    bool isRecipientNotified = gc.IsRecipientNotified;
-                    if (gc.GiftCardType == GiftCardType.Virtual)
-                    {
-                        //send email for virtual gift card
-                        if (!String.IsNullOrEmpty(gc.RecipientEmail) &&
-                            !String.IsNullOrEmpty(gc.SenderEmail))
-                        {
-                            var customerLang = _languageService.GetLanguageById(order.CustomerLanguageId);
-                            if (customerLang == null)
-                                customerLang = _workContext.WorkingLanguage;
-                            int queuedEmailId = _workflowMessageService.SendGiftCardNotification(gc, customerLang.Id);
-                            if (queuedEmailId > 0)
-                                isRecipientNotified = true;
-                        }
-                    }
-
-                    gc.IsGiftCardActivated = true;
-                    gc.IsRecipientNotified = isRecipientNotified;
-                    _giftCardService.UpdateGiftCard(gc);
-                }
+                SetActivatedValueForPurchasedGiftCards(order, true);
             }
 
             //gift cards deactivation
             if (_orderSettings.GiftCards_Deactivated_OrderStatusId > 0 &&
                _orderSettings.GiftCards_Deactivated_OrderStatusId == (int)order.OrderStatus)
             {
-                var giftCards = _giftCardService.GetAllGiftCards(order.Id, null, null, true);
-                foreach (var gc in giftCards)
-                {
-                    gc.IsGiftCardActivated = false;
-                    _giftCardService.UpdateGiftCard(gc);
-                }
+                SetActivatedValueForPurchasedGiftCards(order, false);
             }
         }
 
@@ -679,7 +719,7 @@ namespace Nop.Services.Orders
                 decimal paymentAdditionalFeeInclTax, paymentAdditionalFeeExclTax;
                 if (!processPaymentRequest.IsRecurringPayment)
                 {
-                    decimal paymentAdditionalFee = _paymentService.GetAdditionalHandlingFee(processPaymentRequest.PaymentMethodSystemName);
+                    decimal paymentAdditionalFee = _paymentService.GetAdditionalHandlingFee(cart, processPaymentRequest.PaymentMethodSystemName);
                     paymentAdditionalFeeInclTax = _taxService.GetPaymentMethodAdditionalFee(paymentAdditionalFee, true, customer);
                     paymentAdditionalFeeExclTax = _taxService.GetPaymentMethodAdditionalFee(paymentAdditionalFee, false, customer);
                 }
@@ -1288,6 +1328,21 @@ namespace Nop.Services.Orders
             if (order == null)
                 throw new ArgumentNullException("order");
 
+            //reward points
+            ReduceRewardPoints(order);
+
+            //cancel recurring payments
+            var recurringPayments = _orderService.SearchRecurringPayments(0, order.Id, null, 0 , int.MaxValue);
+            foreach (var rp in recurringPayments)
+            {
+                //use errors?
+                var errors = CancelRecurringPayment(rp);
+            }
+
+            //Adjust inventory
+            foreach (var opv in order.OrderProductVariants)
+                _productService.AdjustInventory(opv.ProductVariant, false, opv.Quantity, opv.AttributesXml);
+
             //add a note
             order.OrderNotes.Add(new OrderNote()
             {
@@ -1296,18 +1351,7 @@ namespace Nop.Services.Orders
                 CreatedOnUtc = DateTime.UtcNow
             });
             _orderService.UpdateOrder(order);
-
-            //cancel recurring payments
-            //var recurringPayments = _orderService.SearchRecurringPayments(0, order.Id, null);
-            //foreach (var rp in recurringPayments)
-            //{
-            //    var errors = CancelRecurringPayment(rp);
-            //}
-
-            //Adjust inventory
-            foreach (var opv in order.OrderProductVariants)
-                _productService.AdjustInventory(opv.ProductVariant, false, opv.Quantity, opv.AttributesXml);
-
+            
             //now delete an order
             _orderService.DeleteOrder(order);
         }
@@ -1653,7 +1697,7 @@ namespace Nop.Services.Orders
             _orderService.UpdateOrder(order);
 
             //cancel recurring payments
-            var recurringPayments = _orderService.SearchRecurringPayments(0, order.Id, null);
+            var recurringPayments = _orderService.SearchRecurringPayments(0, order.Id, null, 0, int.MaxValue);
             foreach (var rp in recurringPayments)
             {
                 //use errors?

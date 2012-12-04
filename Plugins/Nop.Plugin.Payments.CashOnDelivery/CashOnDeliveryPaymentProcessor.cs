@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Web.Routing;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
@@ -6,6 +7,7 @@ using Nop.Core.Plugins;
 using Nop.Plugin.Payments.CashOnDelivery.Controllers;
 using Nop.Services.Configuration;
 using Nop.Services.Localization;
+using Nop.Services.Orders;
 using Nop.Services.Payments;
 
 namespace Nop.Plugin.Payments.CashOnDelivery
@@ -18,15 +20,17 @@ namespace Nop.Plugin.Payments.CashOnDelivery
         #region Fields
         private readonly CashOnDeliveryPaymentSettings _cashOnDeliveryPaymentSettings;
         private readonly ISettingService _settingService;
+        private readonly IOrderTotalCalculationService _orderTotalCalculationService;
         #endregion
 
         #region Ctor
 
         public CashOnDeliveryPaymentProcessor(CashOnDeliveryPaymentSettings cashOnDeliveryPaymentSettings,
-            ISettingService settingService)
+            ISettingService settingService, IOrderTotalCalculationService orderTotalCalculationService)
         {
             this._cashOnDeliveryPaymentSettings = cashOnDeliveryPaymentSettings;
             this._settingService = settingService;
+            this._orderTotalCalculationService = orderTotalCalculationService;
         }
 
         #endregion
@@ -57,10 +61,13 @@ namespace Nop.Plugin.Payments.CashOnDelivery
         /// <summary>
         /// Gets additional handling fee
         /// </summary>
+        /// <param name="cart">Shoping cart</param>
         /// <returns>Additional handling fee</returns>
-        public decimal GetAdditionalHandlingFee()
+        public decimal GetAdditionalHandlingFee(IList<ShoppingCartItem> cart)
         {
-            return _cashOnDeliveryPaymentSettings.AdditionalFee;
+            var result = this.CalculateAdditionalFee(_orderTotalCalculationService, cart,
+                _cashOnDeliveryPaymentSettings.AdditionalFee, _cashOnDeliveryPaymentSettings.AdditionalFeePercentage);
+            return result;
         }
 
         /// <summary>
@@ -180,6 +187,9 @@ namespace Nop.Plugin.Payments.CashOnDelivery
             this.AddOrUpdatePluginLocaleResource("Plugins.Payment.CashOnDelivery.DescriptionText.Hint", "Enter info that will be shown to customers during checkout");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payment.CashOnDelivery.AdditionalFee", "Additional fee");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payment.CashOnDelivery.AdditionalFee.Hint", "The additional fee.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payment.CashOnDelivery.AdditionalFeePercentage", "Additinal fee. Use percentage");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payment.CashOnDelivery.AdditionalFeePercentage.Hint", "Determines whether to apply a percentage additional fee to the order total. If not enabled, a fixed value is used.");
+
             
             base.Install();
         }
@@ -194,6 +204,8 @@ namespace Nop.Plugin.Payments.CashOnDelivery
             this.DeletePluginLocaleResource("Plugins.Payment.CashOnDelivery.DescriptionText.Hint");
             this.DeletePluginLocaleResource("Plugins.Payment.CashOnDelivery.AdditionalFee");
             this.DeletePluginLocaleResource("Plugins.Payment.CashOnDelivery.AdditionalFee.Hint");
+            this.DeletePluginLocaleResource("Plugins.Payment.CashOnDelivery.AdditionalFeePercentage");
+            this.DeletePluginLocaleResource("Plugins.Payment.CashOnDelivery.AdditionalFeePercentage.Hint");
             
             base.Uninstall();
         }

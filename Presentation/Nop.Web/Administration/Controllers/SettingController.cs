@@ -38,6 +38,7 @@ using Nop.Web.Framework.Localization;
 using Nop.Web.Framework.Themes;
 using Nop.Web.Framework.UI.Captcha;
 using Telerik.Web.Mvc;
+using Nop.Core.Domain.Seo;
 
 namespace Nop.Admin.Controllers
 {
@@ -77,6 +78,7 @@ namespace Nop.Admin.Controllers
         private ShoppingCartSettings _shoppingCartSettings;
         private MediaSettings _mediaSettings;
         private CustomerSettings _customerSettings;
+        private AddressSettings _addressSettings;
         private readonly DateTimeSettings _dateTimeSettings;
         private readonly StoreInformationSettings _storeInformationSettings;
         private readonly SeoSettings _seoSettings;
@@ -107,7 +109,7 @@ namespace Nop.Admin.Controllers
             CatalogSettings catalogSettings, RewardPointsSettings rewardPointsSettings,
             CurrencySettings currencySettings, OrderSettings orderSettings,
             ShoppingCartSettings shoppingCartSettings, MediaSettings mediaSettings,
-            CustomerSettings customerSettings,
+            CustomerSettings customerSettings, AddressSettings addressSettings,
             DateTimeSettings dateTimeSettings, StoreInformationSettings storeInformationSettings,
             SeoSettings seoSettings,SecuritySettings securitySettings, PdfSettings pdfSettings,
             LocalizationSettings localizationSettings, AdminAreaSettings adminAreaSettings,
@@ -144,6 +146,7 @@ namespace Nop.Admin.Controllers
             this._shoppingCartSettings = shoppingCartSettings;
             this._mediaSettings = mediaSettings;
             this._customerSettings = customerSettings;
+            this._addressSettings = addressSettings;
             this._dateTimeSettings = dateTimeSettings;
             this._storeInformationSettings = storeInformationSettings;
             this._seoSettings = seoSettings;
@@ -270,15 +273,10 @@ namespace Nop.Admin.Controllers
             }
             else
                 model.ShippingOriginAddress.AvailableStates.Add(new SelectListItem() { Text = _localizationService.GetResource("Admin.Address.OtherNonUS"), Value = "0" });
-            model.ShippingOriginAddress.FirstNameDisabled = true;
-            model.ShippingOriginAddress.LastNameDisabled = true;
-            model.ShippingOriginAddress.EmailDisabled = true;
-            model.ShippingOriginAddress.CompanyDisabled = true;
-            model.ShippingOriginAddress.CityDisabled = true;
-            model.ShippingOriginAddress.Address1Disabled = true;
-            model.ShippingOriginAddress.Address2Disabled = true;
-            model.ShippingOriginAddress.PhoneNumberDisabled = true;
-            model.ShippingOriginAddress.FaxNumberDisabled = true;
+            model.ShippingOriginAddress.CountryEnabled = true;
+            model.ShippingOriginAddress.StateProvinceEnabled = true;
+            model.ShippingOriginAddress.ZipPostalCodeEnabled = true;
+            model.ShippingOriginAddress.ZipPostalCodeRequired = true;
 
             return View(model);
         }
@@ -358,15 +356,10 @@ namespace Nop.Admin.Controllers
             }
             else
                 model.DefaultTaxAddress.AvailableStates.Add(new SelectListItem() { Text = _localizationService.GetResource("Admin.Address.OtherNonUS"), Value = "0" });
-            model.DefaultTaxAddress.FirstNameDisabled = true;
-            model.DefaultTaxAddress.LastNameDisabled = true;
-            model.DefaultTaxAddress.EmailDisabled = true;
-            model.DefaultTaxAddress.CompanyDisabled = true;
-            model.DefaultTaxAddress.CityDisabled = true;
-            model.DefaultTaxAddress.Address1Disabled = true;
-            model.DefaultTaxAddress.Address2Disabled = true;
-            model.DefaultTaxAddress.PhoneNumberDisabled = true;
-            model.DefaultTaxAddress.FaxNumberDisabled = true;
+            model.DefaultTaxAddress.CountryEnabled = true;
+            model.DefaultTaxAddress.StateProvinceEnabled = true;
+            model.DefaultTaxAddress.ZipPostalCodeEnabled = true;
+            model.DefaultTaxAddress.ZipPostalCodeRequired = true;
 
             return View(model);
         }
@@ -611,6 +604,7 @@ namespace Nop.Admin.Controllers
             //merge settings
             var model = new CustomerUserSettingsModel();
             model.CustomerSettings = _customerSettings.ToModel();
+            model.AddressSettings = _addressSettings.ToModel();
 
             model.DateTimeSettings.AllowCustomersToSetTimeZone = _dateTimeSettings.AllowCustomersToSetTimeZone;
             model.DateTimeSettings.DefaultStoreTimeZoneId = _dateTimeHelper.DefaultStoreTimeZone.Id;
@@ -636,7 +630,10 @@ namespace Nop.Admin.Controllers
 
             _customerSettings = model.CustomerSettings.ToEntity(_customerSettings);
             _settingService.SaveSetting(_customerSettings);
-            
+
+            _addressSettings = model.AddressSettings.ToEntity(_addressSettings);
+            _settingService.SaveSetting(_addressSettings);
+
             _dateTimeSettings.DefaultStoreTimeZoneId = model.DateTimeSettings.DefaultStoreTimeZoneId;
             _dateTimeSettings.AllowCustomersToSetTimeZone = model.DateTimeSettings.AllowCustomersToSetTimeZone;
             _settingService.SaveSetting(_dateTimeSettings);
@@ -942,7 +939,7 @@ namespace Nop.Admin.Controllers
                     throw new NopException(_localizationService.GetResource("Admin.Configuration.Settings.GeneralCommon.EncryptionKey.TheSame"));
 
                 //update encrypted order info
-                var orders = _orderService.LoadAllOrders();
+                var orders = _orderService.SearchOrders(null, null, null, null, null, null, null, 0, int.MaxValue);
                 foreach (var order in orders)
                 {
                     string decryptedCardType = _encryptionService.DecryptText(order.CardType, oldEncryptionPrivateKey);

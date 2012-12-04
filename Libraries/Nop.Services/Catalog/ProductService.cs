@@ -9,10 +9,12 @@ using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Localization;
 using Nop.Core.Domain.Orders;
+using Nop.Core.Domain.Security;
 using Nop.Data;
 using Nop.Services.Events;
 using Nop.Services.Localization;
 using Nop.Services.Messages;
+using Nop.Services.Seo;
 
 namespace Nop.Services.Catalog
 {
@@ -38,15 +40,18 @@ namespace Nop.Services.Catalog
         private readonly IRepository<CrossSellProduct> _crossSellProductRepository;
         private readonly IRepository<TierPrice> _tierPriceRepository;
         private readonly IRepository<LocalizedProperty> _localizedPropertyRepository;
+        private readonly IRepository<AclRecord> _aclRepository;
         private readonly IRepository<ProductPicture> _productPictureRepository;
         private readonly IRepository<ProductSpecificationAttribute> _productSpecificationAttributeRepository;
         private readonly IProductAttributeService _productAttributeService;
         private readonly IProductAttributeParser _productAttributeParser;
+        private readonly IProductTagService _productTagService;
         private readonly ILanguageService _languageService;
         private readonly IWorkflowMessageService _workflowMessageService;
         private readonly IDataProvider _dataProvider;
         private readonly IDbContext _dbContext;
         private readonly ICacheManager _cacheManager;
+        private readonly IWorkContext _workContext;
         private readonly LocalizationSettings _localizationSettings;
         private readonly CommonSettings _commonSettings;
         private readonly IEventPublisher _eventPublisher;
@@ -65,14 +70,17 @@ namespace Nop.Services.Catalog
         /// <param name="crossSellProductRepository">Cross-sell product repository</param>
         /// <param name="tierPriceRepository">Tier price repository</param>
         /// <param name="localizedPropertyRepository">Localized property repository</param>
+        /// <param name="aclRepository">ACL record repository</param>
         /// <param name="productPictureRepository">Product picture repository</param>
         /// <param name="productSpecificationAttributeRepository">Product specification attribute repository</param>
         /// <param name="productAttributeService">Product attribute service</param>
         /// <param name="productAttributeParser">Product attribute parser service</param>
+        /// <param name="productTagService">Product tag service</param>
         /// <param name="languageService">Language service</param>
         /// <param name="workflowMessageService">Workflow message service</param>
         /// <param name="dataProvider">Data provider</param>
         /// <param name="dbContext">Database Context</param>
+        /// <param name="workContext">Work context</param>
         /// <param name="localizationSettings">Localization settings</param>
         /// <param name="commonSettings">Common settings</param>
         /// <param name="eventPublisher">Event published</param>
@@ -84,12 +92,15 @@ namespace Nop.Services.Catalog
             IRepository<TierPrice> tierPriceRepository,
             IRepository<ProductPicture> productPictureRepository,
             IRepository<LocalizedProperty> localizedPropertyRepository,
+            IRepository<AclRecord> aclRepository,
             IRepository<ProductSpecificationAttribute> productSpecificationAttributeRepository,
             IProductAttributeService productAttributeService,
             IProductAttributeParser productAttributeParser,
+            IProductTagService productTagService,
             ILanguageService languageService,
             IWorkflowMessageService workflowMessageService,
             IDataProvider dataProvider, IDbContext dbContext,
+            IWorkContext workContext,
             LocalizationSettings localizationSettings, CommonSettings commonSettings,
             IEventPublisher eventPublisher)
         {
@@ -101,20 +112,23 @@ namespace Nop.Services.Catalog
             this._tierPriceRepository = tierPriceRepository;
             this._productPictureRepository = productPictureRepository;
             this._localizedPropertyRepository = localizedPropertyRepository;
+            this._aclRepository = aclRepository;
             this._productSpecificationAttributeRepository = productSpecificationAttributeRepository;
             this._productAttributeService = productAttributeService;
             this._productAttributeParser = productAttributeParser;
+            this._productTagService = productTagService;
             this._languageService = languageService;
             this._workflowMessageService = workflowMessageService;
             this._dataProvider = dataProvider;
             this._dbContext = dbContext;
+            this._workContext = workContext;
             this._localizationSettings = localizationSettings;
             this._commonSettings = commonSettings;
             this._eventPublisher = eventPublisher;
         }
 
         #endregion
-
+        
         #region Methods
 
         #region Products
@@ -221,12 +235,14 @@ namespace Nop.Services.Catalog
             if (product == null)
                 throw new ArgumentNullException("product");
 
+            //insert
             _productRepository.Insert(product);
 
+            //clear cache
             _cacheManager.RemoveByPattern(PRODUCTS_PATTERN_KEY);
             _cacheManager.RemoveByPattern(PRODUCTVARIANTS_PATTERN_KEY);
             _cacheManager.RemoveByPattern(TIERPRICES_PATTERN_KEY);
-
+            
             //event notification
             _eventPublisher.EntityInserted(product);
         }
@@ -240,8 +256,10 @@ namespace Nop.Services.Catalog
             if (product == null)
                 throw new ArgumentNullException("product");
 
+            //update
             _productRepository.Update(product);
 
+            //cache
             _cacheManager.RemoveByPattern(PRODUCTS_PATTERN_KEY);
             _cacheManager.RemoveByPattern(PRODUCTVARIANTS_PATTERN_KEY);
             _cacheManager.RemoveByPattern(TIERPRICES_PATTERN_KEY);
@@ -337,7 +355,10 @@ namespace Nop.Services.Catalog
                 }
             }
 
-
+            //Access control list. Allowed customer roles
+            var allowedCustomerRolesIds = _workContext.CurrentCustomer.CustomerRoles
+                .Where(cr => cr.Active).Select(cr => cr.Id).ToList();
+            
 
             if (_commonSettings.UseStoredProceduresIfSupported && _dataProvider.StoredProceduredSupported)
             {
@@ -346,7 +367,7 @@ namespace Nop.Services.Catalog
 
                 #region Use stored procedure
                 
-                //pass categry identifiers as comma-delimited string
+                //pass category identifiers as comma-delimited string
                 string commaSeparatedCategoryIds = "";
                 if (categoryIds != null)
                 {
@@ -359,6 +380,19 @@ namespace Nop.Services.Catalog
                         }
                     }
                 }
+
+
+                //pass customer role identifiers as comma-delimited string
+                string commaSeparatedAllowedCustomerRoleIds = "";
+                for (int i = 0; i < allowedCustomerRolesIds.Count; i++)
+                {
+                    commaSeparatedAllowedCustomerRoleIds += allowedCustomerRolesIds[i].ToString();
+                    if (i != allowedCustomerRolesIds.Count - 1)
+                    {
+                        commaSeparatedAllowedCustomerRoleIds += ",";
+                    }
+                }
+
 
                 //pass specification identifiers as comma-delimited string
                 string commaSeparatedSpecIds = "";
@@ -422,7 +456,7 @@ namespace Nop.Services.Catalog
 
                 var pSearchProductTags = _dataProvider.GetParameter();
                 pSearchProductTags.ParameterName = "SearchProductTags";
-                pSearchProductTags.Value = searchDescriptions;
+                pSearchProductTags.Value = searchProductTags;
                 pSearchProductTags.DbType = DbType.Boolean;
 
                 var pUseFullTextSearch = _dataProvider.GetParameter();
@@ -459,6 +493,11 @@ namespace Nop.Services.Catalog
                 pPageSize.ParameterName = "PageSize";
                 pPageSize.Value = pageSize;
                 pPageSize.DbType = DbType.Int32;
+
+                var pAllowedCustomerRoleIds= _dataProvider.GetParameter();
+                pAllowedCustomerRoleIds.ParameterName = "AllowedCustomerRoleIds";
+                pAllowedCustomerRoleIds.Value = commaSeparatedAllowedCustomerRoleIds;
+                pAllowedCustomerRoleIds.DbType = DbType.String;
 
                 var pShowHidden = _dataProvider.GetParameter();
                 pShowHidden.ParameterName = "ShowHidden";
@@ -500,6 +539,7 @@ namespace Nop.Services.Catalog
                     pOrderBy,
                     pPageIndex,
                     pPageSize,
+                    pAllowedCustomerRoleIds,
                     pShowHidden,
                     pLoadFilterableSpecificationAttributeOptionIds,
                     pFilterableSpecificationAttributeOptionIds,
@@ -553,6 +593,16 @@ namespace Nop.Services.Catalog
                                   (searchDescriptions && searchLocalizedValue && lp.LanguageId == languageId && lp.LocaleKeyGroup == "Product" && lp.LocaleKey == "ShortDescription" && lp.LocaleValue.Contains(keywords)) ||
                                   (searchDescriptions && searchLocalizedValue && lp.LanguageId == languageId && lp.LocaleKeyGroup == "Product" && lp.LocaleKey == "FullDescription" && lp.LocaleValue.Contains(keywords))
                                   //UNDONE search localized values in associated product tags
+                            select p;
+                }
+
+                //ACL
+                if (!showHidden)
+                {
+                    query = from p in query
+                            join acl in _aclRepository.Table on p.Id equals acl.EntityId into p_acl
+                            from acl in p_acl.DefaultIfEmpty()
+                            where !p.SubjectToAcl || (acl.EntityName == "Product" && allowedCustomerRolesIds.Contains(acl.CustomerRoleId))
                             select p;
                 }
 
@@ -1024,6 +1074,7 @@ namespace Nop.Services.Catalog
                         productVariant.StockQuantity = newStockQuantity;
                         productVariant.DisableBuyButton = newDisableBuyButton;
                         productVariant.DisableWishlistButton = newDisableWishlistButton;
+                        bool isPublishedChanged = productVariant.Published != newPublished;
                         productVariant.Published = newPublished;
                         UpdateProductVariant(productVariant);
 
@@ -1049,6 +1100,15 @@ namespace Nop.Services.Catalog
                                 product.Published = false;
                                 UpdateProduct(product);
                             }
+                        }
+
+                        //update product tag totals (if published flag has been changed)
+                        if (isPublishedChanged)
+                        {
+                            var product = productVariant.Product;
+                            var productTags = product.ProductTags;
+                            foreach (var productTag in productTags)
+                                _productTagService.UpdateProductTagTotals(productTag);
                         }
                     }
                     break;

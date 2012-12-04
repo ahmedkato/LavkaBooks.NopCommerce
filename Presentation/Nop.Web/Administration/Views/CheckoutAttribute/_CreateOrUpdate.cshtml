@@ -164,14 +164,19 @@
                                 //TODO display localized values here
                                 columns.Bound(x => x.PriceAdjustment)
                                     .Width(100)
+                                    .Format("{0:G29}")
                                     .Centered();
                                 columns.Bound(x => x.WeightAdjustment)
                                     .Width(100)
+                                    .Format("{0:G29}")
                                     .Centered();
                                 columns.Bound(x => x.IsPreSelected)
-                                    .Width(100)
-                                    .Template(x => x.IsPreSelected.ToString().ToLower())
-                                    .Centered();
+                                    .Template(
+                                    @<img alt="" src="@Url.Content("~/Administration/Content/images/active-" + item.IsPreSelected.ToString().ToLowerInvariant() + ".gif")" />
+                                    )
+                                    .ClientTemplate("<img alt='' src='" + Url.Content("~/Administration/Content/images/") + "active-<#= IsPreSelected #>.gif' />")
+                                    .Centered()
+                                    .Width(100);
                                 columns.Bound(x => x.DisplayOrder)
                                     .Width(100)
                                     .Centered();
@@ -182,15 +187,15 @@
                                     .Title(T("Admin.Common.Edit").Text);
                                 columns.Command(commands =>
                                 {
-                                    commands.Delete();
+                                    commands.Delete().Text(T("Admin.Common.Delete").Text);
                                 })
                                 .Width(50)
                                 .Title(T("Admin.Common.Delete").Text);
                             })
-                            .DataBinding(dataBinding =>
-                                dataBinding.Ajax().Select("ValueList", "CheckoutAttribute", new { checkoutAttributeId = Model.Id })
-                                .Delete("ValueDelete", "CheckoutAttribute"))
-                            .EnableCustomBinding(true))
+                                            .DataBinding(dataBinding =>
+                                                dataBinding.Ajax().Select("ValueList", "CheckoutAttribute", new { checkoutAttributeId = Model.Id })
+                                                .Delete("ValueDelete", "CheckoutAttribute"))
+                                            .EnableCustomBinding(true))
                     </td>
                 </tr>
                 <tr>

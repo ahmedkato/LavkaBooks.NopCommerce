@@ -46,13 +46,13 @@
                         var item = Model.Items[i];
                         <tr @(i % 2 == 0 ? Html.Raw(" class=\"odd\"") : Html.Raw(" class=\"even\""))>
                             <td class="a-center">
-                                <a class="link" href="@Url.RouteUrl("OrderDetails", new { orderId = @item.OrderId })">@item.OrderId</a>
+                                <a class="link" href="@Url.RouteUrl("OrderDetails", new { orderId = item.OrderId })">@item.OrderId</a>
                             </td>
                             <td class="a-center">
                                 @item.CreatedOn.ToString("d")
                             </td>
                             <td class="a-center">
-                                <a href="@Url.RouteUrl("Product", new { productId = item.ProductId, SeName = item.ProductSeName })" title="View details">@item.ProductName</a>
+                                <a href="@Url.RouteUrl("Product", new { SeName = item.ProductSeName })" title="View details">@item.ProductName</a>
                                 @if (!String.IsNullOrEmpty(item.ProductAttributes))
                                 {
                                     <div class="attributes">

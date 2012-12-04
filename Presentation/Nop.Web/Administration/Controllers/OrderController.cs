@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Web.Mvc;
 using Nop.Admin.Models.Orders;
@@ -70,6 +71,7 @@ namespace Nop.Admin.Controllers
         private readonly TaxSettings _taxSettings;
         private readonly MeasureSettings _measureSettings;
         private readonly PdfSettings _pdfSettings;
+        private readonly AddressSettings _addressSettings;
         
         #endregion
 
@@ -91,7 +93,7 @@ namespace Nop.Admin.Controllers
             IGiftCardService giftCardService, IDownloadService downloadService,
             IShipmentService shipmentService,
             CatalogSettings catalogSettings, CurrencySettings currencySettings, TaxSettings taxSettings,
-            MeasureSettings measureSettings, PdfSettings pdfSettings)
+            MeasureSettings measureSettings, PdfSettings pdfSettings, AddressSettings addressSettings)
 		{
             this._orderService = orderService;
             this._orderReportService = orderReportService;
@@ -127,6 +129,7 @@ namespace Nop.Admin.Controllers
             this._taxSettings = taxSettings;
             this._measureSettings = measureSettings;
             this._pdfSettings = pdfSettings;
+            this._addressSettings = addressSettings;
 		}
         
         #endregion
@@ -301,15 +304,39 @@ namespace Nop.Admin.Controllers
             model.PrimaryStoreCurrencyCode = _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId).CurrencyCode;
             model.MaxAmountToRefund = order.OrderTotal - order.RefundedAmount;
 
+            //recurring payment record
+            var recurringPayment = _orderService.SearchRecurringPayments(0, order.Id, null, 0, int.MaxValue, true).FirstOrDefault();
+            if (recurringPayment != null)
+            {
+                model.RecurringPaymentId = recurringPayment.Id;
+            }
             #endregion
 
             #region Billing & shipping info
 
             model.BillingAddress = order.BillingAddress.ToModel();
-            if (order.BillingAddress.Country != null)
-                model.BillingAddress.CountryName = order.BillingAddress.Country.Name;
-            if (order.BillingAddress.StateProvince != null)
-                model.BillingAddress.StateProvinceName = order.BillingAddress.StateProvince.Name;
+            model.BillingAddress.FirstNameEnabled = true;
+            model.BillingAddress.FirstNameRequired = true;
+            model.BillingAddress.LastNameEnabled = true;
+            model.BillingAddress.LastNameRequired = true;
+            model.BillingAddress.EmailEnabled = true;
+            model.BillingAddress.EmailRequired = true;
+            model.BillingAddress.CompanyEnabled = _addressSettings.CompanyEnabled;
+            model.BillingAddress.CompanyRequired = _addressSettings.CompanyRequired;
+            model.BillingAddress.CountryEnabled = _addressSettings.CountryEnabled;
+            model.BillingAddress.StateProvinceEnabled = _addressSettings.StateProvinceEnabled;
+            model.BillingAddress.CityEnabled = _addressSettings.CityEnabled;
+            model.BillingAddress.CityRequired = _addressSettings.CityRequired;
+            model.BillingAddress.StreetAddressEnabled = _addressSettings.StreetAddressEnabled;
+            model.BillingAddress.StreetAddressRequired = _addressSettings.StreetAddressRequired;
+            model.BillingAddress.StreetAddress2Enabled = _addressSettings.StreetAddress2Enabled;
+            model.BillingAddress.StreetAddress2Required = _addressSettings.StreetAddress2Required;
+            model.BillingAddress.ZipPostalCodeEnabled = _addressSettings.ZipPostalCodeEnabled;
+            model.BillingAddress.ZipPostalCodeRequired = _addressSettings.ZipPostalCodeRequired;
+            model.BillingAddress.PhoneEnabled = _addressSettings.PhoneEnabled;
+            model.BillingAddress.PhoneRequired = _addressSettings.PhoneRequired;
+            model.BillingAddress.FaxEnabled = _addressSettings.FaxEnabled;
+            model.BillingAddress.FaxRequired = _addressSettings.FaxRequired;
 
             model.ShippingStatus = order.ShippingStatus.GetLocalizedEnum(_localizationService, _workContext); ;
             if (order.ShippingStatus != ShippingStatus.ShippingNotRequired)
@@ -317,10 +344,28 @@ namespace Nop.Admin.Controllers
                 model.IsShippable = true;
 
                 model.ShippingAddress = order.ShippingAddress.ToModel();
-                if (order.ShippingAddress.Country != null)
-                    model.ShippingAddress.CountryName = order.ShippingAddress.Country.Name;
-                if (order.ShippingAddress.StateProvince != null)
-                    model.ShippingAddress.StateProvinceName = order.ShippingAddress.StateProvince.Name;
+                model.ShippingAddress.FirstNameEnabled = true;
+                model.ShippingAddress.FirstNameRequired = true;
+                model.ShippingAddress.LastNameEnabled = true;
+                model.ShippingAddress.LastNameRequired = true;
+                model.ShippingAddress.EmailEnabled = true;
+                model.ShippingAddress.EmailRequired = true;
+                model.ShippingAddress.CompanyEnabled = _addressSettings.CompanyEnabled;
+                model.ShippingAddress.CompanyRequired = _addressSettings.CompanyRequired;
+                model.ShippingAddress.CountryEnabled = _addressSettings.CountryEnabled;
+                model.ShippingAddress.StateProvinceEnabled = _addressSettings.StateProvinceEnabled;
+                model.ShippingAddress.CityEnabled = _addressSettings.CityEnabled;
+                model.ShippingAddress.CityRequired = _addressSettings.CityRequired;
+                model.ShippingAddress.StreetAddressEnabled = _addressSettings.StreetAddressEnabled;
+                model.ShippingAddress.StreetAddressRequired = _addressSettings.StreetAddressRequired;
+                model.ShippingAddress.StreetAddress2Enabled = _addressSettings.StreetAddress2Enabled;
+                model.ShippingAddress.StreetAddress2Required = _addressSettings.StreetAddress2Required;
+                model.ShippingAddress.ZipPostalCodeEnabled = _addressSettings.ZipPostalCodeEnabled;
+                model.ShippingAddress.ZipPostalCodeRequired = _addressSettings.ZipPostalCodeRequired;
+                model.ShippingAddress.PhoneEnabled = _addressSettings.PhoneEnabled;
+                model.ShippingAddress.PhoneRequired = _addressSettings.PhoneRequired;
+                model.ShippingAddress.FaxEnabled = _addressSettings.FaxEnabled;
+                model.ShippingAddress.FaxRequired = _addressSettings.FaxRequired;
 
                 model.ShippingMethod = order.ShippingMethod;
 
@@ -378,8 +423,8 @@ namespace Nop.Admin.Controllers
                     opvModel.RecurringInfo = string.Format(_localizationService.GetResource("Admin.Orders.Products.RecurringPeriod"), opv.ProductVariant.RecurringCycleLength, opv.ProductVariant.RecurringCyclePeriod.GetLocalizedEnum(_localizationService, _workContext));
 
                 //return requests
-                opvModel.ReturnRequestIds = _orderService.SearchReturnRequests(0, opv.Id, null)
-                    .Select(rr=> rr.Id).ToList();
+                opvModel.ReturnRequestIds = _orderService.SearchReturnRequests(0, opv.Id, null, 0, int.MaxValue)
+                    .Select(rr => rr.Id).ToList();
                 //gift cards
                 opvModel.PurchasedGiftCardIds = _giftCardService.GetGiftCardsByPurchasedWithOrderProductVariantId(opv.Id)
                     .Select(gc => gc.Id).ToList();
@@ -619,9 +664,8 @@ namespace Nop.Admin.Controllers
                 var orders = _orderService.SearchOrders(null, null, null,
                     null, null, null, null, 0, int.MaxValue);
 
-                var fileName = string.Format("orders_{0}.xml", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"));
                 var xml = _exportManager.ExportOrdersToXml(orders);
-                return new XmlDownloadResult(xml, fileName);
+                return new XmlDownloadResult(xml, "orders.xml");
             }
             catch (Exception exc)
             {
@@ -645,9 +689,8 @@ namespace Nop.Admin.Controllers
                 orders.AddRange(_orderService.GetOrdersByIds(ids));
             }
 
-            var fileName = string.Format("orders_{0}.xml", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"));
             var xml = _exportManager.ExportOrdersToXml(orders);
-            return new XmlDownloadResult(xml, fileName);
+            return new XmlDownloadResult(xml, "orders.xml");
         }
 
 	    public ActionResult ExportExcelAll()
@@ -659,14 +702,14 @@ namespace Nop.Admin.Controllers
             {
                 var orders = _orderService.SearchOrders(null, null, null,
                     null, null, null, null, 0, int.MaxValue);
-
-                string fileName = string.Format("orders_{0}_{1}.xlsx", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"), CommonHelper.GenerateRandomDigitCode(4));
-                string filePath = System.IO.Path.Combine(Request.PhysicalApplicationPath, "content\\files\\ExportImport", fileName);
-
-                _exportManager.ExportOrdersToXlsx(filePath, orders);
-
-                var bytes = System.IO.File.ReadAllBytes(filePath);
-                return File(bytes, "text/xls", fileName);
+                
+                byte[] bytes = null;
+                using (var stream = new MemoryStream())
+                {
+                    _exportManager.ExportOrdersToXlsx(stream, orders);
+                    bytes = stream.ToArray();
+                }
+                return File(bytes, "text/xls", "orders.xlsx");
             }
             catch (Exception exc)
             {
@@ -690,13 +733,13 @@ namespace Nop.Admin.Controllers
                 orders.AddRange(_orderService.GetOrdersByIds(ids));
             }
 
-            string fileName = string.Format("orders_{0}_{1}.xlsx", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"), CommonHelper.GenerateRandomDigitCode(4));
-            string filePath = System.IO.Path.Combine(Request.PhysicalApplicationPath, "content\\files\\ExportImport", fileName);
-
-            _exportManager.ExportOrdersToXlsx(filePath, orders);
-
-            var bytes = System.IO.File.ReadAllBytes(filePath);
-            return File(bytes, "text/xls", fileName);
+            byte[] bytes = null;
+            using (var stream = new MemoryStream())
+            {
+                _exportManager.ExportOrdersToXlsx(stream, orders);
+                bytes = stream.ToArray();
+            }
+            return File(bytes, "text/xls", "orders.xlsx");
         }
 
         #endregion
@@ -1030,11 +1073,13 @@ namespace Nop.Admin.Controllers
             var order = _orderService.GetOrderById(orderId);
             var orders = new List<Order>();
             orders.Add(order);
-            string fileName = string.Format("order_{0}_{1}.pdf", order.OrderGuid, DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"));
-            string filePath = System.IO.Path.Combine(this.Request.PhysicalApplicationPath, "content\\files\\ExportImport", fileName);
-            _pdfService.PrintOrdersToPdf(orders, _workContext.WorkingLanguage, filePath);
-            var bytes = System.IO.File.ReadAllBytes(filePath);
-            return File(bytes, "application/pdf", fileName);
+            byte[] bytes = null;
+            using (var stream = new MemoryStream())
+            {
+                _pdfService.PrintOrdersToPdf(stream, orders, _workContext.WorkingLanguage);
+                bytes = stream.ToArray();
+            }
+            return File(bytes, "application/pdf", string.Format("order_{0}.pdf", order.Id));
         }
 
         [HttpPost, ActionName("Edit")]
@@ -1359,7 +1404,7 @@ namespace Nop.Admin.Controllers
             model.OrderId = orderId;
             //categories
             model.AvailableCategories.Add(new SelectListItem() { Text = _localizationService.GetResource("Admin.Common.All"), Value = "0" });
-            foreach (var c in _categoryService.GetAllCategories(true))
+            foreach (var c in _categoryService.GetAllCategories(showHidden: true))
                 model.AvailableCategories.Add(new SelectListItem() { Text = c.GetCategoryNameWithPrefix(_categoryService), Value = c.Id.ToString() });
 
             //manufacturers
@@ -1696,6 +1741,29 @@ namespace Nop.Admin.Controllers
             var model = new OrderAddressModel();
             model.OrderId = orderId;
             model.Address = address.ToModel();
+            model.Address.FirstNameEnabled = true;
+            model.Address.FirstNameRequired = true;
+            model.Address.LastNameEnabled = true;
+            model.Address.LastNameRequired = true;
+            model.Address.EmailEnabled = true;
+            model.Address.EmailRequired = true;
+            model.Address.CompanyEnabled = _addressSettings.CompanyEnabled;
+            model.Address.CompanyRequired = _addressSettings.CompanyRequired;
+            model.Address.CountryEnabled = _addressSettings.CountryEnabled;
+            model.Address.StateProvinceEnabled = _addressSettings.StateProvinceEnabled;
+            model.Address.CityEnabled = _addressSettings.CityEnabled;
+            model.Address.CityRequired = _addressSettings.CityRequired;
+            model.Address.StreetAddressEnabled = _addressSettings.StreetAddressEnabled;
+            model.Address.StreetAddressRequired = _addressSettings.StreetAddressRequired;
+            model.Address.StreetAddress2Enabled = _addressSettings.StreetAddress2Enabled;
+            model.Address.StreetAddress2Required = _addressSettings.StreetAddress2Required;
+            model.Address.ZipPostalCodeEnabled = _addressSettings.ZipPostalCodeEnabled;
+            model.Address.ZipPostalCodeRequired = _addressSettings.ZipPostalCodeRequired;
+            model.Address.PhoneEnabled = _addressSettings.PhoneEnabled;
+            model.Address.PhoneRequired = _addressSettings.PhoneRequired;
+            model.Address.FaxEnabled = _addressSettings.FaxEnabled;
+            model.Address.FaxRequired = _addressSettings.FaxRequired;
+
             //countries
             model.Address.AvailableCountries.Add(new SelectListItem() { Text = _localizationService.GetResource("Admin.Address.SelectCountry"), Value = "0" });
             foreach (var c in _countryService.GetAllCountries(true))
@@ -1739,6 +1807,28 @@ namespace Nop.Admin.Controllers
             //If we got this far, something failed, redisplay form
             model.OrderId = order.Id;
             model.Address = address.ToModel();
+            model.Address.FirstNameEnabled = true;
+            model.Address.FirstNameRequired = true;
+            model.Address.LastNameEnabled = true;
+            model.Address.LastNameRequired = true;
+            model.Address.EmailEnabled = true;
+            model.Address.EmailRequired = true;
+            model.Address.CompanyEnabled = _addressSettings.CompanyEnabled;
+            model.Address.CompanyRequired = _addressSettings.CompanyRequired;
+            model.Address.CountryEnabled = _addressSettings.CountryEnabled;
+            model.Address.StateProvinceEnabled = _addressSettings.StateProvinceEnabled;
+            model.Address.CityEnabled = _addressSettings.CityEnabled;
+            model.Address.CityRequired = _addressSettings.CityRequired;
+            model.Address.StreetAddressEnabled = _addressSettings.StreetAddressEnabled;
+            model.Address.StreetAddressRequired = _addressSettings.StreetAddressRequired;
+            model.Address.StreetAddress2Enabled = _addressSettings.StreetAddress2Enabled;
+            model.Address.StreetAddress2Required = _addressSettings.StreetAddress2Required;
+            model.Address.ZipPostalCodeEnabled = _addressSettings.ZipPostalCodeEnabled;
+            model.Address.ZipPostalCodeRequired = _addressSettings.ZipPostalCodeRequired;
+            model.Address.PhoneEnabled = _addressSettings.PhoneEnabled;
+            model.Address.PhoneRequired = _addressSettings.PhoneRequired;
+            model.Address.FaxEnabled = _addressSettings.FaxEnabled;
+            model.Address.FaxRequired = _addressSettings.FaxRequired;
             //countries
             model.Address.AvailableCountries.Add(new SelectListItem() { Text = _localizationService.GetResource("Admin.Address.SelectCountry"), Value = "0" });
             foreach (var c in _countryService.GetAllCountries(true))
@@ -2090,11 +2180,14 @@ namespace Nop.Admin.Controllers
 
             var shipments = new List<Shipment>();
             shipments.Add(shipment);
-            string fileName = string.Format("packagingslip_{0}_{1}_{2}.pdf", order.OrderGuid, shipment.Id, DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"));
-            string filePath = System.IO.Path.Combine(this.Request.PhysicalApplicationPath, "content\\files\\ExportImport", fileName);
-            _pdfService.PrintPackagingSlipsToPdf(shipments, _workContext.WorkingLanguage, filePath);
-            var bytes = System.IO.File.ReadAllBytes(filePath);
-            return File(bytes, "application/pdf", fileName);
+            
+            byte[] bytes = null;
+            using (var stream = new MemoryStream())
+            {
+                _pdfService.PrintPackagingSlipsToPdf(stream, shipments, _workContext.WorkingLanguage);
+                bytes = stream.ToArray();
+            }
+            return File(bytes, "application/pdf", string.Format("packagingslip_{0}.pdf", shipment.Id));
         }
 
         public ActionResult PdfPackagingSlipAll()
@@ -2103,11 +2196,14 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var shipments = _shipmentService.GetAllShipments(null, null, 0, int.MaxValue);
-            string fileName = string.Format("packagingslips_{0}.pdf", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"));
-            string filePath = System.IO.Path.Combine(this.Request.PhysicalApplicationPath, "content\\files\\ExportImport", fileName);
-            _pdfService.PrintPackagingSlipsToPdf(shipments, _workContext.WorkingLanguage, filePath);
-            var bytes = System.IO.File.ReadAllBytes(filePath);
-            return File(bytes, "application/pdf", fileName);
+            
+            byte[] bytes = null;
+            using (var stream = new MemoryStream())
+            {
+                _pdfService.PrintPackagingSlipsToPdf(stream, shipments, _workContext.WorkingLanguage);
+                bytes = stream.ToArray();
+            }
+            return File(bytes, "application/pdf", "packagingslips.pdf");
         }
 
         public ActionResult PdfPackagingSlipSelected(string selectedIds)
@@ -2125,11 +2221,13 @@ namespace Nop.Admin.Controllers
                 shipments.AddRange(_shipmentService.GetShipmentsByIds(ids));
             }
 
-            string fileName = string.Format("packagingslips_{0}.pdf", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"));
-            string filePath = System.IO.Path.Combine(this.Request.PhysicalApplicationPath, "content\\files\\ExportImport", fileName);
-            _pdfService.PrintPackagingSlipsToPdf(shipments, _workContext.WorkingLanguage, filePath);
-            var bytes = System.IO.File.ReadAllBytes(filePath);
-            return File(bytes, "application/pdf", fileName);
+            byte[] bytes = null;
+            using (var stream = new MemoryStream())
+            {
+                _pdfService.PrintPackagingSlipsToPdf(stream, shipments, _workContext.WorkingLanguage);
+                bytes = stream.ToArray();
+            }
+            return File(bytes, "application/pdf", "packagingslips.pdf");
         }
 
         #endregion
@@ -2230,18 +2328,19 @@ namespace Nop.Admin.Controllers
         [NonAction]
         protected IList<BestsellersReportLineModel> GetBestsellersBriefReportModel(int recordsToReturn, int orderBy)
         {
+            //group by product variants (not products)
             var report = _orderReportService.BestSellersReport(null, null,
-                null, null, null, recordsToReturn, orderBy, true);
+                null, null, null, 0, recordsToReturn, orderBy, 1, true);
 
             var model = report.Select(x =>
             {
                 var m = new BestsellersReportLineModel()
                 {
-                    ProductVariantId = x.ProductVariantId,
+                    ProductVariantId = x.EntityId,
                     TotalAmount = _priceFormatter.FormatPrice(x.TotalAmount, true, false),
                     TotalQuantity = x.TotalQuantity,
                 };
-                var productVariant = _productService.GetProductVariantById(x.ProductVariantId);
+                var productVariant = _productService.GetProductVariantById(x.EntityId);
                 if (productVariant != null)
                     m.ProductVariantFullName = productVariant.Product.Name + " " + productVariant.Name;
                 return m;
@@ -2294,11 +2393,21 @@ namespace Nop.Admin.Controllers
         public ActionResult BestsellersReport()
         {
             var model = new BestsellersReportModel();
+
+            //order statuses
             model.AvailableOrderStatuses = OrderStatus.Pending.ToSelectList(false).ToList();
             model.AvailableOrderStatuses.Insert(0, new SelectListItem() { Text = _localizationService.GetResource("Admin.Common.All"), Value = "0" });
 
+            //payment statuses
             model.AvailablePaymentStatuses = PaymentStatus.Pending.ToSelectList(false).ToList();
             model.AvailablePaymentStatuses.Insert(0, new SelectListItem() { Text = _localizationService.GetResource("Admin.Common.All"), Value = "0" });
+
+            //billing countries
+            foreach (var c in _countryService.GetAllCountriesForBilling())
+            {
+                model.AvailableCountries.Add(new SelectListItem() { Text = c.Name, Value = c.Id.ToString() });
+            }
+            model.AvailableCountries.Insert(0, new SelectListItem() { Text = _localizationService.GetResource("Admin.Address.SelectCountry"), Value = "0" });
 
             return View(model);
         }
@@ -2316,19 +2425,21 @@ namespace Nop.Admin.Controllers
 
 
             //return first 100 records
+
+            //group by product variants (not products)
             var items = _orderReportService.BestSellersReport(startDateValue, endDateValue,
-                orderStatus, paymentStatus, null, 100, 2, true);
+                orderStatus, paymentStatus, null, model.BillingCountryId, 100, 2, 1, true);
             var gridModel = new GridModel<BestsellersReportLineModel>
             {
                 Data = items.Select(x =>
                 {
                     var m = new BestsellersReportLineModel()
                     {
-                        ProductVariantId = x.ProductVariantId,
+                        ProductVariantId = x.EntityId,
                         TotalAmount = _priceFormatter.FormatPrice(x.TotalAmount, true, false),
                         TotalQuantity = x.TotalQuantity,
                     };
-                    var productVariant = _productService.GetProductVariantById(x.ProductVariantId);
+                    var productVariant = _productService.GetProductVariantById(x.EntityId);
                     if (productVariant != null)
                         m.ProductVariantFullName = productVariant.Product.Name + " " + productVariant.Name;
                     return m;

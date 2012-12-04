@@ -47,8 +47,6 @@ namespace Nop.Plugin.Shipping.ByWeight
         private decimal? GetRate(decimal subTotal, decimal weight, int shippingMethodId,
             int countryId, int stateProvinceId, string zip)
         {
-            decimal? shippingTotal = null;
-
             var shippingByWeightRecord = _shippingByWeightService.FindRecord(shippingMethodId, 
                 countryId, stateProvinceId, zip, weight);
             if (shippingByWeightRecord == null)
@@ -58,19 +56,23 @@ namespace Nop.Plugin.Shipping.ByWeight
                 else
                     return decimal.Zero;
             }
-            if (shippingByWeightRecord.UsePercentage && shippingByWeightRecord.ShippingChargePercentage <= decimal.Zero)
-                return decimal.Zero;
-            if (!shippingByWeightRecord.UsePercentage && shippingByWeightRecord.ShippingChargeAmount <= decimal.Zero)
-                return decimal.Zero;
-            if (shippingByWeightRecord.UsePercentage)
-                shippingTotal = Math.Round((decimal)((((float)subTotal) * ((float)shippingByWeightRecord.ShippingChargePercentage)) / 100f), 2);
-            else
+
+            //additional fixed cost
+            decimal shippingTotal = shippingByWeightRecord.AdditionalFixedCost;
+            //charge amount per weight unit
+            if (shippingByWeightRecord.RatePerWeightUnit > decimal.Zero)
             {
-                if (_shippingByWeightSettings.CalculatePerWeightUnit)
-                    shippingTotal = shippingByWeightRecord.ShippingChargeAmount * weight;
-                else
-                    shippingTotal = shippingByWeightRecord.ShippingChargeAmount;
+                var weightRate = weight - shippingByWeightRecord.LowerWeightLimit;
+                if (weightRate < decimal.Zero)
+                    weightRate = decimal.Zero;
+                shippingTotal += shippingByWeightRecord.RatePerWeightUnit * weightRate;
             }
+            //percentage rate of subtotal
+            if (shippingByWeightRecord.PercentageRateOfSubtotal > decimal.Zero)
+            {
+                shippingTotal += Math.Round((decimal)((((float)subTotal) * ((float)shippingByWeightRecord.PercentageRateOfSubtotal)) / 100f), 2);
+            }
+
             if (shippingTotal < decimal.Zero)
                 shippingTotal = decimal.Zero;
             return shippingTotal;
@@ -118,8 +120,7 @@ namespace Nop.Plugin.Shipping.ByWeight
             var shippingMethods = _shippingService.GetAllShippingMethods(countryId);
             foreach (var shippingMethod in shippingMethods)
             {
-                decimal? rate = GetRate(subTotal, weight, shippingMethod.Id,
-                    countryId, stateProvinceId, zip);
+                decimal? rate = GetRate(subTotal, weight, shippingMethod.Id, countryId, stateProvinceId, zip);
                 if (rate.HasValue)
                 {
                     var shippingOption = new ShippingOption();
@@ -165,7 +166,6 @@ namespace Nop.Plugin.Shipping.ByWeight
             //settings
             var settings = new ShippingByWeightSettings()
             {
-                CalculatePerWeightUnit = false,
                 LimitMethodsToCreated = false,
             };
             _settingService.SaveSetting(settings);
@@ -187,18 +187,20 @@ namespace Nop.Plugin.Shipping.ByWeight
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.From.Hint", "Order weight from.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.To", "Order weight to");
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.To.Hint", "Order weight toy.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.UsePercentage", "Use percentage");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.UsePercentage.Hint", "Check to use 'charge percentage' value.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.ShippingChargePercentage", "Charge percentage (of subtotal)");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.ShippingChargePercentage.Hint", "Charge percentage (of subtotal).");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.ShippingChargeAmount", "Charge amount");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.ShippingChargeAmount.Hint", "Charge amount.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.AdditionalFixedCost", "Additional fixed cost");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.AdditionalFixedCost.Hint", "Specify an additional fixed cost per shopping cart for this option. Set to 0 if you don't want an additional fixed cost to be applied.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.LowerWeightLimit", "Lower weight limit");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.LowerWeightLimit.Hint", "Lower weight limit. This field can be used for \"per extra weight unit\" scenarios.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.PercentageRateOfSubtotal", "Charge percentage (of subtotal)");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.PercentageRateOfSubtotal.Hint", "Charge percentage (of subtotal).");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.RatePerWeightUnit", "Rate per weight unit");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.RatePerWeightUnit.Hint", "Rate per weight unit.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.LimitMethodsToCreated", "Limit shipping methods to configured ones");
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.LimitMethodsToCreated.Hint", "If you check this option, then your customers will be limited to shipping options configured here. Otherwise, they'll be able to choose any existing shipping options even they've not configured here (zero shipping fee in this case).");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.CalculatePerWeightUnit", "Calculate per weight unit");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.CalculatePerWeightUnit.Hint", "If you check this option, then rates are multiplied per weight unit (lb, kg, etc). This option is used for the fixed rates (without percents).");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.DataHtml", "Data");
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.AddRecord", "Add record");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.AddRecord.Hint", "Adding a new record");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Formula", "Formula to calculate rates");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.ByWeight.Formula.Value", "[additional fixed cost] + ([order total weight] - [lower weight limit]) * [rate per weight unit] + [order subtotal] * [charge percentage]");
             
             base.Install();
         }
@@ -227,18 +229,20 @@ namespace Nop.Plugin.Shipping.ByWeight
             this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.From.Hint");
             this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.To");
             this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.To.Hint");
-            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.UsePercentage");
-            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.UsePercentage.Hint");
-            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.ShippingChargePercentage");
-            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.ShippingChargePercentage.Hint");
-            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.ShippingChargeAmount");
-            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.ShippingChargeAmount.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.AdditionalFixedCost");
+            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.AdditionalFixedCost.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.LowerWeightLimit");
+            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.LowerWeightLimit.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.PercentageRateOfSubtotal");
+            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.PercentageRateOfSubtotal.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.RatePerWeightUnit");
+            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.RatePerWeightUnit.Hint");
             this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.LimitMethodsToCreated");
             this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.LimitMethodsToCreated.Hint");
-            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.CalculatePerWeightUnit");
-            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.CalculatePerWeightUnit.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Fields.DataHtml");
             this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.AddRecord");
-            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.AddRecord.Hint");
+            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Formula");
+            this.DeletePluginLocaleResource("Plugins.Shipping.ByWeight.Formula.Value");
             
             base.Uninstall();
         }

@@ -5,138 +5,130 @@ namespace Nop.Web.Framework.UI
 {
     public static class LayoutExtensions
     {
-        public static void AddTitleParts(this HtmlHelper html, params string[] parts)
+        public static void AddTitleParts(this HtmlHelper html, string part)
         {
-            var pageTitleBuilder  = EngineContext.Current.Resolve<IPageTitleBuilder>();
-            pageTitleBuilder.AddTitleParts(parts);
+            var pageHeadBuilder  = EngineContext.Current.Resolve<IPageHeadBuilder>();
+            pageHeadBuilder.AddTitleParts(part);
         }
-        public static void AppendTitleParts(this HtmlHelper html, params string[] parts)
+        public static void AppendTitleParts(this HtmlHelper html, string part)
         {
-            var pageTitleBuilder  = EngineContext.Current.Resolve<IPageTitleBuilder>();
-            pageTitleBuilder.AppendTitleParts(parts);
+            var pageHeadBuilder  = EngineContext.Current.Resolve<IPageHeadBuilder>();
+            pageHeadBuilder.AppendTitleParts(part);
         }
-        public static MvcHtmlString NopTitle(this HtmlHelper html, bool addDefaultTitle, params string[] parts)
+        public static MvcHtmlString NopTitle(this HtmlHelper html, bool addDefaultTitle, string part = "")
         {
-            var pageTitleBuilder = EngineContext.Current.Resolve<IPageTitleBuilder>();
-            html.AppendTitleParts(parts);
-            return MvcHtmlString.Create(html.Encode(pageTitleBuilder.GenerateTitle(addDefaultTitle)));
-        }
-
-
-        public static void AddMetaDescriptionParts(this HtmlHelper html, params string[] parts)
-        {
-            var pageTitleBuilder = EngineContext.Current.Resolve<IPageTitleBuilder>();
-            pageTitleBuilder.AddMetaDescriptionParts(parts);
-        }
-        public static void AppendMetaDescriptionParts(this HtmlHelper html, params string[] parts)
-        {
-            var pageTitleBuilder = EngineContext.Current.Resolve<IPageTitleBuilder>();
-            pageTitleBuilder.AppendMetaDescriptionParts(parts);
-        }
-        public static MvcHtmlString NopMetaDescription(this HtmlHelper html, params string[] parts)
-        {
-            var pageTitleBuilder = EngineContext.Current.Resolve<IPageTitleBuilder>();
-            html.AppendMetaDescriptionParts(parts);
-            return MvcHtmlString.Create(html.Encode(pageTitleBuilder.GenerateMetaDescription()));
+            var pageHeadBuilder = EngineContext.Current.Resolve<IPageHeadBuilder>();
+            html.AppendTitleParts(part);
+            return MvcHtmlString.Create(html.Encode(pageHeadBuilder.GenerateTitle(addDefaultTitle)));
         }
 
 
-        public static void AddMetaKeywordParts(this HtmlHelper html, params string[] parts)
+        public static void AddMetaDescriptionParts(this HtmlHelper html, string part)
         {
-            var pageTitleBuilder = EngineContext.Current.Resolve<IPageTitleBuilder>();
-            pageTitleBuilder.AddMetaKeywordParts(parts);
+            var pageHeadBuilder = EngineContext.Current.Resolve<IPageHeadBuilder>();
+            pageHeadBuilder.AddMetaDescriptionParts(part);
         }
-        public static void AppendMetaKeywordParts(this HtmlHelper html, params string[] parts)
+        public static void AppendMetaDescriptionParts(this HtmlHelper html, string part)
         {
-            var pageTitleBuilder = EngineContext.Current.Resolve<IPageTitleBuilder>();
-            pageTitleBuilder.AppendMetaKeywordParts(parts);
+            var pageHeadBuilder = EngineContext.Current.Resolve<IPageHeadBuilder>();
+            pageHeadBuilder.AppendMetaDescriptionParts(part);
         }
-        public static MvcHtmlString NopMetaKeywords(this HtmlHelper html, params string[] parts)
+        public static MvcHtmlString NopMetaDescription(this HtmlHelper html, string part = "")
         {
-            var pageTitleBuilder = EngineContext.Current.Resolve<IPageTitleBuilder>();
-            html.AppendMetaKeywordParts(parts);
-            return MvcHtmlString.Create(html.Encode(pageTitleBuilder.GenerateMetaKeywords()));
+            var pageHeadBuilder = EngineContext.Current.Resolve<IPageHeadBuilder>();
+            html.AppendMetaDescriptionParts(part);
+            return MvcHtmlString.Create(html.Encode(pageHeadBuilder.GenerateMetaDescription()));
         }
 
 
-
-        public static void AddScriptParts(this HtmlHelper html, params string[] parts)
+        public static void AddMetaKeywordParts(this HtmlHelper html, string part)
         {
-            AddScriptParts(html, ResourceLocation.Head, parts);
+            var pageHeadBuilder = EngineContext.Current.Resolve<IPageHeadBuilder>();
+            pageHeadBuilder.AddMetaKeywordParts(part);
         }
-        public static void AddScriptParts(this HtmlHelper html, ResourceLocation location, params string[] parts)
+        public static void AppendMetaKeywordParts(this HtmlHelper html, string part)
         {
-            var pageTitleBuilder = EngineContext.Current.Resolve<IPageTitleBuilder>();
-            pageTitleBuilder.AddScriptParts(location, parts);
+            var pageHeadBuilder = EngineContext.Current.Resolve<IPageHeadBuilder>();
+            pageHeadBuilder.AppendMetaKeywordParts(part);
         }
-        public static void AppendScriptParts(this HtmlHelper html, params string[] parts)
+        public static MvcHtmlString NopMetaKeywords(this HtmlHelper html, string part = "")
         {
-            AppendScriptParts(html, ResourceLocation.Head, parts);
-        }
-        public static void AppendScriptParts(this HtmlHelper html, ResourceLocation location, params string[] parts)
-        {
-            var pageTitleBuilder = EngineContext.Current.Resolve<IPageTitleBuilder>();
-            pageTitleBuilder.AppendScriptParts(location, parts);
-        }
-        public static MvcHtmlString NopScripts(this HtmlHelper html,  params string[] parts)
-        {
-            return NopScripts(html, ResourceLocation.Head, parts);
-        }
-        public static MvcHtmlString NopScripts(this HtmlHelper html, ResourceLocation location, params string[] parts)
-        {
-            var pageTitleBuilder = EngineContext.Current.Resolve<IPageTitleBuilder>();
-            html.AppendScriptParts(parts);
-            return MvcHtmlString.Create(pageTitleBuilder.GenerateScripts(location));
+            var pageHeadBuilder = EngineContext.Current.Resolve<IPageHeadBuilder>();
+            html.AppendMetaKeywordParts(part);
+            return MvcHtmlString.Create(html.Encode(pageHeadBuilder.GenerateMetaKeywords()));
         }
 
 
 
-        public static void AddCssFileParts(this HtmlHelper html, params string[] parts)
+        public static void AddScriptParts(this HtmlHelper html, string part, bool excludeFromBundle = false)
         {
-            AddCssFileParts(html, ResourceLocation.Head, parts);
+            AddScriptParts(html, ResourceLocation.Head, part, excludeFromBundle);
         }
-        public static void AddCssFileParts(this HtmlHelper html, ResourceLocation location, params string[] parts)
+        public static void AddScriptParts(this HtmlHelper html, ResourceLocation location, string part, bool excludeFromBundle = false)
         {
-            var pageTitleBuilder = EngineContext.Current.Resolve<IPageTitleBuilder>();
-            pageTitleBuilder.AddCssFileParts(location, parts);
+            var pageHeadBuilder = EngineContext.Current.Resolve<IPageHeadBuilder>();
+            pageHeadBuilder.AddScriptParts(location, part, excludeFromBundle);
         }
-        public static void AppendCssFileParts(this HtmlHelper html, params string[] parts)
+        public static void AppendScriptParts(this HtmlHelper html, string part, bool excludeFromBundle = false)
         {
-            AppendCssFileParts(html, ResourceLocation.Head, parts);
+            AppendScriptParts(html, ResourceLocation.Head, part, excludeFromBundle);
         }
-        public static void AppendCssFileParts(this HtmlHelper html, ResourceLocation location, params string[] parts)
+        public static void AppendScriptParts(this HtmlHelper html, ResourceLocation location, string part, bool excludeFromBundle = false)
         {
-            var pageTitleBuilder = EngineContext.Current.Resolve<IPageTitleBuilder>();
-            pageTitleBuilder.AppendCssFileParts(location, parts);
+            var pageHeadBuilder = EngineContext.Current.Resolve<IPageHeadBuilder>();
+            pageHeadBuilder.AppendScriptParts(location, part, excludeFromBundle);
         }
-        public static MvcHtmlString NopCssFiles(this HtmlHelper html, params string[] parts)
+        public static MvcHtmlString NopScripts(this HtmlHelper html, UrlHelper urlHelper, 
+            ResourceLocation location, bool? bundleFiles = null)
         {
-            return NopCssFiles(html, ResourceLocation.Head, parts);
-        }
-        public static MvcHtmlString NopCssFiles(this HtmlHelper html, ResourceLocation location, params string[] parts)
-        {
-            var pageTitleBuilder = EngineContext.Current.Resolve<IPageTitleBuilder>();
-            html.AppendCssFileParts(parts);
-            return MvcHtmlString.Create(pageTitleBuilder.GenerateCssFiles(location));
+            var pageHeadBuilder = EngineContext.Current.Resolve<IPageHeadBuilder>();
+            return MvcHtmlString.Create(pageHeadBuilder.GenerateScripts(urlHelper, location, bundleFiles));
         }
 
 
 
-        public static void AddCanonicalUrlParts(this HtmlHelper html, params string[] parts)
+        public static void AddCssFileParts(this HtmlHelper html, string part)
         {
-            var pageTitleBuilder = EngineContext.Current.Resolve<IPageTitleBuilder>();
-            pageTitleBuilder.AddCanonicalUrlParts(parts);
+            AddCssFileParts(html, ResourceLocation.Head, part);
         }
-        public static void AppendCanonicalUrlParts(this HtmlHelper html, params string[] parts)
+        public static void AddCssFileParts(this HtmlHelper html, ResourceLocation location, string part)
         {
-            var pageTitleBuilder = EngineContext.Current.Resolve<IPageTitleBuilder>();
-            pageTitleBuilder.AppendCanonicalUrlParts(parts);
+            var pageHeadBuilder = EngineContext.Current.Resolve<IPageHeadBuilder>();
+            pageHeadBuilder.AddCssFileParts(location, part);
         }
-        public static MvcHtmlString NopCanonicalUrls(this HtmlHelper html, params string[] parts)
+        public static void AppendCssFileParts(this HtmlHelper html, string part)
         {
-            var pageTitleBuilder = EngineContext.Current.Resolve<IPageTitleBuilder>();
-            html.AppendCanonicalUrlParts(parts);
-            return MvcHtmlString.Create(pageTitleBuilder.GenerateCanonicalUrls());
+            AppendCssFileParts(html, ResourceLocation.Head, part);
+        }
+        public static void AppendCssFileParts(this HtmlHelper html, ResourceLocation location, string part)
+        {
+            var pageHeadBuilder = EngineContext.Current.Resolve<IPageHeadBuilder>();
+            pageHeadBuilder.AppendCssFileParts(location, part);
+        }
+        public static MvcHtmlString NopCssFiles(this HtmlHelper html, UrlHelper urlHelper, 
+            ResourceLocation location)
+        {
+            var pageHeadBuilder = EngineContext.Current.Resolve<IPageHeadBuilder>();
+            return MvcHtmlString.Create(pageHeadBuilder.GenerateCssFiles(urlHelper, location));
+        }
+
+
+
+        public static void AddCanonicalUrlParts(this HtmlHelper html, string part)
+        {
+            var pageHeadBuilder = EngineContext.Current.Resolve<IPageHeadBuilder>();
+            pageHeadBuilder.AddCanonicalUrlParts(part);
+        }
+        public static void AppendCanonicalUrlParts(this HtmlHelper html, string part)
+        {
+            var pageHeadBuilder = EngineContext.Current.Resolve<IPageHeadBuilder>();
+            pageHeadBuilder.AppendCanonicalUrlParts(part);
+        }
+        public static MvcHtmlString NopCanonicalUrls(this HtmlHelper html, string part = "")
+        {
+            var pageHeadBuilder = EngineContext.Current.Resolve<IPageHeadBuilder>();
+            html.AppendCanonicalUrlParts(part);
+            return MvcHtmlString.Create(pageHeadBuilder.GenerateCanonicalUrls());
         }
     }
 }

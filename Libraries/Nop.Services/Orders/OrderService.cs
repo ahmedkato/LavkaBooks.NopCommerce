@@ -191,12 +191,21 @@ namespace Nop.Services.Orders
         }
 
         /// <summary>
-        /// Load all orders
+        /// Gets all orders by affiliate identifier
         /// </summary>
-        /// <returns>Order collection</returns>
-        public virtual IList<Order> LoadAllOrders()
+        /// <param name="affiliateId">Affiliate identifier</param>
+        /// <param name="pageIndex">Page index</param>
+        /// <param name="pageSize">Page size</param>
+        /// <returns>Orders</returns>
+        public virtual IPagedList<Order> GetOrdersByAffiliateId(int affiliateId, int pageIndex, int pageSize)
         {
-            return SearchOrders(null, null, null, null, null, null, null, 0, int.MaxValue);
+            var query = _orderRepository.Table;
+            query = query.Where(o => !o.Deleted);
+            query = query.Where(o => o.AffiliateId.HasValue && o.AffiliateId == affiliateId);
+            query = query.OrderByDescending(o => o.CreatedOnUtc);
+
+            var orders = new PagedList<Order>(query, pageIndex, pageSize);
+            return orders;
         }
 
         /// <summary>
@@ -214,22 +223,7 @@ namespace Nop.Services.Orders
             var orders = query.ToList();
             return orders;
         }
-
-        /// <summary>
-        /// Gets all orders by affiliate identifier
-        /// </summary>
-        /// <param name="affiliateId">Affiliate identifier</param>
-        /// <returns>Order collection</returns>
-        public virtual IList<Order> GetOrdersByAffiliateId(int affiliateId)
-        {
-            var query = from o in _orderRepository.Table
-                        orderby o.CreatedOnUtc descending
-                        where !o.Deleted && o.AffiliateId == affiliateId
-                        select o;
-            var orders = query.ToList();
-            return orders;
-        }
-
+        
         /// <summary>
         /// Inserts an order
         /// </summary>
@@ -460,10 +454,13 @@ namespace Nop.Services.Orders
         /// <param name="customerId">The customer identifier; 0 to load all records</param>
         /// <param name="initialOrderId">The initial order identifier; 0 to load all records</param>
         /// <param name="initialOrderStatus">Initial order status identifier; null to load all records</param>
+        /// <param name="pageIndex">Page index</param>
+        /// <param name="pageSize">Page size</param>
         /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Recurring payment collection</returns>
-        public virtual IList<RecurringPayment> SearchRecurringPayments(int customerId,
-            int initialOrderId, OrderStatus? initialOrderStatus, bool showHidden = false)
+        public virtual IPagedList<RecurringPayment> SearchRecurringPayments(int customerId,
+            int initialOrderId, OrderStatus? initialOrderStatus, 
+            int pageIndex, int pageSize, bool showHidden = false)
         {
             int? initialOrderStatusId = null;
             if (initialOrderStatus.HasValue)
@@ -472,7 +469,9 @@ namespace Nop.Services.Orders
             var query1 = from rp in _recurringPaymentRepository.Table
                          join c in _customerRepository.Table on rp.InitialOrder.CustomerId equals c.Id
                          where
-                         (!rp.Deleted && !rp.InitialOrder.Deleted && !c.Deleted) &&
+                         (!rp.Deleted) &&
+                         (showHidden || !rp.InitialOrder.Deleted) &&
+                         (showHidden || !c.Deleted) &&
                          (showHidden || rp.IsActive) &&
                          (customerId == 0 || rp.InitialOrder.CustomerId == customerId) &&
                          (initialOrderId == 0 || rp.InitialOrder.Id == initialOrderId) &&
@@ -483,8 +482,8 @@ namespace Nop.Services.Orders
                          where query1.Contains(rp.Id)
                          orderby rp.StartDateUtc, rp.Id
                          select rp;
-            
-            var recurringPayments = query2.ToList();
+
+            var recurringPayments = new PagedList<RecurringPayment>(query2, pageIndex, pageSize);
             return recurringPayments;
         }
 
@@ -526,9 +525,12 @@ namespace Nop.Services.Orders
         /// <param name="customerId">Customer identifier; null to load all entries</param>
         /// <param name="orderProductVariantId">Order product variant identifier; null to load all entries</param>
         /// <param name="rs">Return request status; null to load all entries</param>
+        /// <param name="pageIndex">Page index</param>
+        /// <param name="pageSize">Page size</param>
         /// <returns>Return requests</returns>
-        public virtual IList<ReturnRequest> SearchReturnRequests(int customerId,
-            int orderProductVariantId, ReturnRequestStatus? rs)
+        public virtual IPagedList<ReturnRequest> SearchReturnRequests(int customerId,
+            int orderProductVariantId, ReturnRequestStatus? rs,
+            int pageIndex, int pageSize)
         {
             var query = _returnRequestRepository.Table;
             if (customerId > 0)
@@ -542,8 +544,9 @@ namespace Nop.Services.Orders
                 query = query.Where(rr => rr.OrderProductVariantId == orderProductVariantId);
 
             query = query.OrderByDescending(rr => rr.CreatedOnUtc).ThenByDescending(rr=>rr.Id);
-            
-            var returnRequests = query.ToList();
+
+
+            var returnRequests = new PagedList<ReturnRequest>(query, pageIndex, pageSize);
             return returnRequests;
         }
 

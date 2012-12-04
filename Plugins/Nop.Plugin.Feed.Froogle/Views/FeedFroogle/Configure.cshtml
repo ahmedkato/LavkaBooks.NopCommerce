@@ -1,40 +1,41 @@
 ﻿@{
     Layout = "";
+
+    Html.AddCssFileParts("~/Plugins/Feed.Froogle/Content/styles.css");  
 }
 @model FeedFroogleModel
 @using Nop.Plugin.Feed.Froogle.Models;
 @using Nop.Web.Framework;
-@using Nop.Core.Infrastructure;
-@using Telerik.Web.Mvc;
 @using Telerik.Web.Mvc.UI;
+@using Nop.Web.Framework.UI;
 @using (Html.BeginForm())
 {
     @Html.Telerik().TabStrip().Name("googlebase-configure").Items(x =>
-{
-    x.Add().Text(T("Plugins.Feed.Froogle.General").Text).Content(TabGeneral().ToHtmlString()).Selected(true);
-    x.Add().Text(T("Plugins.Feed.Froogle.Override").Text).Content(TabOverride().ToHtmlString());
-})
+    {
+        x.Add().Text(T("Plugins.Feed.Froogle.General").Text).Content(TabGeneral().ToHtmlString()).Selected(true);
+        x.Add().Text(T("Plugins.Feed.Froogle.Override").Text).Content(TabOverride().ToHtmlString());
+    })
 }
 @helper TabGeneral()
     { 
-        <script type="text/javascript">
-            $(document).ready(function () {
+    <script type="text/javascript">
+        $(document).ready(function () {
 
-                $("#@Html.FieldIdFor(model => model.TaskEnabled)").click(toggleTaskEnabled);
+            $("#@Html.FieldIdFor(model => model.TaskEnabled)").click(toggleTaskEnabled);
 
-                toggleTaskEnabled();
-            });
+            toggleTaskEnabled();
+        });
 
-            function toggleTaskEnabled() {
-                if ($('#@Html.FieldIdFor(model => model.TaskEnabled)').is(':checked')) {
-                    $('#pnlGenerateStaticFileEachMinutes').show();
-                }
-                else {
-                    $('#pnlGenerateStaticFileEachMinutes').hide();
-                }
+        function toggleTaskEnabled() {
+            if ($('#@Html.FieldIdFor(model => model.TaskEnabled)').is(':checked')) {
+                $('#pnlGenerateStaticFileEachMinutes').show();
             }
+            else {
+                $('#pnlGenerateStaticFileEachMinutes').hide();
+            }
+        }
 
-        </script>
+    </script>
     
     <table class="adminContent">
         <tr>
@@ -89,47 +90,6 @@
         </tr>
         <tr>
             <td class="adminTitle">
-                @Html.NopLabelFor(model => model.FtpHostname):
-            </td>
-            <td class="adminData">
-                @Html.EditorFor(model => model.FtpHostname)
-                @Html.ValidationMessageFor(model => model.FtpHostname)
-            </td>
-        </tr>
-        <tr>
-            <td class="adminTitle">
-                @Html.NopLabelFor(model => model.FtpFilename):
-            </td>
-            <td class="adminData">
-                @Html.EditorFor(model => model.FtpFilename)
-                @Html.ValidationMessageFor(model => model.FtpFilename)
-            </td>
-        </tr>
-        <tr>
-            <td class="adminTitle">
-                @Html.NopLabelFor(model => model.FtpUsername):
-            </td>
-            <td class="adminData">
-                @Html.EditorFor(model => model.FtpUsername)
-                @Html.ValidationMessageFor(model => model.FtpUsername)
-            </td>
-        </tr>
-        <tr>
-            <td class="adminTitle">
-                @Html.NopLabelFor(model => model.FtpPassword):
-            </td>
-            <td class="adminData">
-                @Html.EditorFor(model => model.FtpPassword)
-                @Html.ValidationMessageFor(model => model.FtpPassword)
-            </td>
-        </tr>
-        <tr class="adminSeparator">
-            <td colspan="2">
-                <hr />
-            </td>
-        </tr>
-        <tr>
-            <td class="adminTitle">
                 @Html.NopLabelFor(m => m.TaskEnabled):
             </td>
             <td class="adminData">
@@ -174,7 +134,6 @@
             <td colspan="2" width="100%">
                 <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
                 <input type="submit" name="generate" class="t-button" value="@T("Plugins.Feed.Froogle.Generate")" />
-                <input type="submit" name="uploadfeed" class="t-button" value="@T("Plugins.Feed.Froogle.Upload")" />
             </td>
         </tr>
         @if (!String.IsNullOrEmpty(Model.GenerateFeedResult))
@@ -194,7 +153,7 @@
 }
 @helper TabOverride()
     { 
-    <table class="adminContent">
+    <table class="adminContent froogle">
         <tr>
             <td colspan="2">
                 You can download the list of allowed Google product category attributes <a href="http://www.google.com/support/merchants/bin/answer.py?answer=160081"
@@ -222,17 +181,29 @@
                     })
                     .Columns(columns =>
                     {
-                        columns.Bound(x => x.FullProductVariantName)
-                            .Width(200)
-                            .ReadOnly();
-                        columns.Bound(x => x.GoogleCategory)
-                            .Width(600);
-                        columns.Command(commands =>
-                        {
-                            commands.Edit();
-                        })
-                        .Width(100);
+                        columns.Bound(x => x.ProductVariantId).ReadOnly().Visible(false);
+                        columns.Bound(x => x.FullProductVariantName).ReadOnly();
+                        columns.Bound(x => x.GoogleCategory).Visible(false);
+                        columns.Bound(x => x.Gender).Visible(false);
+                        columns.Bound(x => x.AgeGroup).Visible(false);
+                        columns.Bound(x => x.Color).Visible(false);
+                        columns.Bound(x => x.GoogleSize).Visible(false);
                     })
+                    .ClientRowTemplate(grid =>  "<div class='product-info'>" +
+                            "<#= FullProductVariantName #>" + 
+                            "</div>" + 
+                            "<div class='google-info'>" +
+                            "<dl>" +
+                            string.Format("<dt>{0}:</dt><dd><#= GoogleCategory #></dd>", T("Plugins.Feed.Froogle.Products.GoogleCategory").Text) +
+                            string.Format("<dt>{0}:</dt><dd><#= Gender #></dd>", T("Plugins.Feed.Froogle.Products.Gender").Text) +
+                            string.Format("<dt>{0}:</dt><dd><#= AgeGroup #></dd>", T("Plugins.Feed.Froogle.Products.AgeGroup").Text) +
+                            string.Format("<dt>{0}:</dt><dd><#= Color #></dd>", T("Plugins.Feed.Froogle.Products.Color").Text) +
+                            string.Format("<dt>{0}:</dt><dd><#= GoogleSize #></dd>", T("Plugins.Feed.Froogle.Products.Size").Text) +
+                            "</dl>" +
+                            "</div>" + 
+                            "<div class='commands'>" + grid.EditButton(null) + "</div>" +
+                            "</div>")
+                    .Editable(editing => editing.Mode(GridEditMode.PopUp))
                     .Pageable(settings => settings.PageSize(15).Position(GridPagerPosition.Both))
                     .EnableCustomBinding(true))
             </td>

@@ -35,14 +35,15 @@ namespace Nop.Core
         {
             string referrerUrl = string.Empty;
 
+            //URL referrer is null in some case (for example, in IE 8)
             if (_httpContext != null &&
                 _httpContext.Request != null &&
                 _httpContext.Request.UrlReferrer != null)
-                referrerUrl = _httpContext.Request.UrlReferrer.ToString();
+                referrerUrl = _httpContext.Request.UrlReferrer.PathAndQuery;
 
             return referrerUrl;
         }
-
+        
         /// <summary>
         /// Get context IP address
         /// </summary>
@@ -50,11 +51,11 @@ namespace Nop.Core
         public virtual string GetCurrentIpAddress()
         {
             if (_httpContext != null &&
-                    _httpContext.Request != null &&
-                    _httpContext.Request.UserHostAddress != null)
+                _httpContext.Request != null &&
+                _httpContext.Request.UserHostAddress != null)
                 return _httpContext.Request.UserHostAddress;
-            else
-                return string.Empty;
+            
+            return string.Empty;
         }
         
         /// <summary>

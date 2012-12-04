@@ -14,13 +14,13 @@ namespace Nop.Web.Infrastructure
                             "",
                             new { controller = "Home", action = "Index"},
                             new[] { "Nop.Web.Controllers" });
+            //install
+            routes.MapRoute("Installation",
+                            "install",
+                            new { controller = "Install", action = "Index" },
+                            new[] { "Nop.Web.Controllers" });
 
             //products
-            routes.MapLocalizedRoute("Product",
-                            "p/{productId}/{SeName}",
-                            new { controller = "Catalog", action = "Product", SeName = UrlParameter.Optional },
-                            new { productId = @"\d+" },
-                            new[] { "Nop.Web.Controllers" });
             routes.MapLocalizedRoute("RecentlyViewedProducts",
                             "recentlyviewedproducts/",
                             new { controller = "Catalog", action = "RecentlyViewedProducts" },
@@ -61,19 +61,9 @@ namespace Nop.Web.Infrastructure
                             new[] { "Nop.Web.Controllers" });
 
             //catalog
-            routes.MapLocalizedRoute("Category",
-                            "c/{categoryId}/{SeName}",
-                            new { controller = "Catalog", action = "Category", SeName = UrlParameter.Optional },
-                            new { categoryId = @"\d+" },
-                            new[] { "Nop.Web.Controllers" });
             routes.MapLocalizedRoute("ManufacturerList",
                             "manufacturer/all/",
                             new { controller = "Catalog", action = "ManufacturerAll" },
-                            new[] { "Nop.Web.Controllers" });
-            routes.MapLocalizedRoute("Manufacturer",
-                            "m/{manufacturerId}/{SeName}",
-                            new { controller = "Catalog", action = "Manufacturer", SeName = UrlParameter.Optional },
-                            new { manufacturerId = @"\d+" },
                             new[] { "Nop.Web.Controllers" });
             //downloads
             routes.MapRoute("GetSampleDownload",
@@ -259,6 +249,13 @@ namespace Nop.Web.Infrastructure
             routes.MapLocalizedRoute("ContactUs",
                             "contactus",
                             new { controller = "Common", action = "ContactUs" },
+                            new[] { "Nop.Web.Controllers" });
+
+
+            //store closed
+            routes.MapLocalizedRoute("StoreClosed",
+                            "storeclosed",
+                            new { controller = "Common", action = "StoreClosed" },
                             new[] { "Nop.Web.Controllers" });
 
             //passwordrecovery
@@ -585,14 +582,27 @@ namespace Nop.Web.Infrastructure
 
             //product tags
             routes.MapLocalizedRoute("ProductsByTag",
-                            "productag/{productTagId}/{SeName}",
+                            "producttag/{productTagId}/{SeName}",
                             new { controller = "Catalog", action = "ProductsByTag", SeName = UrlParameter.Optional },
                             new { productTagId = @"\d+" },
                             new[] { "Nop.Web.Controllers" });
             routes.MapLocalizedRoute("ProductTagsAll",
-                            "productag/all/",
+                            "producttag/all/",
                             new { controller = "Catalog", action = "ProductTagsAll" },
                             new[] { "Nop.Web.Controllers" });
+            #region Product tag URL fix
+            //in versions 2.00-2.65 we had typo in producttag URLs ("productag" instead of "producttag")
+            //we should support old "buggy" URLs
+            routes.MapLocalizedRoute("ProductsByTag_Fix1",
+                            "productag/{productTagId}/{SeName}",
+                            new { controller = "BackwardCompatibility2X", action = "RedirectProductsByTag", SeName = UrlParameter.Optional },
+                            new { productTagId = @"\d+" },
+                            new[] { "Nop.Web.Controllers" });
+            routes.MapLocalizedRoute("ProductTagsAll_Fix1",
+                            "productag/all/",
+                            new { controller = "BackwardCompatibility2X", action = "RedirectProductTagsAll" },
+                            new[] { "Nop.Web.Controllers" });
+            #endregion
 
             //product search
             routes.MapLocalizedRoute("ProductSearch",
@@ -647,6 +657,11 @@ namespace Nop.Web.Infrastructure
                             new { controller = "Topic", action = "Authenticate" },
                             new[] { "Nop.Web.Controllers" });
 
+            //robots.txt
+            routes.MapRoute("robots.txt",
+                            "robots.txt",
+                            new { controller = "Common", action = "RobotsTextFile" },
+                            new[] { "Nop.Web.Controllers" });
         }
 
         public int Priority

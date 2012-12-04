@@ -4,6 +4,7 @@ using System.Linq;
 using System.Web.Mvc;
 using Nop.Core;
 using Nop.Core.Caching;
+using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Polls;
 using Nop.Services.Customers;
 using Nop.Services.Localization;
@@ -79,10 +80,10 @@ namespace Nop.Web.Controllers
             if (String.IsNullOrWhiteSpace(systemKeyword))
                 return Content("");
 
-            var cacheKey = string.Format(ModelCacheEventConsumer.POLL_BY_SYSTEMNAME__MODEL_KEY, systemKeyword);
+            var cacheKey = string.Format(ModelCacheEventConsumer.POLL_BY_SYSTEMNAME__MODEL_KEY, systemKeyword, _workContext.WorkingLanguage.Id);
             var cachedModel = _cacheManager.Get(cacheKey, () =>
             {
-                Poll poll = _pollService.GetPollBySystemKeyword(systemKeyword);
+                Poll poll = _pollService.GetPollBySystemKeyword(systemKeyword, _workContext.WorkingLanguage.Id);
                 if (poll == null ||
                     !poll.Published ||
                     (poll.StartDateUtc.HasValue && poll.StartDateUtc.Value > DateTime.UtcNow) ||

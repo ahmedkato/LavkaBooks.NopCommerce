@@ -36,6 +36,7 @@ namespace Nop.Services.Customers
         private readonly IGenericAttributeService _genericAttributeService;
         private readonly ICacheManager _cacheManager;
         private readonly IEventPublisher _eventPublisher;
+        private readonly CustomerSettings _customerSettings;
 
         #endregion
 
@@ -55,7 +56,8 @@ namespace Nop.Services.Customers
             IRepository<CustomerRole> customerRoleRepository,
             IRepository<GenericAttribute> gaRepository,
             IGenericAttributeService genericAttributeService,
-            IEventPublisher eventPublisher)
+            IEventPublisher eventPublisher, 
+            CustomerSettings customerSettings)
         {
             this._cacheManager = cacheManager;
             this._customerRepository = customerRepository;
@@ -63,6 +65,7 @@ namespace Nop.Services.Customers
             this._gaRepository = gaRepository;
             this._genericAttributeService = genericAttributeService;
             this._eventPublisher = eventPublisher;
+            this._customerSettings = customerSettings;
         }
 
         #endregion
@@ -224,6 +227,24 @@ namespace Nop.Services.Customers
         }
 
         /// <summary>
+        /// Gets all customers by affiliate identifier
+        /// </summary>
+        /// <param name="affiliateId">Affiliate identifier</param>
+        /// <param name="pageIndex">Page index</param>
+        /// <param name="pageSize">Page size</param>
+        /// <returns>Customers</returns>
+        public virtual IPagedList<Customer> GetAllCustomers(int affiliateId, int pageIndex, int pageSize)
+        {
+            var query = _customerRepository.Table;
+            query = query.Where(c => !c.Deleted);
+            query = query.Where(c => c.AffiliateId.HasValue && c.AffiliateId == affiliateId);
+            query = query.OrderByDescending(c => c.CreatedOnUtc);
+
+            var customers = new PagedList<Customer>(query, pageIndex, pageSize);
+            return customers;
+        }
+
+        /// <summary>
         /// Gets all customers by customer format (including deleted ones)
         /// </summary>
         /// <param name="passwordFormat">Password format</param>
@@ -294,6 +315,15 @@ namespace Nop.Services.Customers
                 throw new NopException(string.Format("System customer account ({0}) could not be deleted", customer.SystemName));
 
             customer.Deleted = true;
+
+            if (_customerSettings.SuffixDeletedCustomers)
+            {
+                if (!String.IsNullOrEmpty(customer.Email))
+                    customer.Email += "-DELETED";
+                if (!String.IsNullOrEmpty(customer.Username))
+                    customer.Username += "-DELETED";
+            }
+
             UpdateCustomer(customer);
         }
 
