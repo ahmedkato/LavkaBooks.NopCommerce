@@ -1,6 +1,6 @@
 ﻿@model SearchModel
 @{
-    Layout = "~/Views/Shared/_ColumnsThree.cshtml";
+    Layout = "~/Views/Shared/_CustomColumnsTwo.cshtml";
 
     //title
     Html.AddTitleParts(T("PageTitle.Search").Text);
@@ -137,16 +137,12 @@
                         @T("Search.NoResultsText")
                     </span>
                 }
-                <div class="product-list">
-                    @*list mode*@
-                    <div class="product-list">
-                        @foreach (var product in Model.Products)
-                        {
-                            <div class="item-box">
-                                @Html.Partial("_ProductBox", product)
+                <div class="product-grid">
+                    @(Html.DataList<ProductOverviewModel>(Model.Products, 3,
+                            @<div class="item-box">
+                                @Html.Partial("_CustomProductBox", item)
                             </div>
-                        }
-                    </div>
+                        ))
                 </div>
                 <div class="clear">
                 </div>

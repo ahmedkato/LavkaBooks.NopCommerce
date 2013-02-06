@@ -122,6 +122,7 @@
     <Compile Include="AdminAreaRegistration.cs" />
     <Compile Include="Controllers\ActivityLogController.cs" />
     <Compile Include="Controllers\BaseNopController.cs" />
+    <Compile Include="Controllers\BookController.cs" />
     <Compile Include="Controllers\CategoryController.cs" />
     <Compile Include="Controllers\CheckoutAttributeController.cs" />
     <Compile Include="Controllers\AffiliateController.cs" />
@@ -176,6 +177,7 @@
     <Compile Include="Infrastructure\AdminStartupTask.cs" />
     <Compile Include="Infrastructure\AutoMapperStartupTask.cs" />
     <Compile Include="Models\Catalog\AddProductVariantAttributeCombinationModel.cs" />
+    <Compile Include="Models\Catalog\BookModel.cs" />
     <Compile Include="Models\Catalog\BulkEditProductVariantModel.cs" />
     <Compile Include="Models\Catalog\BulkEditListModel.cs" />
     <Compile Include="Models\Catalog\CategoryListModel.cs" />
@@ -369,6 +371,7 @@
     <Content Include="Content\images\warnings-warning.png" />
     <Content Include="Content\styles.css" />
     <Content Include="Scripts\admin.common.js" />
+    <Content Include="Scripts\book.js" />
     <Content Include="Scripts\fileuploader.js" />
     <Content Include="Scripts\jquery-1.7.1-vsdoc.js" />
     <Content Include="Scripts\jquery-1.7.1.js" />
@@ -417,7 +420,7 @@
     </ProjectReference>
     <ProjectReference Include="..\..\..\Libraries\Nop.Services\Nop.Services.csproj">
       <Project>{210541AD-F659-47DA-8763-16F36C5CD2F4}</Project>
-      <Name>Nop.Services</Name>
+      <Name>Nop.Services %28Libraries\Nop.Services%29</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\Nop.Web.Framework\Nop.Web.Framework.csproj">
       <Project>{75FD4163-333C-4DD5-854D-2EF294E45D94}</Project>
@@ -1053,6 +1056,15 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Views\ScheduleTask\List.cshtml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Views\Book\EditBook.cshtml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Views\Book\CreateBook.cshtml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Views\Book\_CreateOrUpdate.cshtml" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

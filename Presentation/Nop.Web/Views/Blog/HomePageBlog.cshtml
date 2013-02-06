@@ -1,0 +1,45 @@
+﻿@model HomePageBlogItemsModel
+@using Nop.Core.Domain.Catalog;
+@using Nop.Core.Infrastructure;
+@using Nop.Services.Catalog;
+@using Nop.Web.Models.Blogs;
+@if (Model.BlogPosts.Count > 0)
+{
+    <div class="blog-list-homepage">
+        <div class="page-title">
+            <a href="@Url.RouteUrl("BlogRSS", new { languageId = Model.WorkingLanguageId })" class="link-rss" title="@T("Blog.RSS.Hint")">@T("Blog.RSS")</a>
+            <h4>@T("Blog")</h4>
+        </div>
+        <div class="clear">
+        </div>
+        <div class="blog-items">
+            <table>
+                @foreach (var item in Model.BlogPosts)
+                {
+                    <tr>
+                        <td>
+                            <div class="blog-ico"></div>
+                        </td>
+                        <td>
+                            <div class="item">
+                                <a class="blog-title" href="@Url.RouteUrl("BlogPost", new { blogPostId = item.Id, SeName = item.SeName })">
+                                    @item.Title</a> <span class="news-date">-
+                            @item.CreatedOn.ToString("D")
+                                    </span>
+                                <div class="news-details">
+                                    @Html.Raw(HttpUtility.HtmlDecode(item.Body.Length > 200 ? item.Body.Substring(0, 200) : item.Body))
+                                </div>
+                                <a href="@Url.RouteUrl("BlogPost", new { blogPostId = item.Id, SeName = item.SeName })" class="read-more">
+                                    @T("Blog.MoreInfo")</a>
+                            </div>
+                        </td>
+                    </tr>                
+                }
+            </table>
+            <div class="view-all">
+                <a href="@Url.RouteUrl("Blog")">
+                    @T("Blog.ViewAll")</a>
+            </div>
+        </div>
+    </div>
+}

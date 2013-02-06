@@ -1,0 +1,60 @@
+﻿@model AddressModel
+@using Nop.Web.Models.Common;
+
+@Html.HiddenFor(model => model.Id)
+<table>
+	<tr>
+		<td>
+			@Html.TextBoxFor(model => model.FirstName, new { @class = "text-box", placeholder = T("Account.Address.FirstName.Hint") })
+			@Html.RequiredHint()
+			@Html.ValidationMessageFor(model => model.FirstName)
+		</td>
+	</tr>
+	@if (Model.PhoneEnabled)
+ {
+		<tr>
+			<td>
+				@Html.TextBoxFor(model => model.PhoneNumber, new { @class = "text-box", placeholder = T("Account.Address.Phone.Hint") })
+				@if (Model.PhoneRequired)
+	{
+					@Html.RequiredHint()
+	}
+				@Html.ValidationMessageFor(model => model.PhoneNumber)
+			</td>
+		</tr>
+ }
+	<tr>
+		<td>
+			@Html.TextBoxFor(model => model.Email, new { @class = "text-box", placeholder = T("Account.Address.Email.Hint") })
+			@Html.RequiredHint()
+			@Html.ValidationMessageFor(model => model.Email)
+		</td>
+	</tr>
+	@if (Model.CityEnabled)
+ {
+		<tr>
+			<td>
+				@Html.TextBoxFor(model => model.City, new { @class = "text-box", placeholder = T("Account.Address.City.Hint") })
+
+				@if (Model.CityRequired)
+	{
+					@Html.RequiredHint()
+	}
+				@Html.ValidationMessageFor(model => model.City)
+			</td>
+		</tr>
+ }
+	@if (Model.StreetAddressEnabled)
+ {
+		<tr>
+			<td>
+				@Html.TextBoxFor(model => model.Address1, new { @class = "text-box", placeholder = T("Account.Address.Address.Hint") })
+				@if (Model.StreetAddressRequired)
+	{
+					@Html.RequiredHint()
+	}
+				@Html.ValidationMessageFor(model => model.Address1)
+			</td>
+		</tr>
+ }
+</table>

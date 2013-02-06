@@ -1,0 +1,36 @@
+﻿@model HomePageBlogItemsModel
+@using Nop.Web;
+@using Nop.Web.Extensions;
+@using Nop.Web.Models.Blogs;
+@if (Model.BlogPosts.Count > 0)
+{
+    <div class="block block-news-navigation">
+        <div class="title">
+            <strong>@T("Blog")</strong>
+        </div>
+        <div class="clear">
+        </div>
+        <div class="listbox">
+            <ul>
+                @foreach (var item in Model.BlogPosts.Take(2))
+                {
+                    <li>
+                        <div class="post">
+                            <a class="blog-title" href="@Url.RouteUrl("BlogPost", new { blogPostId = item.Id, SeName = item.SeName })">
+                                @item.Title</a>
+							<div class="blog-date">@item.CreatedOn.ToString("D")</div>
+                            <div class="blog-body">
+                                @Html.Raw(HttpUtility.HtmlDecode(item.Body.Length > 40 ? item.Body.Substring(0, 40) : item.Body))
+                            </div>
+                            <a href="@Url.RouteUrl("BlogPost", new { blogPostId = item.Id, SeName = item.SeName })" class="read-more">@T("Blog.MoreInfo")</a>
+                        </div>
+                    </li>
+                }
+            </ul>
+            <div class="view-all">
+                <a href="@Url.RouteUrl("Blog")">
+                    @T("Blog.ViewAll")</a>
+            </div>
+        </div>
+    </div>
+}

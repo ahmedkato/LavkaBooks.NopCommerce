@@ -9,5 +9,7 @@ namespace Nop.Web.Models.Catalog
         public string SpecificationAttributeName { get; set; }
 
         public string SpecificationAttributeOption { get; set; }
+
+        public int SpecificationAttributeOrder { get; set; }
     }
 }

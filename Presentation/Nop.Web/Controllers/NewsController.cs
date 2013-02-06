@@ -169,6 +169,11 @@ namespace Nop.Web.Controllers
             return PartialView(model);
         }
 
+        public ActionResult NewsBlock()
+        {
+            return HomePageNews();
+        }
+
         public ActionResult List(NewsPagingFilteringModel command)
         {
             if (!_newsSettings.Enabled)

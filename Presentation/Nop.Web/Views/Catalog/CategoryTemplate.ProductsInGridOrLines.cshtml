@@ -1,6 +1,6 @@
 ﻿@model CategoryModel
 @{
-    Layout = "~/Views/Shared/_ColumnsThree.cshtml";
+    Layout = "~/Views/Shared/_CustomColumnsTwo.cshtml";
     Html.AddTitleParts(!String.IsNullOrEmpty(Model.MetaTitle) ? Model.MetaTitle : Model.Name);
     Html.AddMetaDescriptionParts(Model.MetaDescription);
     Html.AddMetaKeywordParts(Model.MetaKeywords);
@@ -153,12 +153,12 @@
                         @Html.Partial("_FilterPriceBox", Model.PagingFilteringContext.PriceRangeFilter, new ViewDataDictionary())
                     </div>
                 }
-                @if (Model.PagingFilteringContext.SpecificationFilter.Enabled)
+                @*@if (Model.PagingFilteringContext.SpecificationFilter.Enabled)
                 {
                     <div class="filter-item">
                         @Html.Partial("_FilterSpecsBox", Model.PagingFilteringContext.SpecificationFilter, new ViewDataDictionary())
                     </div>
-                }
+                }*@
             </div>
             <div class="clear">
             </div>
@@ -183,9 +183,9 @@
             {
             @*grid mode*@
             <div class="product-grid">
-                @(Html.DataList<ProductOverviewModel>(Model.Products, 2,
+                @(Html.DataList<ProductOverviewModel>(Model.Products, 3,
                         @<div class="item-box">
-                            @Html.Partial("_ProductBox", item)
+                            @Html.Partial("_CustomProductBox", item)
                         </div>
                     ))
             </div>

@@ -12,14 +12,20 @@
         @(Html.DataList<ProductOverviewModel>(Model, 3,
             @<div class="item-box">
                 <div class="item" data-productid="@item.Id">
-                    <div class="product-title">
-                        <a href="@Url.RouteUrl("Product", new { SeName = item.SeName })" title="@item.DefaultPictureModel.Title">
-                            @item.Name</a>
-                    </div>
                     <div class="picture">
                         <a href="@Url.RouteUrl("Product", new { SeName = item.SeName })" title="@item.DefaultPictureModel.Title">
-                            <img alt="@item.DefaultPictureModel.AlternateText" src="@item.DefaultPictureModel.ImageUrl" title="@item.DefaultPictureModel.Title" /></a>
+                            <img alt="@item.DefaultPictureModel.AlternateText" src="@item.DefaultPictureModel.ImageUrl" title="@item.DefaultPictureModel.Title" />
+                        </a>
                     </div>
+                    <h2 class="product-title">
+                        <a href="@Url.RouteUrl("Product", new { SeName = item.SeName })">@item.Name</a>
+                    </h2>
+                    @if (item.SpecificationAttributeModels.Any(x => x.SpecificationAttributeName == "Author"))
+                    {
+                        <div class="author">
+                            @item.SpecificationAttributeModels.First(x => x.SpecificationAttributeName == "Author").SpecificationAttributeOption
+                        </div>
+                    }
                 </div>
             </div>
             ))

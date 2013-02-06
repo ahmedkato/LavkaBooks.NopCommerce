@@ -109,7 +109,7 @@
     </ProjectReference>
     <ProjectReference Include="..\..\Libraries\Nop.Services\Nop.Services.csproj">
       <Project>{210541AD-F659-47DA-8763-16F36C5CD2F4}</Project>
-      <Name>Nop.Services</Name>
+      <Name>Nop.Services %28Libraries\Nop.Services%29</Name>
     </ProjectReference>
     <ProjectReference Include="..\Nop.Tests\Nop.Tests.csproj">
       <Project>{1D9EB579-3630-468A-BE94-49E7DF4F6E1D}</Project>

@@ -136,7 +136,7 @@ namespace Nop.Web.Controllers
         protected BlogPostListModel PrepareBlogPostListModel(BlogPagingFilteringModel command)
         {
             if (command == null)
-                throw new ArgumentNullException("command");
+                throw new ArgumentNullException("command"); 
 
             var model = new BlogPostListModel();
             model.PagingFilteringContext.Tag = command.Tag;
@@ -186,6 +186,41 @@ namespace Nop.Web.Controllers
             var model = PrepareBlogPostListModel(command);
             return View("List", model);
         }
+
+        public ActionResult BlogBlock()
+        {
+            return HomePageBlog();
+        }
+
+        public ActionResult HomePageBlog()
+        {
+            if (!_blogSettings.Enabled)
+                return Content("");
+
+            var cacheKey = string.Format(ModelCacheEventConsumer.HOMEPAGE_BLOGPOSTMODEL_KEY, _workContext.WorkingLanguage.Id);
+            var cachedModel = _cacheManager.Get(cacheKey, () =>
+            {
+                var posts = _blogService.GetAllBlogPosts(_workContext.WorkingLanguage.Id, null, null, 0, _blogSettings.MainPagePostCount);
+                return new HomePageBlogItemsModel()
+                {
+                    WorkingLanguageId = _workContext.WorkingLanguage.Id,
+                    BlogPosts = posts
+                        .Select(x =>
+                        {
+                            var postModel = new BlogPostModel();
+                            PrepareBlogPostModel(postModel, x, false);
+                            return postModel;
+                        })
+                        .ToList()
+                };
+            });
+
+            var model = (HomePageBlogItemsModel)cachedModel.Clone();
+            foreach (var itemModel in model.BlogPosts)
+                itemModel.Comments.Clear();
+            return PartialView(model);
+        }
+
         public ActionResult BlogByTag(BlogPagingFilteringModel command)
         {
             if (!_blogSettings.Enabled)

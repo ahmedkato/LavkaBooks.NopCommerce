@@ -199,6 +199,7 @@
     <Compile Include="Controllers\CountryController.cs" />
     <Compile Include="Controllers\CustomerController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
+    <Compile Include="Controllers\CartCheckoutController.cs" />
     <Compile Include="Extensions\EditorExtensions.cs" />
     <Compile Include="Extensions\MappingExtensions.cs" />
     <Compile Include="Extensions\PagerHtmlExtension.cs" />
@@ -222,6 +223,7 @@
     <Compile Include="Models\Blogs\BlogPostYearMonthModel.cs" />
     <Compile Include="Models\Blogs\AddBlogCommentModel.cs" />
     <Compile Include="Models\Blogs\BlogPostTagListModel.cs" />
+    <Compile Include="Models\Blogs\HomePageBlogItemsModel.cs" />
     <Compile Include="Models\Boards\ActiveDiscussionsModel.cs" />
     <Compile Include="Models\Boards\BoardsIndexModel.cs" />
     <Compile Include="Models\Boards\ForumRowModel.cs" />
@@ -278,6 +280,7 @@
     <Compile Include="Models\Customer\CustomerForumSubscriptionsModel.cs" />
     <Compile Include="Models\Customer\ForumSubscriptionModel.cs" />
     <Compile Include="Models\Customer\ExternalAuthenticationMethodModel.cs" />
+    <Compile Include="Models\Customer\CustomerWishlistModel.cs" />
     <Compile Include="Models\Install\InstallModel.cs" />
     <Compile Include="Models\Cms\RenderWidgetModel.cs" />
     <Compile Include="Models\News\AddNewsCommentModel.cs" />
@@ -327,6 +330,7 @@
     <Compile Include="Models\Profile\ProfileIndexModel.cs" />
     <Compile Include="Models\Profile\PostsModel.cs" />
     <Compile Include="Models\Profile\ProfilePostsModel.cs" />
+    <Compile Include="Models\ShoppingCart\LavkaShoppingCartModel.cs" />
     <Compile Include="Models\ShoppingCart\MiniShoppingCartModel.cs" />
     <Compile Include="Models\ShoppingCart\WishlistEmailAFriendModel.cs" />
     <Compile Include="Models\ShoppingCart\WishlistModel.cs" />
@@ -1148,7 +1152,6 @@
     <Content Include="Content\Images\flags\zm.png" />
     <Content Include="Content\Images\flags\zw.png" />
     <Content Include="Content\Images\ico-close-notification-bar.png" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-rss.gif" />
     <Content Include="Content\Images\default-image.gif" />
     <Content Include="Content\install\images\install-synchronizing.gif" />
     <Content Include="Content\Images\uploaded\placeholder.txt" />
@@ -1164,91 +1167,7 @@
     <Content Include="Content\install\images\topright.gif" />
     <Content Include="Content\install\style.css" />
     <Content Include="Content\install\style.rtl.css" />
-    <Content Include="Content\samples\category_accessories.jpg" />
-    <Content Include="Content\samples\category_accessories_apparel.jpg" />
-    <Content Include="Content\samples\category_apparel_shoes.jpeg" />
-    <Content Include="Content\samples\category_book.jpeg" />
-    <Content Include="Content\samples\category_camera_photo.jpeg" />
-    <Content Include="Content\samples\category_cell_phones.jpeg" />
-    <Content Include="Content\samples\category_computers.jpeg" />
-    <Content Include="Content\samples\category_desktops.jpg" />
-    <Content Include="Content\samples\category_digital_downloads.jpeg" />
-    <Content Include="Content\samples\category_electronics.jpeg" />
-    <Content Include="Content\samples\category_games.jpg" />
-    <Content Include="Content\samples\category_gift_cards.jpeg" />
-    <Content Include="Content\samples\category_jeans.jpg" />
-    <Content Include="Content\samples\category_jewelry.jpeg" />
-    <Content Include="Content\samples\category_notebooks.jpg" />
-    <Content Include="Content\samples\category_shirts.jpg" />
-    <Content Include="Content\samples\category_shoes.jpg" />
-    <Content Include="Content\samples\category_software.jpg" />
-    <Content Include="Content\samples\product_AdobePhotoshop.jpeg" />
-    <Content Include="Content\samples\product_5giftcart.jpeg" />
-    <Content Include="Content\samples\product_25giftcart.jpeg" />
-    <Content Include="Content\samples\product_50giftcart.jpeg" />
-    <Content Include="Content\samples\product_100giftcart.jpeg" />
-    <Content Include="Content\samples\product_AcerAspireOne_1.jpeg" />
-    <Content Include="Content\samples\product_AcerAspireOne_2.jpeg" />
-    <Content Include="Content\samples\product_AdidasShoe_1.jpg" />
-    <Content Include="Content\samples\product_AdidasShoe_2.jpg" />
-    <Content Include="Content\samples\product_ApcUps.jpeg" />
-    <Content Include="Content\samples\product_arrow.jpg" />
-    <Content Include="Content\samples\product_asuspc1000.jpeg" />
-    <Content Include="Content\samples\product_asuspc900.jpeg" />
-    <Content Include="Content\samples\product_Baseball.jpeg" />
-    <Content Include="Content\samples\product_BattleOfLA.jpeg" />
-    <Content Include="Content\samples\product_BestGrillingRecipes.jpeg" />
-    <Content Include="Content\samples\product_BestSkilletRecipes.jpeg" />
-    <Content Include="Content\samples\product_BlackBerry.jpeg" />
-    <Content Include="Content\samples\product_CanonCamcoder.jpeg" />
-    <Content Include="Content\samples\product_CanonCamera_1.jpeg" />
-    <Content Include="Content\samples\product_CanonCamera_2.jpeg" />
-    <Content Include="Content\samples\product_CanonCamera_black.jpeg" />
-    <Content Include="Content\samples\product_CanonCamera_silver.jpeg" />
-    <Content Include="Content\samples\product_Compaq.jpeg" />
-    <Content Include="Content\samples\product_CookingForTwo.jpeg" />
-    <Content Include="Content\samples\product_Corel.jpeg" />
-    <Content Include="Content\samples\product_CustomTShirt.jpeg" />
-    <Content Include="Content\samples\product_DenimShort.jpg" />
-    <Content Include="Content\samples\product_Desktops_1.jpeg" />
-    <Content Include="Content\samples\product_Desktops_2.jpeg" />
-    <Content Include="Content\samples\product_Desktops_3.jpeg" />
-    <Content Include="Content\samples\product_DiamondBracelet_1.jpg" />
-    <Content Include="Content\samples\product_DiamondBracelet_2.jpg" />
-    <Content Include="Content\samples\product_DiamondEarrings.jpg" />
-    <Content Include="Content\samples\product_DiamondHeart.jpg" />
-    <Content Include="Content\samples\product_EatingWell.jpeg" />
-    <Content Include="Content\samples\product_EngagementRing_1.jpg" />
-    <Content Include="Content\samples\product_EngagementRing_2.jpg" />
-    <Content Include="Content\samples\product_Etnies.jpg" />
-    <Content Include="Content\samples\product_GolfBelt.jpeg" />
-    <Content Include="Content\samples\product_hat.jpg" />
-    <Content Include="Content\samples\product_Hp506.jpeg" />
-    <Content Include="Content\samples\product_HpPavilion1.jpeg" />
-    <Content Include="Content\samples\product_HpPavilion2_1.jpeg" />
-    <Content Include="Content\samples\product_HpPavilion2_2.jpeg" />
-    <Content Include="Content\samples\product_HpPavilion3.jpeg" />
-    <Content Include="Content\samples\product_Kensington.jpeg" />
-    <Content Include="Content\samples\product_LeatherHandbag_1.jpg" />
-    <Content Include="Content\samples\product_LeatherHandbag_2.jpg" />
-    <Content Include="Content\samples\product_LeviJeans_1.jpg" />
-    <Content Include="Content\samples\product_LeviJeans_2.jpg" />
-    <Content Include="Content\samples\product_MedalOfHonor.jpeg" />
-    <Content Include="Content\samples\product_Mouse.jpeg" />
-    <Content Include="Content\samples\product_Notebooks.jpeg" />
-    <Content Include="Content\samples\product_PokerFace.jpeg" />
-    <Content Include="Content\samples\product_PokerFace_2.txt" />
-    <Content Include="Content\samples\product_productPanasonic.jpeg" />
-    <Content Include="Content\samples\product_RockabillyPolka.jpg" />
     <Content Include="Content\Images\Thumbs\placeholder.txt" />
-    <Content Include="Content\samples\product_SamsungPhone_1.jpeg" />
-    <Content Include="Content\samples\product_SamsungPhone_2.jpeg" />
-    <Content Include="Content\samples\product_SingleLadies.jpeg" />
-    <Content Include="Content\samples\product_SingleLadies_2.txt" />
-    <Content Include="Content\samples\product_Soccer.jpeg" />
-    <Content Include="Content\samples\product_SonyCamcoder.jpeg" />
-    <Content Include="Content\samples\product_Sunglasses.jpg" />
-    <Content Include="Content\samples\product_wow.jpeg" />
     <Content Include="Content\smoothness\images\ui-bg_flat_0_aaaaaa_40x100.png" />
     <Content Include="Content\smoothness\images\ui-bg_flat_75_ffffff_40x100.png" />
     <Content Include="Content\smoothness\images\ui-bg_glass_55_fbf9ee_1x400.png" />
@@ -1309,62 +1228,57 @@
     <Content Include="Scripts\public.onepagecheckout.js" />
     <Content Include="Scripts\public.common.js" />
     <Content Include="Scripts\slimbox2.js" />
-    <Content Include="Themes\DarkOrange\Content\images\ajax_loader_large.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\ajax_loader_small.gif" />
-    <Content Include="Themes\DarkOrange\Content\styles.rtl.css">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Themes\DarkOrange\Content\images\bbeditor-button-bg.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\bg-body.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\bg-container.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\download-sample-bg.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\cart-footer-bg.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\cart-header-bg.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\closelabel.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\box-header-left.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\box-header-right.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\filterbox-bg.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\forum-footer-bg.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\forum-header-bg.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\grey-button-bg.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\grid-bg.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\category-bg.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\category-title.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-account.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-admin.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-arrow-r.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-cart.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-delete.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-edit.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-forum-post-add.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-forum-post-high.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-forum-post.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-forum-watch.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-forum.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-inbox.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-login.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-logout.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-move-topic.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-pm.png" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-register.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\ico-wishlist.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\arrow-up.png" />
-    <Content Include="Themes\DarkOrange\Content\images\loading.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\logo.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\nextlabel.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\orange-button-bg.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\productbox-list-bg.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\pm-footer-bg.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\pm-header-bg.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\prevlabel.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\productbox-grid-bg.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\progress-step-active.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\progress-step-inactive.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\star-x-active.gif" />
-    <Content Include="Themes\DarkOrange\Content\images\star-x-inactive.gif" />
-    <Content Include="Themes\DarkOrange\Content\styles.css">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    <Content Include="Themes\LavkaBooks\Content\images\about-us-footer.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\active-tree-node.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\add-to-cart.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\blog-ico.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\cart-free.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\cart.gif" />
+    <Content Include="Themes\LavkaBooks\Content\images\cart.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\cash-payment.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\cash-shipping.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\clock.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\courier-shipping.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\faq.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\free-package.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\h-border.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\ico-admin.gif" />
+    <Content Include="Themes\LavkaBooks\Content\images\ico-inbox.gif" />
+    <Content Include="Themes\LavkaBooks\Content\images\ico-rss.gif" />
+    <Content Include="Themes\LavkaBooks\Content\images\inactive-tree-node.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\international-shipping.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\international-transfer-payment.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\logo.gif" />
+    <Content Include="Themes\LavkaBooks\Content\images\logo.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\logo.tif" />
+    <Content Include="Themes\LavkaBooks\Content\images\news-ico.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\next-page.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\nova-poshta-shipping.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\other-shipping.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\page-border.gif" />
+    <Content Include="Themes\LavkaBooks\Content\images\page-border.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\page-border.tif" />
+    <Content Include="Themes\LavkaBooks\Content\images\phone.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\pomegranate.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\previous-page.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\privat-bank-payment.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\privat-world-payment.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\privat24-payment.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\russia-sng-shipping.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\search-ico.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\self-shipping.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\social-ico.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\star-x-active.gif" />
+    <Content Include="Themes\LavkaBooks\Content\images\star-x-inactive.gif" />
+    <Content Include="Themes\LavkaBooks\Content\images\store.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\store1.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\store2.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\terminal-payment.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\transfer-payment.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\ukr-poshta-shipping.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\visa-mastercard-payment.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\web-money-payment.png" />
+    <Content Include="Themes\LavkaBooks\Content\styles.css" />
     <Content Include="Themes\Mobile\Content\images\ajax-loader.gif" />
     <Content Include="Themes\Mobile\Content\images\ajax-loader.png" />
     <Content Include="Themes\Mobile\Content\images\ico-forum-post-high.gif" />
@@ -1569,17 +1483,12 @@
     </ProjectReference>
     <ProjectReference Include="..\..\Libraries\Nop.Services\Nop.Services.csproj">
       <Project>{210541AD-F659-47DA-8763-16F36C5CD2F4}</Project>
-      <Name>Nop.Services</Name>
+      <Name>Nop.Services %28Libraries\Nop.Services%29</Name>
     </ProjectReference>
     <ProjectReference Include="..\Nop.Web.Framework\Nop.Web.Framework.csproj">
       <Project>{75FD4163-333C-4DD5-854D-2EF294E45D94}</Project>
       <Name>Nop.Web.Framework</Name>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="Themes\DarkOrange\theme.config" />
-    <Content Include="Themes\DarkOrange\Views\Shared\Head.cshtml" />
-    <Content Include="Themes\DarkOrange\Views\Web.config" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Views\Catalog\CategoryTemplate.ProductsInGridOrLines.cshtml" />
@@ -1602,9 +1511,6 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Content\samples\product_BattleOfLa_1.zip" />
-    <Content Include="Content\samples\product_PokerFace_1.zip" />
-    <Content Include="Content\samples\product_SingleLadies_1.zip" />
     <Content Include="App_Data\GeoIP.dat" />
     <Content Include="51Degrees.mobi.config" />
     <None Include="App_Data\Resources.xsd">
@@ -1760,6 +1666,40 @@
     <Content Include="Views\ShoppingCart\_OrderReviewData.Mobile.cshtml" />
     <Content Include="Views\Common\StoreClosed.cshtml" />
     <Content Include="Views\Common\StoreClosed.Mobile.cshtml" />
+    <Content Include="Views\News\NewsBlock.cshtml" />
+    <Content Include="Views\Blog\BlogBlock.cshtml" />
+    <Content Include="Views\Home\Inter.cshtml" />
+    <Content Include="Views\Blog\HomePageBlog.cshtml" />
+    <Content Include="Views\Customer\_CustomProductBox.cshtml" />
+    <Content Include="Views\Customer\ProductTemplate.LavkaVariant.cshtml" />
+    <Content Include="Views\Shared\_CustomColumnsOne.cshtml" />
+    <Content Include="Views\Shared\_CustomColumnsTwo.cshtml" />
+    <Content Include="Views\Shared\_CustomRoot.cshtml" />
+    <Content Include="Views\Shared\_CustomRoot.Head.cshtml" />
+    <Content Include="Themes\LavkaBooks\Content\Veles-Bold.0.9.2.otf" />
+    <Content Include="Themes\LavkaBooks\Content\Veles-Regular.0.9.2.otf" />
+    <Content Include="Themes\LavkaBooks\theme.config" />
+    <Content Include="Themes\LavkaBooks\Views\Shared\Head.cshtml" />
+    <Content Include="Themes\LavkaBooks\Views\Web.config" />
+    <Content Include="Views\Catalog\_CustomProductBox.cshtml">
+      <SubType>Code</SubType>
+    </Content>
+    <Content Include="Views\Catalog\CustomSearchBox.cshtml" />
+    <Content Include="Views\Catalog\ProductTemplate.LavkaVariant.cshtml">
+      <SubType>Code</SubType>
+    </Content>
+    <Content Include="Views\Shared\CustomHeader.cshtml">
+      <SubType>Code</SubType>
+    </Content>
+    <Content Include="Views\Catalog\HomepageRecentlyAddedProducts.cshtml" />
+    <Content Include="Views\ShoppingCart\LavkaCart.cshtml" />
+    <Content Include="Views\Customer\Wishlist.cshtml" />
+    <Content Include="Views\ShoppingCart\LavkaOrderSummary.cshtml" />
+    <Content Include="Views\ShoppingCart\LavkaShippingMethods.cshtml" />
+    <Content Include="Views\ShoppingCart\LavkaPaymentMethods.cshtml" />
+    <Content Include="Views\ShoppingCart\LavkaShippingAddress.cshtml" />
+    <Content Include="Views\ShoppingCart\_CustomCreateOrUpdateAddress.cshtml" />
+    <Content Include="Views\Catalog\_CustomProductVariantAddToCart.cshtml" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
@@ -1803,6 +1743,7 @@
     xcopy /s /y "$(SolutionDir)packages\Microsoft.SqlServer.Compact.4.0.8876.1\NativeBinaries\amd64\*.*" "$(TargetDir)amd64"</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PreBuildEvent>xcopy $(SolutionDir)\customizing $(SolutionDir) /c /s</PreBuildEvent>
+    <PreBuildEvent>
+    </PreBuildEvent>
   </PropertyGroup>
 </Project>

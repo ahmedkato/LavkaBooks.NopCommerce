@@ -2,7 +2,7 @@
 @using Telerik.Web.Mvc.UI
 @{
     var gridPageSize = EngineContext.Current.Resolve<Nop.Core.Domain.Common.AdminAreaSettings>().GridPageSize;
-    
+
     //page title
     ViewBag.Title = T("Admin.Catalog.Products.Manage").Text;
 }
@@ -15,6 +15,7 @@
         </div>
         <div class="options">
             <a href="@Url.Action("Create")" class="t-button">@T("Admin.Common.AddNew")</a>
+            <a href="@Url.Action("CreateBook", "Book")" class="t-button">@T("Admin.Common.AddNew")X</a>
             @if (Model.DisplayPdfDownloadCatalog)
             {
                 <a href="@Url.Action("DownloadCatalogAsPdf")" class="t-button">@T("Admin.Catalog.Products.List.DownloadPDF")</a>
@@ -91,8 +92,8 @@
                             columns.Bound(x => x.PictureThumbnailUrl)
                                 .Template(
                                     @<text>
-                                        <img alt="@item.Id" src="@item.PictureThumbnailUrl" />
-                                    </text>
+                <img alt="@item.Id" src="@item.PictureThumbnailUrl" />
+                </text>
                                 )
                                 .ClientTemplate("<img alt='<#= Id #>' src='<#= PictureThumbnailUrl #>' />");
                         }
@@ -109,6 +110,12 @@
                             .Centered()
                             .Template(x => Html.ActionLink(T("Admin.Common.Edit").Text, "Edit", new { id = x.Id }))
                             .ClientTemplate("<a href=\"Edit/<#= Id #>\">" + T("Admin.Common.Edit").Text + "</a>")
+                            .Title(T("Admin.Common.Edit").Text);
+                        columns.Bound(x => x.Id)
+                            .Width(50)
+                            .Centered()
+                            .Template(x => Html.ActionLink(T("Admin.Common.Edit").Text + "X", "EditBook", "Book", new { id = x.Id }, null))
+                            .ClientTemplate("<a href=\"" + Url.RouteUrl(new { action = "Index", controller = "Home" }) + "/Book/EditBook/<#= Id #>\">" + T("Admin.Common.Edit").Text + "X</a>")
                             .Title(T("Admin.Common.Edit").Text);
                     })
                                             .DetailView(details => details.ClientTemplate(
@@ -261,7 +268,7 @@
             };
             e.data = searchModel;
         }
-    
+
         function onDataBound(e) {
             $('#products-grid input[type=checkbox][id!=mastercheckbox]').each(function () {
                 var currentId = $(this).val();

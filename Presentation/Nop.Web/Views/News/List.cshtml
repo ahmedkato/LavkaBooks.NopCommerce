@@ -3,7 +3,7 @@
 @using Nop.Web.Extensions;
 @using Nop.Web.Models.News;
 @{
-    Layout = "~/Views/Shared/_ColumnsTwo.cshtml";
+    Layout = "~/Views/Shared/_CustomColumnsTwo.cshtml";
 
     //title
     Html.AddTitleParts(T("PageTitle.NewsArchive").Text);
@@ -21,15 +21,12 @@
             @foreach (var item in Model.NewsItems)
             {
                 <div class="item">
-                    <a class="news-title" href="@Url.RouteUrl("NewsItem", new { newsItemId = item.Id, SeName = item.SeName })">
-                        @item.Title</a> <span class="news-date">-
-                            @item.CreatedOn.ToString("D")
-                        </span>
+                    <a class="news-title" href="@Url.RouteUrl("NewsItem", new { newsItemId = item.Id, SeName = item.SeName })">@item.Title</a> 
+					<span class="news-date">@item.CreatedOn.ToString("D")</span>
                     <div class="news-details">
                         @Html.Raw(item.Short)
                     </div>
-                    <a href="@Url.RouteUrl("NewsItem", new { newsItemId = item.Id, SeName = item.SeName })" class="read-more">
-                        @T("News.MoreInfo")</a>
+                    <a href="@Url.RouteUrl("NewsItem", new { newsItemId = item.Id, SeName = item.SeName })" class="read-more">@T("News.MoreInfo")</a>
                     @Html.Widget("newslist_page_inside_item")
                 </div>
             }

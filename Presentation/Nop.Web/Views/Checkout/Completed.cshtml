@@ -3,13 +3,12 @@
 @using Nop.Web.Models.Checkout;
 @using Nop.Web.Models.Common;
 @{
-    Layout = "~/Views/Shared/_ColumnsOne.cshtml";
+    Layout = "~/Views/Shared/_CustomColumnsOne.cshtml";
 
     //title
     Html.AddTitleParts(T("PageTitle.Checkout").Text);
 }
 <div class="page checkout-page">
-    @Html.Action("CheckoutProgress", "Checkout", new { step = CheckoutProgressStep.Complete })
     <div class="clear">
     </div>
     <div class="page-title">

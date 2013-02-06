@@ -3,13 +3,13 @@
 @helper RenderCategoryLine(CategoryNavigationModel.CategoryModel category)
 {
     var categoryPadding = 15;
-    <li class="@(category.Id == Model.CurrentCategoryId ? "active" : "inactive")">
-        <a href="@Url.RouteUrl("Category", new { SeName = category.SeName })">@category.Name
-            @if (category.NumberOfProducts.HasValue)
-            {
-                <text> (@(category.NumberOfProducts.Value))</text>
-            }
-        </a>
+    <li class="@(category.Id == Model.CurrentCategoryId ? "active" : "")">
+        @category.Name
+        @if (category.NumberOfProducts.HasValue)
+        {
+            <text> (@(category.NumberOfProducts.Value))</text>
+        }
+        <input type="hidden" name="url" value="@Url.RouteUrl("Category", new { SeName = category.SeName })" />
         @if (category.SubCategories.Count > 0)
         {
             <ul class="sublist">
@@ -39,3 +39,29 @@
         </div>
     </div>
 }
+<script type="text/javascript">
+    $(document).ready(function () {
+        var navBlock = $(".block-category-navigation .listbox > ul");
+        navBlock.find("li").click(function (event) {
+            event.stopPropagation();
+            var sublist = $(this).find(".sublist");
+            if (sublist.length > 0) {
+                if (sublist.is(":hidden")) {
+                    sublist.show();
+                    $(this).removeClass("rolldown").addClass("rollup");
+                }
+                else {
+                    sublist.hide();
+                    $(this).removeClass("rollup").addClass("rolldown");
+                }
+            }
+            else {
+                document.location.href = $(this).find("input[name=url]").val();
+            }
+        });
+        var active = navBlock.find(".active");
+        navBlock.find("li").has(".sublist").addClass("rolldown");
+        active.parents("li").removeClass("rolldown").addClass("rollup");
+        active.parents("ul").show();
+    });
+</script>

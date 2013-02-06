@@ -1,0 +1,16 @@
+﻿@model Nop.Admin.Models.Catalog.BookModel
+
+@{
+    ViewBag.Title = "CreateBook";
+}
+
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script type="text/javascript" src="~/Administration/Scripts/book.js"></script>
+@using (Html.BeginForm())
+{
+    @Html.Partial("_CreateOrUpdate", Model)
+    <div class="options">
+        <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
+        <input type="submit" name="save-continue" class="t-button" value="@T("Admin.Common.SaveContinue")" />
+    </div>
+}

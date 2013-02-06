@@ -352,7 +352,16 @@ namespace Nop.Web.Infrastructure.Cache
         /// </remarks>
         public const string HOMEPAGE_NEWSMODEL_KEY = "nop.pres.news.homepage-{0}";
         public const string NEWS_PATTERN_KEY = "nop.pres.news.";
-        
+
+        /// <summary>
+        /// Key for home page blog
+        /// </summary>
+        /// <remarks>
+        /// {0} : language ID
+        /// </remarks>
+        public const string HOMEPAGE_BLOGPOSTMODEL_KEY = "nop.pres.blog.homepage-{0}";
+        public const string BLOGPOST_PATTERN_KEY = "nop.pres.blog.";
+
         /// <summary>
         /// Key for states by country id
         /// </summary>

@@ -10,5 +10,11 @@ namespace Nop.Web.Controllers
         {
             return View();
         }
+
+        [NopHttpsRequirement(SslRequirement.No)]
+        public ActionResult Inter()
+        {
+            return View();
+        }
     }
 }

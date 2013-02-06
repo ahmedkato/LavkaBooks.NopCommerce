@@ -1,56 +1,70 @@
 ﻿@model HeaderLinksModel
 @using Nop.Web.Models.Common;
 <div class="header-links">
-    <ul>
-        @Html.Widget("header_links_before")
-        @if (Model.IsCustomerImpersonated)
-        {
-            <li><span class="impersonate">(@string.Format(T("Account.ImpersonatedAs").Text, Model.CustomerEmailUsername))
-                - <a href="@Url.RouteUrl("Logout")" class="finish-impersonation" title="@T("Account.ImpersonatedAs.Finish.Hint")">@T("Account.ImpersonatedAs.Finish")</a>
-                ) </span></li>
-        }
-        @if (Model.DisplayAdminLink)
-        {
-            <li><a href="@Url.Content("~/admin")" class="ico-admin">@T("Account.Administration")</a>
-            </li>
-        }
-        @if (Model.IsAuthenticated)
-        {
-            <li><a href="@Url.RouteUrl("CustomerInfo")" class="account">@Model.CustomerEmailUsername</a></li>
-            <li><a href="@Url.RouteUrl("Logout")" class="ico-logout">@T("Account.Logout")</a></li>
+    <table>
+        <tr>
+            <td>
+                <ul>
+                    @Html.Widget("header_links_before")
+                    <li><a href="@Url.RouteUrl("HomePage")t/SippingPaymentInfo#payment">@T("Checkout.Progress.Payment")</a></li>
+                    <li><a href="@Url.RouteUrl("HomePage")t/SippingPaymentInfo#shipping">@T("Checkout.Progress.Shipping")</a></li>
+                    @if (Model.IsCustomerImpersonated)
+                    {
+                        <li><span class="impersonate">(@string.Format(T("Account.ImpersonatedAs").Text, Model.CustomerEmailUsername))
+                        - <a href="@Url.RouteUrl("Logout")" class="finish-impersonation" title="@T("Account.ImpersonatedAs.Finish.Hint")">@T("Account.ImpersonatedAs.Finish")</a>
+                            ) </span></li>
+                    }
+                    @if (Model.DisplayAdminLink)
+                    {
+                        <li><a href="@Url.Content("~/admin")" class="ico-admin">@T("Account.Administration")</a>
+                        </li>
+                    }
+                    @if (Model.IsAuthenticated)
+                    {
+                        <li><a href="@Url.RouteUrl("CustomerInfo")" class="account">@T("MyLavka")@*@Model.CustomerEmailUsername*@</a></li>
+                        <li><a href="@Url.RouteUrl("Logout")" class="ico-logout">@T("Account.Logout")</a></li>
             
-            if (Model.AllowPrivateMessages)
-            {
-            <li><a href="@Url.RouteUrl("PrivateMessages", new { tab = "" })" class="ico-inbox">@T("PrivateMessages.Inbox")</a>
-                @Model.UnreadPrivateMessages</li>
-                if (!string.IsNullOrEmpty(Model.AlertMessage))
+                        if (Model.AllowPrivateMessages)
+                        {
+                        <li><a href="@Url.RouteUrl("PrivateMessages", new { tab = "" })" class="ico-inbox">@T("PrivateMessages.Inbox")</a>
+                            @Model.UnreadPrivateMessages</li>
+                            if (!string.IsNullOrEmpty(Model.AlertMessage))
+                            {
+                        <script type="text/javascript">
+                            $(document).ready(function () {
+                                displayPopupNotification('@(Model.AlertMessage)', 'success', false);
+                            });
+                        </script>
+                            }
+                        }
+                    }
+                    else
+                    {
+                        <li><a href="@Url.RouteUrl("Register")" class="ico-register">@T("Account.Register")</a></li>
+                        <li><a href="@Url.RouteUrl("Login")" class="ico-login">@T("Account.Login")</a></li>
+                    }
+                    @Html.Widget("header_links_after")
+                </ul>
+            </td>
+            <td>
+                @if (Model.ShoppingCartEnabled)
                 {
-            <script type="text/javascript">
-                $(document).ready(function () {
-                    displayPopupNotification('@(Model.AlertMessage)', 'success', false);
-                });
-            </script>
+                    <div id="topcartlink">
+                        @if (@Model.ShoppingCartItems > 0)
+                        {
+                            <a href="@Url.RouteUrl("ShoppingCart")" class="ico-cart"></a>
+                        }
+                        else
+                        {
+                            <a href="@Url.RouteUrl("ShoppingCart")" class="ico-cart-free"></a>
+                        }
+                        @*<a href="@Url.RouteUrl("ShoppingCart")" class="ico-cart">@T("ShoppingCart")</a>
+                        <a href="@Url.RouteUrl("ShoppingCart")" class="cart-qty">(@Model.ShoppingCartItems)</a>*@
+                    </div>
                 }
-            }
-        }
-        else
-        {
-            <li><a href="@Url.RouteUrl("Register")" class="ico-register">@T("Account.Register")</a></li>
-            <li><a href="@Url.RouteUrl("Login")" class="ico-login">@T("Account.Login")</a></li>
-        }
-        @if (Model.ShoppingCartEnabled)
-        {
-            <li id="topcartlink"><a href="@Url.RouteUrl("ShoppingCart")" class="ico-cart">@T("ShoppingCart")</a>
-                <a href="@Url.RouteUrl("ShoppingCart")" class="cart-qty">(@Model.ShoppingCartItems)</a>
-            </li>
-        }
-        @if (Model.WishlistEnabled)
-        {
-            <li><a href="@Url.RouteUrl("Wishlist")" class="ico-wishlist">@T("Wishlist")</a> <a href="@Url.RouteUrl("Wishlist")" class="wishlist-qty">
-                (@Model.WishlistItems)</a> </li>
-        }
-        @Html.Widget("header_links_after")
-    </ul>
+            </td>
+        </tr>
+    </table>
     @if (Model.ShoppingCartEnabled)
     {
         <script type="text/javascript">

@@ -139,3 +139,6 @@ body .t-button{font-weight:400;color:inherit!important;text-decoration:none;}
 /* Telerik overrides */
 .form-actions{overflow:hidden;padding-top:1em;}
 .form-actions .t-button,.form-actions .t-button button{float:right;margin-left:10px;padding:2px 15px;}
+.push, .push-all {width:30px; height:30px; background:transparent url(images/push.png) no-repeat;}
+.editor-field textarea {width:210px; height:200px; resize:none;}
+.book-table img {border: solid 1px #000;}

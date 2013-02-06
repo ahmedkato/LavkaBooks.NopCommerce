@@ -13,25 +13,30 @@
         <div class="clear">
         </div>
         <div class="news-items">
-            @foreach (var item in Model.NewsItems)
-            {
-                <div class="item">
-                    <a class="news-title" href="@Url.RouteUrl("NewsItem", new { newsItemId = item.Id, SeName = item.SeName })">
-                        @item.Title</a> <span class="news-date">-
-                            @item.CreatedOn.ToString("D")
-                        </span>
-                    <div class="news-details">
-                        @Html.Raw(item.Short)
-                    </div>
-                    <a href="@Url.RouteUrl("NewsItem", new { newsItemId = item.Id, SeName = item.SeName })" class="read-more">
-                        @T("News.MoreInfo")</a>
-                </div>
-            }
+            <table>
+                @foreach (var item in Model.NewsItems)
+                {
+                    <tr>
+                        <td>
+                            <div class="news-ico"></div>
+                        </td>
+                        <td>
+                            <div class="item">
+                                <a class="news-title" href="@Url.RouteUrl("NewsItem", new { newsItemId = item.Id, SeName = item.SeName })">@item.Title</a>
+								<span class="news-date">@item.CreatedOn.ToString("D")</span>
+                                <div class="news-details">
+                                    @Html.Raw(item.Short)
+                                </div>
+                                <a href="@Url.RouteUrl("NewsItem", new { newsItemId = item.Id, SeName = item.SeName })" class="read-more">@T("News.MoreInfo")</a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </table>
             <div class="view-all">
                 <a href="@Url.RouteUrl("NewsArchive")">
                     @T("News.ViewAll")</a>
             </div>
         </div>
     </div>
-
 }
