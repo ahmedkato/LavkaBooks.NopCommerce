@@ -365,11 +365,13 @@ namespace Nop.Services.Catalog
 		{
 			var attribute = _specificationAttributeRepository
 				.Table
-				.SingleOrDefault(x => x.Name.Equals("Author", StringComparison.InvariantCultureIgnoreCase));
-			
-			return attribute == null 
-				? new List<SpecificationAttributeOption>() 
-				: attribute.SpecificationAttributeOptions.Where(x => x.Name.Contains(author)).ToList();
+				.SingleOrDefault(x => x.Name.Equals("Author", StringComparison.CurrentCultureIgnoreCase));
+
+			return attribute == null
+				       ? new List<SpecificationAttributeOption>()
+				       : attribute.SpecificationAttributeOptions
+				                  .Where(x => x.Name.IndexOf(author, 0, StringComparison.CurrentCultureIgnoreCase) != -1)
+				                  .ToList();
 		}
 
 		#endregion
