@@ -2,7 +2,7 @@
 @using Nop.Web.Models.Checkout;
 <div class="checkout-data">
     <div class="shipping-options-title">
-        @T("LavkaShoppingCart.ShippingPaymentTitle")
+        @T("LavkaShoppingCart.PaymentMethodTitle")
     </div>
     <div class="payment-methods">
         @if (Model.PaymentMethods.Count > 0)
@@ -14,12 +14,12 @@
                             @for (int i = 0; i < Model.PaymentMethods.Count; i++)
                             {
                                 var paymentMethod = Model.PaymentMethods[i];
-                                <option id="shippingoption_@(i)" value="@(paymentMethod.PaymentMethodSystemName)" selected="@paymentMethod.Selected">@paymentMethod.Name</option>
+                                <option id="paymentoption_@(i)" value="@(paymentMethod.PaymentMethodSystemName)" selected="@paymentMethod.Selected">@paymentMethod.Name</option>
                             }
                         </select>
                     </td>
                     <td>
-                        <div class="shipping-options-message">
+                        <div class="payment-options-message">
                             @T("LavkaShoppingCart.PaymentMethodsMessage")
                         </div>
                     </td>

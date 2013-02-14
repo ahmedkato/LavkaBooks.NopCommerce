@@ -65,7 +65,14 @@
 	<div class="clear">
 	</div>
 	<div class="master-wrapper-center-menu">
-		@Html.Action("Menu", "Common")
+		@if (IsSectionDefined("menu"))
+		  {
+				@RenderSection("menu")
+		  }
+		  else
+		  {
+				@Html.Action("Menu", "Common")
+		  }
 	</div>
 	<div class="clear">
 	</div>
