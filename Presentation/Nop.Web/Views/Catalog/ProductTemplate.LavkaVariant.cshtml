@@ -93,6 +93,14 @@
                     </h1>
                     @Html.Action("ProductSpecifications", "Catalog", new { productId = Model.Id })
                     @Html.Action("ShareButton", "Catalog")
+					@if (!defaultProductVariant.AddToCart.DisableBuyButton || !defaultProductVariant.AddToCart.DisableWishlistButton)
+					{
+						<div class="checkout-buttons">
+							@Html.ActionLink(T("LavkaShoppingCart.Order.Button").Text, "BlitzOrder", 
+							new { productVariantId = defaultProductVariant.AddToCart.ProductVariantId, 
+								shoppingCartTypeId = (int)ShoppingCartType.ShoppingCart }, null)
+						</div>
+					}
                 </div>
                 <div>
                     <div class="clear">

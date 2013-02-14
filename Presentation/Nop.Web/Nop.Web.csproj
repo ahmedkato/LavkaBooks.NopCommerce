@@ -1671,7 +1671,6 @@
     <Content Include="Views\Home\Inter.cshtml" />
     <Content Include="Views\Blog\HomePageBlog.cshtml" />
     <Content Include="Views\Customer\_CustomProductBox.cshtml" />
-    <Content Include="Views\Customer\ProductTemplate.LavkaVariant.cshtml" />
     <Content Include="Views\Shared\_CustomColumnsOne.cshtml" />
     <Content Include="Views\Shared\_CustomColumnsTwo.cshtml" />
     <Content Include="Views\Shared\_CustomRoot.cshtml" />

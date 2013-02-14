@@ -4147,6 +4147,7 @@ a.eu-cookie-privacyinfo-tag {
 	}
 
 	.product-details-page .product-essential .prices {
+		float: left;
 		margin: 0 8px 15px 15px;
 		display: inline-block;
 	}
@@ -4162,8 +4163,8 @@ a.eu-cookie-privacyinfo-tag {
 	}
 
 	.product-details-page .add-to-cart {
-		padding-top: 10px;
 		display: inline-block;
+		float: left;
 	}
 
 		.product-details-page .add-to-cart .enter-price-input {
@@ -4230,20 +4231,23 @@ a.eu-cookie-privacyinfo-tag {
 		}
 
 	.product-details-page .checkout-buttons {
-		float: right;
 		background: none repeat scroll 0 0 #DB1640;
 		border: 1px solid #DB1640;
-		border-radius: 10px;
-		margin-left: 10px;
+		border-radius: 10px 10px 10px 10px;
+		margin: 30px 60px 0;
+		padding-top: 8px;
+		text-align: center;
 	}
 
 		.product-details-page .checkout-buttons a {
-			text-decoration: none;
 			color: #FFFFFF;
 			font-family: veles;
-			font-size: 16px;
-			line-height: 39px;
-			padding: 0 5px;
+			font-size: 20px;
+			font-weight: bold;
+			letter-spacing: 15px;
+			line-height: 37px;
+			padding-left: 15px;
+			text-decoration: none;
 		}
 
 .related-products-grid {

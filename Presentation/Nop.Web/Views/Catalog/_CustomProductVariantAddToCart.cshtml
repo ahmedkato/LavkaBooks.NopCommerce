@@ -29,10 +29,6 @@
             {
                 <input type="button" class="button-1 add-to-cart-button" value="@(Model.AvailableForPreOrder ? T("ShoppingCart.PreOrder") : T("ShoppingCart.AddToCart"))" onclick="AjaxCart.addproductvarianttocart('@Url.RouteUrl("AddProductVariantToCart", new { productVariantId = Model.ProductVariantId, shoppingCartTypeId = (int)ShoppingCartType.ShoppingCart })', '#product-details-form');return false;" />
             }
-			<div class="checkout-buttons">
-				@Html.ActionLink(T("LavkaShoppingCart.Order.Button").Text, "BlitzOrder", new { productVariantId = Model.ProductVariantId, shoppingCartTypeId = (int)ShoppingCartType.ShoppingCart }, null)
-			</div>
         </div>
     }
-    @Html.Widget("productdetails_add_info")
 </div>
