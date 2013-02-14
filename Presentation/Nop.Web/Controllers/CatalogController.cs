@@ -3208,6 +3208,16 @@ namespace Nop.Web.Controllers
 					//var searchInProductTags = false;
 					var searchInProductTags = searchInDescriptions;
 
+					//products by author
+					var authors = _specificationAttributeService.SearchSpecificationAttributeOptionByAuthor(model.Q);
+					if (authors.Any())
+					{
+						var productsByAuthor = authors
+							.SelectMany(x => x.ProductSpecificationAttributes)
+							.Select(x => x.Product);
+						model.Products = PrepareProductOverviewModels(productsByAuthor, prepareSpecificationAttributes: true).ToList();
+					}
+
 					//products
 					IList<int> filterableSpecificationAttributeOptionIds = null;
 					products = _productService.SearchProducts(categoryIds, manufacturerId, null,
@@ -3215,7 +3225,17 @@ namespace Nop.Web.Controllers
 						model.Q, searchInDescriptions, searchInProductTags, _workContext.WorkingLanguage.Id, null,
 						ProductSortingEnum.Position, command.PageNumber - 1, command.PageSize,
 						false, out filterableSpecificationAttributeOptionIds);
-					model.Products = PrepareProductOverviewModels(products).ToList();
+					if (model.Products.Any())
+					{
+						foreach (var item in PrepareProductOverviewModels(products, prepareSpecificationAttributes: true))
+						{
+							model.Products.Add(item);
+						}
+					}
+					else
+					{
+						model.Products = PrepareProductOverviewModels(products, prepareSpecificationAttributes: true).ToList();
+					}
 
 					model.NoResults = !model.Products.Any();
 
