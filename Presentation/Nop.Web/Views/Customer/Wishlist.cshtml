@@ -8,11 +8,8 @@
     //title
     Html.AddTitleParts(T("PageTitle.Wishlist").Text);
 }
-@section left
-{
-    @Html.Partial("MyAccountNavigation", Model.NavigationModel, new ViewDataDictionary())
-}
 <div class="page wishlist-page">
+	@Html.Partial("MyAccountNavigation", Model.NavigationModel, new ViewDataDictionary())
     <div class="page-title">
         <h1>
             @if (Model.IsEditable)

@@ -357,6 +357,7 @@
     <Compile Include="Validators\Common\ContactUsValidator.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="App_Data\InstalledPlugins.txt" />
     <Content Include="App_Data\Localization\Installation\installation.ar.xml" />
     <Content Include="App_Data\Localization\Installation\installation.bg.xml" />
     <Content Include="App_Data\Localization\Installation\installation.bs-Latn-BA.xml" />
@@ -1231,9 +1232,11 @@
     <Content Include="Themes\LavkaBooks\Content\images\about-us-footer.png" />
     <Content Include="Themes\LavkaBooks\Content\images\active-tree-node.png" />
     <Content Include="Themes\LavkaBooks\Content\images\add-to-cart.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\ajax_loader_large.gif" />
+    <Content Include="Themes\LavkaBooks\Content\images\ajax_loader_small.gif" />
+    <Content Include="Themes\LavkaBooks\Content\images\arrow-up.png" />
     <Content Include="Themes\LavkaBooks\Content\images\blog-ico.png" />
     <Content Include="Themes\LavkaBooks\Content\images\cart-free.png" />
-    <Content Include="Themes\LavkaBooks\Content\images\cart.gif" />
     <Content Include="Themes\LavkaBooks\Content\images\cart.png" />
     <Content Include="Themes\LavkaBooks\Content\images\cash-payment.png" />
     <Content Include="Themes\LavkaBooks\Content\images\cash-shipping.png" />
@@ -1248,16 +1251,12 @@
     <Content Include="Themes\LavkaBooks\Content\images\inactive-tree-node.png" />
     <Content Include="Themes\LavkaBooks\Content\images\international-shipping.png" />
     <Content Include="Themes\LavkaBooks\Content\images\international-transfer-payment.png" />
-    <Content Include="Themes\LavkaBooks\Content\images\logo.gif" />
     <Content Include="Themes\LavkaBooks\Content\images\logo.png" />
-    <Content Include="Themes\LavkaBooks\Content\images\logo.tif" />
     <Content Include="Themes\LavkaBooks\Content\images\news-ico.png" />
     <Content Include="Themes\LavkaBooks\Content\images\next-page.png" />
     <Content Include="Themes\LavkaBooks\Content\images\nova-poshta-shipping.png" />
     <Content Include="Themes\LavkaBooks\Content\images\other-shipping.png" />
-    <Content Include="Themes\LavkaBooks\Content\images\page-border.gif" />
     <Content Include="Themes\LavkaBooks\Content\images\page-border.png" />
-    <Content Include="Themes\LavkaBooks\Content\images\page-border.tif" />
     <Content Include="Themes\LavkaBooks\Content\images\phone.png" />
     <Content Include="Themes\LavkaBooks\Content\images\pomegranate.png" />
     <Content Include="Themes\LavkaBooks\Content\images\previous-page.png" />
@@ -1278,6 +1277,7 @@
     <Content Include="Themes\LavkaBooks\Content\images\ukr-poshta-shipping.png" />
     <Content Include="Themes\LavkaBooks\Content\images\visa-mastercard-payment.png" />
     <Content Include="Themes\LavkaBooks\Content\images\web-money-payment.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\wishlist-image.png" />
     <Content Include="Themes\LavkaBooks\Content\styles.css" />
     <Content Include="Themes\Mobile\Content\images\ajax-loader.gif" />
     <Content Include="Themes\Mobile\Content\images\ajax-loader.png" />
@@ -1670,7 +1670,6 @@
     <Content Include="Views\Blog\BlogBlock.cshtml" />
     <Content Include="Views\Home\Inter.cshtml" />
     <Content Include="Views\Blog\HomePageBlog.cshtml" />
-    <Content Include="Views\Customer\_CustomProductBox.cshtml" />
     <Content Include="Views\Shared\_CustomColumnsOne.cshtml" />
     <Content Include="Views\Shared\_CustomColumnsTwo.cshtml" />
     <Content Include="Views\Shared\_CustomRoot.cshtml" />

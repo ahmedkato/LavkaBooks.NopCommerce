@@ -3,11 +3,6 @@
 	src: url("Veles-Regular.0.9.2.otf");
 }
 
-/*@font-face {
-    font-family: velesb;
-    src: url("Veles-Bold.0.9.2.otf");
-}*/
-
 /* HTML GENERAL */
 body, h1, h2, h3, h4, h5, h6, address, blockquote, dd, dl, hr, form, input {
 	margin: 0;
@@ -179,18 +174,19 @@ legend {
 		padding-left: 20px;
 	}
 
+	.header .ico-cart,
+	.header .ico-cart-free {
+		display: block;
+		height: 55px;
+		width: 60px;
+	}
+
 	.header .ico-cart {
 		background: url(images/cart.png) no-repeat;
-		display: block;
-		height: 73px;
-		width: 88px;
 	}
 
 	.header .ico-cart-free {
 		background: url(images/cart-free.png) no-repeat;
-		display: block;
-		height: 73px;
-		width: 88px;
 	}
 
 	.header .ico-wishlist {
@@ -2537,19 +2533,16 @@ a.eu-cookie-privacyinfo-tag {
 
 .product-filters {
 	width: 520px;
-	background: url(images/filterbox-bg.gif) no-repeat 0 100%;
 	margin: 0 auto;
 }
 
 	.product-filters .filter-title {
 		font-weight: 700;
-		background: url(images/box-header-left.gif) no-repeat 0 0;
 		padding-left: 10px;
 		color: #555;
 	}
 
 		.product-filters .filter-title span {
-			background: url(images/box-header-right.gif) no-repeat 100% 0;
 			display: block;
 			height: 2em;
 			line-height: 1.3em;
@@ -3423,9 +3416,14 @@ a.eu-cookie-privacyinfo-tag {
 	}
 
 		.search-page .search-results .result {
-			font-weight: 700;
 			color: #555;
 		}
+
+			.search-page .search-results .result .img {
+				background: url("images/not-found.jpg") no-repeat scroll center white;
+				height: 247px;
+				width: 100%;
+			}
 
 	.search-page table.basic-search, .search-page table.adv-search {
 		border-collapse: collapse;
@@ -4248,6 +4246,7 @@ a.eu-cookie-privacyinfo-tag {
 			line-height: 37px;
 			padding-left: 15px;
 			text-decoration: none;
+			text-transform: uppercase;
 		}
 
 .related-products-grid {

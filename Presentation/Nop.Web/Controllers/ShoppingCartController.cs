@@ -2040,6 +2040,9 @@ namespace Nop.Web.Controllers
 
 			//updated cart
 			cart = _workContext.CurrentCustomer.ShoppingCartItems.Where(sci => sci.ShoppingCartType == ShoppingCartType.ShoppingCart).ToList();
+			if (cart.Count == 0)
+				return RedirectToRoute("HomePage"); 
+
 			var model = new LavkaShoppingCartModel();
 			PrepareLavkaShoppingCartModel(model, cart);
 

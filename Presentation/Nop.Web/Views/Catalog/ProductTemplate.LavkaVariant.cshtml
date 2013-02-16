@@ -123,12 +123,12 @@
                     <div class="clear">
                     </div>
                     @{
-            var dataDictPrice = new ViewDataDictionary();
-            dataDictPrice.TemplateInfo.HtmlFieldPrefix = string.Format("price_{0}", defaultProductVariant.Id);
-                        @Html.Partial("_ProductVariantPrice", defaultProductVariant.ProductVariantPrice, dataDictPrice)
+						var dataDictPrice = new ViewDataDictionary();
+						dataDictPrice.TemplateInfo.HtmlFieldPrefix = string.Format("price_{0}", defaultProductVariant.Id);
+						@Html.Partial("_ProductVariantPrice", defaultProductVariant.ProductVariantPrice, dataDictPrice)
                             
-            var dataDictAddToCart = new ViewDataDictionary();
-            dataDictAddToCart.TemplateInfo.HtmlFieldPrefix = string.Format("addtocart_{0}", defaultProductVariant.Id);
+						var dataDictAddToCart = new ViewDataDictionary();
+						dataDictAddToCart.TemplateInfo.HtmlFieldPrefix = string.Format("addtocart_{0}", defaultProductVariant.Id);
                         @Html.Partial("_CustomProductVariantAddToCart", defaultProductVariant.AddToCart, dataDictAddToCart)                    
                     }
                     <div class="clear">

@@ -17,7 +17,7 @@ namespace Nop.Web.Framework
     {
         private readonly static TimeSpan DEFAULT_CACHE_DURATION = TimeSpan.FromDays(30);
         private readonly static string[] FILE_TYPES =
-            new string[] { ".css", ".js", ".html", ".htm", ".png", ".jpeg", ".jpg", ".gif", ".bmp" };
+			new string[] { ".css", ".js", ".html", ".htm", ".png", ".jpeg", ".jpg", ".gif", ".bmp", ".otf" };
 
         private readonly static string[] COMPRESS_FILE_TYPES =
             new string[] { ".css", ".js", ".html", ".htm" };

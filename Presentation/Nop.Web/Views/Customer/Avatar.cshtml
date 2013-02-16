@@ -6,13 +6,10 @@
     //title
     Html.AddTitleParts(T("PageTitle.Account").Text);
 }
-@section left
-{
-    @Html.Partial("MyAccountNavigation", Model.NavigationModel, new ViewDataDictionary())
-}
 @using (Html.BeginRouteForm("CustomerAvatar", FormMethod.Post, new { enctype = "multipart/form-data" }))
 {
     <div class="page account-page avatar-page">
+		@Html.Partial("MyAccountNavigation", Model.NavigationModel, new ViewDataDictionary())
         <div class="page-title">
             <h1>@T("Account.MyAccount") - @T("Account.Avatar")</h1>
         </div>
