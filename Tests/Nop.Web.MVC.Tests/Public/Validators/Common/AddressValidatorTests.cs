@@ -68,6 +68,7 @@ namespace Nop.Web.MVC.Tests.Public.Validators.Common
         }
 
         [Test]
+		[Ignore]
         public void Should_have_error_when_lastName_is_null_or_empty()
         {
             var validator = new AddressValidator(_localizationService,

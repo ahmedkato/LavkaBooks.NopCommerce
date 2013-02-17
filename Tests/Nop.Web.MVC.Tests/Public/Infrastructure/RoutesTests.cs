@@ -115,6 +115,7 @@ namespace Nop.Web.MVC.Tests.Public.Infrastructure
             "~/customer/addressdelete/6".ShouldMapTo<CustomerController>(c => c.AddressDelete(6));
             "~/customer/addressedit/7".ShouldMapTo<CustomerController>(c => c.AddressEdit(7));
             "~/customer/addressadd".ShouldMapTo<CustomerController>(c => c.AddressAdd());
+			"~/wishlist".ShouldMapTo<CustomerController>(c => c.Wishlist());
         }
 
         [Test]
@@ -127,8 +128,7 @@ namespace Nop.Web.MVC.Tests.Public.Infrastructure
         [Test]
         public void Cart_routes()
         {
-            "~/cart/".ShouldMapTo<ShoppingCartController>(c => c.Cart());
-            "~/wishlist".ShouldMapTo<ShoppingCartController>(c => c.Wishlist(null));
+			"~/cart/".ShouldMapTo<ShoppingCartController>(c => c.Cart());
             "~/wishlist/aa74c80f-1edd-43f7-85df-a3cccc1b47b9".ShouldMapTo<ShoppingCartController>(c => c.Wishlist(new Guid("aa74c80f-1edd-43f7-85df-a3cccc1b47b9")));
             "~/emailwishlist".ShouldMapTo<ShoppingCartController>(c => c.EmailWishlist());
         }

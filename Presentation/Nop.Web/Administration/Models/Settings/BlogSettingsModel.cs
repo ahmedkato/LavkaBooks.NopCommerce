@@ -22,5 +22,8 @@ namespace Nop.Admin.Models.Settings
 
         [NopResourceDisplayName("Admin.Configuration.Settings.Blog.ShowHeaderRSSUrl")]
         public bool ShowHeaderRssUrl { get; set; }
+
+		[NopResourceDisplayName("Admin.Configuration.Settings.Blog.MainPagePostCount")]
+		public int MainPagePostCount { get; set; }
     }
 }
