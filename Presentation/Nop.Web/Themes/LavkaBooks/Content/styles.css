@@ -721,6 +721,13 @@ fieldset.form-fields {
 		font-weight: 700;
 	}
 
+	.topic-html-content-body .clock,
+	.topic-html-content-body .email,
+	.topic-html-content-body .skype,
+	.topic-html-content-body .phone	{
+		margin: 0 auto;
+	}
+
 	.topic-html-content-body .clock {
 		background: url('images/clock.png') no-repeat;
 		height: 32px;

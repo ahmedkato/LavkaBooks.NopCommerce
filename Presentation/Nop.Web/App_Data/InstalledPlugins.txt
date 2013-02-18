@@ -7,8 +7,6 @@ DiscountRequirement.HasOneProduct
 DiscountRequirement.MustBeAssignedToCustomerRole
 DiscountRequirement.ShippingCountryIs
 CurrencyExchange.MoneyConverter
-ExternalAuth.OpenId
-ExternalAuth.Facebook
 Misc.WebServices
 Payments.CashOnDelivery
 Payments.CheckMoneyOrder
