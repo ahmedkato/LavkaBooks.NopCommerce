@@ -1,16 +1,37 @@
 ﻿@{
-    Layout = "~/Views/Shared/_ColumnsOne.cshtml";
-
     //title
     Html.AddTitleParts(T("PageTitle.StoreClosed").Text);
 }
-<div class="page store-closed-page">
-    <div class="page-title">
-        <h1>@T("StoreClosed")</h1>
-    </div>
-    <div class="clear">
-    </div>
-    <div class="page-body">
-        @T("StoreClosed.Hint")
-    </div>
+<html>
+<head>
+<title>Книжная Лавка</title>
+<script type="text/javascript">
+
+	var _gaq = _gaq || [];
+	_gaq.push(['_setAccount', 'UA-25703825-2']);
+	_gaq.push(['_setDomainName', 'lavkabooks.com.ua']);
+	_gaq.push(['_trackPageview']);
+
+	(function () {
+		var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+		ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+		var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+	})();
+
+</script>
+<style>
+	@@font-face {
+		font-family: veles;
+		src: url("Veles-Regular.0.9.2.otf");
+	}
+</style>
+</head>
+<body>
+<!-- Yandex.Metrika counter --><div style="display:none;"><script type="text/javascript">(function (w, c) { (w[c] = w[c] || []).push(function () { try { w.yaCounter11482054 = new Ya.Metrika({ id: 11482054, enableAll: true, webvisor: true }); } catch (e) { } }); })(window, "yandex_metrika_callbacks");</script></div><script src="//mc.yandex.ru/metrika/watch.js" type="text/javascript" defer="defer"></script><noscript><div><img src="//mc.yandex.ru/watch/11482054" style="position:absolute; left:-9999px;" alt="" /></div></noscript><!-- /Yandex.Metrika counter -->
+<div style="margin: 100px auto 0;width: 100%;color:#7A7A7A;font-size:56px;font-family:veles; text-align:center">
+ Открытие – 20 февраля 
+<br/><br/>
+ Добро Пожаловать! 
 </div>
+</body>
+</html>
