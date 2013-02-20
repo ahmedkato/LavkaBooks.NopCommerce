@@ -16,15 +16,6 @@
     @if (!Model.DisableBuyButton || !Model.DisableWishlistButton)
     {
         <div>
-            @Html.LabelFor(model => model.EnteredQuantity, new { @class = "qty-label" }):
-            @if (Model.AllowedQuantities.Count > 0)
-            {
-                @Html.DropDownListFor(model => model.EnteredQuantity, Model.AllowedQuantities, new { @class = "qty-dropdown" })
-            }
-            else
-            {
-                @Html.TextBoxFor(model => model.EnteredQuantity, new { @class = "qty-input" })
-            }
             @if (!Model.DisableBuyButton)
             {
                 <input type="button" class="button-1 add-to-cart-button" value="@(Model.AvailableForPreOrder ? T("ShoppingCart.PreOrder") : T("ShoppingCart.AddToCart"))" onclick="AjaxCart.addproductvarianttocart('@Url.RouteUrl("AddProductVariantToCart", new { productVariantId = Model.ProductVariantId, shoppingCartTypeId = (int)ShoppingCartType.ShoppingCart })', '#product-details-form');return false;" />

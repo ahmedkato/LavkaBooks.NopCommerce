@@ -27,6 +27,7 @@ using Nop.Services.Seo;
 using Nop.Services.Customers;
 using Nop.Core.Domain.Customers;
 using System.Net;
+using OfficeOpenXml;
 
 namespace Nop.Admin.Controllers
 {
@@ -42,6 +43,21 @@ namespace Nop.Admin.Controllers
         private readonly ICategoryService _categoryService;
         private readonly IProductTemplateService _productTemplateService;
         private readonly IUrlRecordService _urlRecordService;
+		private enum BookFields { 
+			Name, 
+			ISBN, 
+			Author, 
+			Year, 
+			Descripton, 
+			Price,
+			Language, 
+			Publisher, 
+			Series, 
+			Pages, 
+			Format, 
+			Weight, 
+			Cover
+		}
 
         public BookController(IProductService productService,
             ILanguageService languageService,
@@ -63,7 +79,7 @@ namespace Nop.Admin.Controllers
             this._productTemplateService = productTemplateService;
             this._urlRecordService = urlRecordService;
         }
-
+		
         public ActionResult CreateBook()
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
@@ -180,6 +196,34 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
+		[HttpPost]
+		public ActionResult ImportExcel(FormCollection form)
+		{
+			if (!_permissionService.Authorize(StandardPermissionProvider.ManageCatalog))
+				return AccessDeniedView();
+
+			try
+			{
+				var file = Request.Files["importexcelbookfile"];
+				if (file != null && file.ContentLength > 0)
+				{
+					ImportBooksFromXlsx(file.InputStream);
+				}
+				else
+				{
+					ErrorNotification(_localizationService.GetResource("Admin.Common.UploadFile"));
+					return RedirectToAction("List", "Product");
+				}
+				SuccessNotification(_localizationService.GetResource("Admin.Catalog.Products.Imported"));
+				return RedirectToAction("List", "Product");
+			}
+			catch (Exception exc)
+			{
+				ErrorNotification(exc);
+				return RedirectToAction("List", "Product");
+			}
+		}
+
         [NonAction]
         private void AddAvailableSpecificationAttribute(BookModel model)
         {
@@ -208,16 +252,26 @@ namespace Nop.Admin.Controllers
         [NonAction]
         private void GetSpecFromContext(BookModel model)
         {
-            model.Spec.Add("Author", HttpContext.Request.Form["Author"]);
-            model.Spec.Add("Year", HttpContext.Request.Form["Year"]);
-            model.Spec.Add("ISBN", HttpContext.Request.Form["ISBN"]);
-            model.Spec.Add("Language", HttpContext.Request.Form["Language"]);
-            model.Spec.Add("Publisher", HttpContext.Request.Form["Publisher"]);
-            model.Spec.Add("Series", HttpContext.Request.Form["Series"]);
-            model.Spec.Add("Pages", HttpContext.Request.Form["Pages"]);
-            model.Spec.Add("Format", HttpContext.Request.Form["Format"]);
-            model.Spec.Add("Weight", HttpContext.Request.Form["Weight"]);
-            model.Spec.Add("Cover", HttpContext.Request.Form["Cover"]);
+            model.Spec.Add(BookFields.Author.ToString(),
+				HttpContext.Request.Form[BookFields.Author.ToString()]);
+            model.Spec.Add(BookFields.Year.ToString(),
+				HttpContext.Request.Form[BookFields.Year.ToString()]);
+            model.Spec.Add(BookFields.ISBN.ToString(),
+				HttpContext.Request.Form[BookFields.ISBN.ToString()]);
+            model.Spec.Add(BookFields.Language.ToString(),
+				HttpContext.Request.Form[BookFields.Language.ToString()]);
+            model.Spec.Add(BookFields.Publisher.ToString(),
+				HttpContext.Request.Form[BookFields.Publisher.ToString()]);
+			model.Spec.Add(BookFields.Series.ToString(),
+				HttpContext.Request.Form[BookFields.Series.ToString()]);
+			model.Spec.Add(BookFields.Pages.ToString(),
+				HttpContext.Request.Form[BookFields.Pages.ToString()]);
+			model.Spec.Add(BookFields.Format.ToString(),
+				HttpContext.Request.Form[BookFields.Format.ToString()]);
+			model.Spec.Add(BookFields.Weight.ToString(),
+				HttpContext.Request.Form[BookFields.Weight.ToString()]);
+			model.Spec.Add(BookFields.Cover.ToString(),
+				HttpContext.Request.Form[BookFields.Cover.ToString()]);
         }
 
         [NonAction]
@@ -457,5 +511,120 @@ namespace Nop.Admin.Controllers
             return _productTemplateService.GetAllProductTemplates()
                     .First(x => x.Name == "Lavka Variant");
         }
+
+		[NonAction]
+		public void ImportBooksFromXlsx(Stream stream)
+		{
+			// ok, we can run the real code of the sample now
+			using (var xlPackage = new ExcelPackage(stream))
+			{
+				// get the first worksheet in the workbook
+				var worksheet = xlPackage.Workbook.Worksheets.FirstOrDefault();
+				if (worksheet == null)
+					throw new NopException("No worksheet found");
+
+				//the columns
+				var properties = new string[]
+                {
+                    BookFields.Name.ToString(),
+					BookFields.ISBN.ToString(),
+                    BookFields.Author.ToString(),
+                    BookFields.Year.ToString(),
+					BookFields.Descripton.ToString(),
+					BookFields.Price.ToString(),
+                    BookFields.Language.ToString(),
+                    BookFields.Publisher.ToString(),
+                    BookFields.Series.ToString(),
+                    BookFields.Pages.ToString(),
+                    BookFields.Format.ToString(),
+                    BookFields.Weight.ToString(),
+                    BookFields.Cover.ToString()
+                };
+
+				int iRow = 2;
+				while (true)
+				{
+					bool allColumnsAreEmpty = true;
+					for (var i = 1; i <= properties.Length; i++)
+						if (worksheet.Cells[iRow, i].Value != null && !String.IsNullOrEmpty(worksheet.Cells[iRow, i].Value.ToString()))
+						{
+							allColumnsAreEmpty = false;
+							break;
+						}
+					if (allColumnsAreEmpty)
+						break;
+
+					var model = new BookModel
+					{
+						Name = worksheet.Cells[iRow, GetColumnIndex(properties, BookFields.Name.ToString())].Value as string,
+						FullDescription = worksheet.Cells[iRow, GetColumnIndex(properties, BookFields.Descripton.ToString())].Value as string,
+						Price = Convert.ToDecimal(worksheet.Cells[iRow, GetColumnIndex(properties, BookFields.Price.ToString())].Value)
+					};
+					model.Spec.Add(BookFields.Author.ToString(),
+						worksheet.Cells[iRow, GetColumnIndex(properties, BookFields.Author.ToString())].Value as string);
+					model.Spec.Add(BookFields.ISBN.ToString(),
+						worksheet.Cells[iRow, GetColumnIndex(properties, BookFields.ISBN.ToString())].Value as string);
+					model.Spec.Add(BookFields.Language.ToString(),
+						worksheet.Cells[iRow, GetColumnIndex(properties, BookFields.Language.ToString())].Value as string);
+					model.Spec.Add(BookFields.Publisher.ToString(),
+						worksheet.Cells[iRow, GetColumnIndex(properties, BookFields.Publisher.ToString())].Value as string);
+					model.Spec.Add(BookFields.Series.ToString(),
+						worksheet.Cells[iRow, GetColumnIndex(properties, BookFields.Series.ToString())].Value as string);
+					model.Spec.Add(BookFields.Pages.ToString(),
+						worksheet.Cells[iRow, GetColumnIndex(properties, BookFields.Pages.ToString())].Value as string);
+					model.Spec.Add(BookFields.Format.ToString(),
+						worksheet.Cells[iRow, GetColumnIndex(properties, BookFields.Format.ToString())].Value as string);
+					model.Spec.Add(BookFields.Weight.ToString(),
+						worksheet.Cells[iRow, GetColumnIndex(properties, BookFields.Weight.ToString())].Value as string);
+					model.Spec.Add(BookFields.Cover.ToString(),
+						worksheet.Cells[iRow, GetColumnIndex(properties, BookFields.Cover.ToString())].Value as string);
+
+					if (ModelState.IsValid)
+					{
+						var product = new Product
+							{
+								Name = model.Name,
+								FullDescription = model.FullDescription,
+								CreatedOnUtc = DateTime.UtcNow,
+								UpdatedOnUtc = DateTime.UtcNow,
+								ProductTemplateId = GetProductTemplate().Id,
+								ShowOnHomePage = true,
+								AllowCustomerReviews = true,
+								ApprovedRatingSum = 0,
+								NotApprovedRatingSum = 0,
+								ApprovedTotalReviews = 0,
+								NotApprovedTotalReviews = 0,
+								SubjectToAcl = false,
+								Published = true,
+								Deleted = false
+							};
+						_productService.InsertProduct(product);
+						model.Id = product.Id;
+
+						SaveSlug(model.SeName, product);
+						CreateProductVariant(product, model);
+						UpdateSpecifications(model);
+					}
+
+					//next product
+					iRow++;
+				}
+			}
+		}
+
+		[NonAction]
+		protected virtual int GetColumnIndex(string[] properties, string columnName)
+		{
+			if (properties == null)
+				throw new ArgumentNullException("properties");
+
+			if (columnName == null)
+				throw new ArgumentNullException("columnName");
+
+			for (int i = 0; i < properties.Length; i++)
+				if (properties[i].Equals(columnName, StringComparison.InvariantCultureIgnoreCase))
+					return i + 1; //excel indexes start from 1
+			return 0;
+		}
     }
 }

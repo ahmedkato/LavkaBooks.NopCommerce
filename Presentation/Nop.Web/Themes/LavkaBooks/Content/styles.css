@@ -5956,6 +5956,18 @@ pre {
 		height: 45px;
 	}
 
+	.shipping-info .delivery {
+		background: url("images/delivery.png") no-repeat scroll 50% 0 transparent;
+		width: 76px;
+		height: 34px;
+	}
+
+	.shipping-info .international-postage {
+		background: url("images/international-postage-guide1.jpg") no-repeat scroll 50% 0 transparent;
+		width: 76px;
+		height: 63px;
+	}
+
 	.paymant-info .cash {
 		background: url("images/cash-payment.png") no-repeat scroll 50% 0 transparent;
 		width: 40px;
