@@ -12,11 +12,7 @@
 	@Html.Partial("MyAccountNavigation", Model.NavigationModel, new ViewDataDictionary())
     <div class="page-title">
         <h1>
-            @if (Model.IsEditable)
-            {
-                @T("Wishlist")
-            }
-            else
+            @if (!Model.IsEditable)
             {
                 @String.Format(T("Wishlist.WishlistOf").Text, Model.CustomerFullname);
             }

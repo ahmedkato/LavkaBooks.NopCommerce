@@ -6,13 +6,8 @@
     //title
     Html.AddTitleParts(T("PageTitle.Account").Text);
 }
+@Html.Partial("MyAccountNavigation", Model.NavigationModel, new ViewDataDictionary())
 <div class="page account-page return-request-list-page">
-	@Html.Partial("MyAccountNavigation", Model.NavigationModel, new ViewDataDictionary())
-    <div class="page-title">
-        <h1>@T("Account.MyAccount") - @T("Account.CustomerReturnRequests")</h1>
-    </div>
-    <div class="clear">
-    </div>
     <div class="page-body">
         @foreach (var item in Model.Items)
         {

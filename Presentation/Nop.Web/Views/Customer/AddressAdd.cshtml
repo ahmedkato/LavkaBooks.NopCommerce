@@ -1,20 +1,15 @@
 ﻿@model CustomerAddressEditModel
 @using Nop.Web.Models.Customer;
 @{
-    Layout = "~/Views/Shared/_ColumnsTwo.cshtml";
+	Layout = "~/Views/Shared/_CustomColumnsTwo.cshtml";
 
     //title
     Html.AddTitleParts(T("PageTitle.Account").Text);
 }
 @using (Html.BeginForm())
 {
-    <div class="page account-page address-edit-page">
-		@Html.Partial("MyAccountNavigation", Model.NavigationModel, new ViewDataDictionary())
-        <div class="page-title">
-            <h1>@T("Account.MyAccount") - @T("Account.CustomerAddresses.AddNew")</h1>
-        </div>
-        <div class="clear">
-        </div>
+	@Html.Partial("MyAccountNavigation", Model.NavigationModel, new ViewDataDictionary())
+	<div class="page account-page address-edit-page">
         <div class="page-body">
             @{
     var dataDictAddress = new ViewDataDictionary();

@@ -8,13 +8,8 @@
 }
 @using (Html.BeginRouteForm("CustomerAvatar", FormMethod.Post, new { enctype = "multipart/form-data" }))
 {
-    <div class="page account-page avatar-page">
-		@Html.Partial("MyAccountNavigation", Model.NavigationModel, new ViewDataDictionary())
-        <div class="page-title">
-            <h1>@T("Account.MyAccount") - @T("Account.Avatar")</h1>
-        </div>
-        <div class="clear">
-        </div>
+	@Html.Partial("MyAccountNavigation", Model.NavigationModel, new ViewDataDictionary())
+	<div class="page account-page avatar-page">
         <div class="page-body">
             <div class="message-error">
                 @Html.ValidationSummary(true)
