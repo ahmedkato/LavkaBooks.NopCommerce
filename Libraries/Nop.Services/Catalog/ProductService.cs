@@ -310,7 +310,7 @@ namespace Nop.Services.Catalog
 
 			if (categoryId == -1)
 			{
-				var dProducts = products.Where(x => !x.ProductCategories.Any());
+				var dProducts = products.Where(x => x.ProductCategories.Count() == 0);
 				return new PagedList<Product>(dProducts, pageIndex, pageSize, dProducts.Count());
 			}
 
