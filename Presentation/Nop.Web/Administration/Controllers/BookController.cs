@@ -578,6 +578,8 @@ namespace Nop.Admin.Controllers
 						worksheet.Cells[iRow, GetColumnIndex(properties, BookFields.Weight.ToString())].Value as string);
 					model.Spec.Add(BookFields.Cover.ToString(),
 						worksheet.Cells[iRow, GetColumnIndex(properties, BookFields.Cover.ToString())].Value as string);
+					model.Spec.Add(BookFields.Year.ToString(),
+						worksheet.Cells[iRow, GetColumnIndex(properties, BookFields.Year.ToString())].Value as string);
 
 					if (ModelState.IsValid)
 					{

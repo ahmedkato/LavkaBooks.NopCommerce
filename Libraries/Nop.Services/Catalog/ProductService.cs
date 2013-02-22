@@ -301,12 +301,20 @@ namespace Nop.Services.Catalog
             if (categoryId > 0)
                 categoryIds.Add(categoryId);
 
-            return SearchProducts(categoryIds, manufacturerId, featuredProducts,
+            var products = SearchProducts(categoryIds, manufacturerId, featuredProducts,
                 priceMin, priceMax, productTagId, 
                 keywords, searchDescriptions,searchProductTags, languageId,
                 filteredSpecs, orderBy, pageIndex, pageSize,
                 loadFilterableSpecificationAttributeOptionIds, out filterableSpecificationAttributeOptionIds, 
                 showHidden);
+
+			if (categoryId == -1)
+			{
+				var dProducts = products.Where(x => !x.ProductCategories.Any());
+				return new PagedList<Product>(dProducts, pageIndex, pageSize, dProducts.Count());
+			}
+
+			return products;
         }
 
         /// <summary>
