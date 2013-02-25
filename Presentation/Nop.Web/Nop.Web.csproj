@@ -905,6 +905,7 @@
     <Content Include="Content\fileuploader\fileuploader.css" />
     <Content Include="Content\fileuploader\images\fileuploader-loading.gif" />
     <Content Include="Content\Images\default-avatar.jpg" />
+    <Content Include="Content\Images\default-image2.gif" />
     <Content Include="Content\Images\flags\ad.png" />
     <Content Include="Content\Images\flags\ae.png" />
     <Content Include="Content\Images\flags\af.png" />

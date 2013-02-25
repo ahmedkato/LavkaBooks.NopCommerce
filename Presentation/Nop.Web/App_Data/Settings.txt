@@ -1,2 +1,2 @@
 DataProvider: sqlserver
-DataConnectionString: Data Source=(local);Initial Catalog=nc1;Integrated Security=True;Persist Security Info=False;MultipleActiveResultSets=True
+DataConnectionString: Data Source=(local);Initial Catalog=lb1;Integrated Security=True;Persist Security Info=False;MultipleActiveResultSets=True

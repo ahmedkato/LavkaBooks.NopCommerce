@@ -308,12 +308,6 @@ namespace Nop.Services.Catalog
                 loadFilterableSpecificationAttributeOptionIds, out filterableSpecificationAttributeOptionIds, 
                 showHidden);
 
-			if (categoryId == -1)
-			{
-				var dProducts = products.Where(x => x.ProductCategories.Count() == 0);
-				return new PagedList<Product>(dProducts, pageIndex, pageSize, dProducts.Count());
-			}
-
 			return products;
         }
 

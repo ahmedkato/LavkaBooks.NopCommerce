@@ -1,0 +1,8 @@
+﻿Group: Payment methods
+FriendlyName: Cash On Delivery (COD) Fake
+SystemName: Payments.CashOnDeliveryFake
+Version: 0
+SupportedVersions: 2.70
+Author: x
+DisplayOrder: 1
+FileName: Nop.Plugin.Payments.CashOnDeliveryFake.dll

@@ -605,6 +605,7 @@ namespace Nop.Admin.Controllers
 
 						SaveSlug(model.SeName, product);
 						CreateProductVariant(product, model);
+						AssingToImportCategory(product);
 						UpdateSpecifications(model);
 					}
 
@@ -627,6 +628,22 @@ namespace Nop.Admin.Controllers
 				if (properties[i].Equals(columnName, StringComparison.InvariantCultureIgnoreCase))
 					return i + 1; //excel indexes start from 1
 			return 0;
+		}
+
+		[NonAction]
+		protected void AssingToImportCategory(Product product)
+		{
+			var category = _categoryService.GetAllCategories(showHidden: true)
+				.FirstOrDefault(x => x.Name == "IMPORTED");
+
+			if (category == null)
+				return;
+
+			_categoryService.InsertProductCategory(new ProductCategory
+			{
+				CategoryId = category.Id,
+				ProductId = product.Id
+			});
 		}
     }
 }

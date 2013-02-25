@@ -9,13 +9,7 @@ DiscountRequirement.ShippingCountryIs
 CurrencyExchange.MoneyConverter
 Misc.WebServices
 Payments.CashOnDelivery
-Payments.CheckMoneyOrder
-Payments.AuthorizeNet
-Payments.PayPalDirect
-Payments.Manual
-Payments.GoogleCheckout
-Payments.PayPalStandard
-Payments.PurchaseOrder
+Payments.CashOnDeliveryFake
 PromotionFeed.Froogle
 Shipping.AustraliaPost
 Shipping.CanadaPost
