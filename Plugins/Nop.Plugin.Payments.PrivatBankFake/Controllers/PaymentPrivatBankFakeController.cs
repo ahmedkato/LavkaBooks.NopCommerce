@@ -4,21 +4,21 @@ using Nop.Services.Configuration;
 using Nop.Services.Payments;
 using Nop.Web.Framework.Controllers;
 
-namespace Nop.Plugin.Payments.CashOnDeliveryFake.Controllers
+namespace Nop.Plugin.Payments.PrivatBankFake.Controllers
 {
-    public class PaymentCashOnDeliveryFakeController : BaseNopPaymentController
+    public class PaymentPrivatBankFakeController : BaseNopPaymentController
     {        
         [AdminAuthorize]
         [ChildActionOnly]
         public ActionResult Configure()
         {            
-            return View("Nop.Plugin.Payments.CashOnDeliveryFake.Views.PaymentCashOnDeliveryFake.Configure", null);
+            return View("Nop.Plugin.Payments.PrivatBankFake.Views.PaymentPrivatBankFake.Configure", null);
         }
 		
         [ChildActionOnly]
         public ActionResult PaymentInfo()
         {
-            return View("Nop.Plugin.Payments.CashOnDeliveryFake.Views.PaymentCashOnDeliveryFake.PaymentInfo", null);
+            return View("Nop.Plugin.Payments.PrivatBankFake.Views.PaymentPrivatBankFake.PaymentInfo", null);
         }
 
         [NonAction]

@@ -10,6 +10,7 @@ CurrencyExchange.MoneyConverter
 Misc.WebServices
 Payments.CashOnDelivery
 Payments.CashOnDeliveryFake
+Payments.PrivatBankFake
 PromotionFeed.Froogle
 Shipping.AustraliaPost
 Shipping.CanadaPost

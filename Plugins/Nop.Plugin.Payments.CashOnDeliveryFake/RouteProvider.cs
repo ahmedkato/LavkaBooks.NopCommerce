@@ -14,7 +14,7 @@ namespace Nop.Plugin.Payments.CashOnDeliveryFake
                  new[] { "Nop.Plugin.Payments.CashOnDeliveryFake.Controllers" }
             );
 
-			routes.MapRoute("Plugin.Payments.CashOnDeliveryFake.PaymentInfo",
+            routes.MapRoute("Plugin.Payments.CashOnDeliveryFake.PaymentInfo",
                  "Plugins/PaymentCashOnDeliveryFake/PaymentInfo",
                  new { controller = "PaymentCashOnDeliveryFake", action = "PaymentInfo" },
                  new[] { "Nop.Plugin.Payments.CashOnDeliveryFake.Controllers" }
@@ -24,7 +24,7 @@ namespace Nop.Plugin.Payments.CashOnDeliveryFake
         {
             get
             {
-                return 1;
+                return 0;
             }
         }
     }
