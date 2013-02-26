@@ -8,9 +8,13 @@ DiscountRequirement.MustBeAssignedToCustomerRole
 DiscountRequirement.ShippingCountryIs
 CurrencyExchange.MoneyConverter
 Misc.WebServices
-Payments.CashOnDelivery
 Payments.CashOnDeliveryFake
 Payments.PrivatBankFake
+Payments.LiqPayFake
+Payments.MoneyTransferFake
+Payments.BankTransferFake
+Payments.WebMoneyFake
+Payments.CashFake
 PromotionFeed.Froogle
 Shipping.AustraliaPost
 Shipping.CanadaPost

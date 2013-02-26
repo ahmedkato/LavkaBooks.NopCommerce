@@ -1,0 +1,8 @@
+Group: Payment methods
+FriendlyName: BankTransfer Fake
+SystemName: Payments.BankTransferFake
+Version: 0
+SupportedVersions: 2.70
+Author: x
+DisplayOrder: 1
+FileName: Nop.Plugin.Payments.BankTransferFake.dll
