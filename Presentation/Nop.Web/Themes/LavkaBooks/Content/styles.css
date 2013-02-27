@@ -396,15 +396,15 @@ ul.language-list {
 	display: table-cell;
 }
 
-.my-menu li{
-	float: left;
-    padding-right: 20px;
-}
+	.my-menu li {
+		float: left;
+		padding-right: 20px;
+	}
 
-.my-menu a.active {
-	color: #DB1640;
-	text-decoration: none;
-}
+	.my-menu a.active {
+		color: #DB1640;
+		text-decoration: none;
+	}
 
 /* FOOTER */
 .footer {
@@ -421,7 +421,6 @@ ul.language-list {
 	}
 
 	.footer td {
-		width: 33%;
 		border: solid 0px #FFF;
 	}
 
@@ -477,6 +476,11 @@ ul.language-list {
 .footer .skype {
 	background: url("images/social-ico.png") no-repeat scroll -163px 0 #7a7a7a;
 	width: 48px;
+}
+
+.footer .pinterest {
+	background: url("images/social-pi.png") no-repeat scroll 0 0 #7a7a7a;
+	width: 41px;
 }
 
 /* MISC. CLASSES */
@@ -724,7 +728,7 @@ fieldset.form-fields {
 	.topic-html-content-body .clock,
 	.topic-html-content-body .email,
 	.topic-html-content-body .skype,
-	.topic-html-content-body .phone	{
+	.topic-html-content-body .phone {
 		margin: 0 auto;
 	}
 
@@ -1284,6 +1288,20 @@ a.eu-cookie-privacyinfo-tag {
 		font-weight: 700;
 	}
 
+	.shopping-cart-page .inputs {
+		margin: 15px;
+	}
+
+		.shopping-cart-page .inputs label {
+			color: #555555;
+			font-size: 16px;
+		}
+
+		.shopping-cart-page .inputs textarea {
+			width: 400px;
+			resize: none;
+		}
+
 .wishlist .share-info {
 	background: url(images/cart-footer-bg.gif) repeat-x bottom;
 	font-size: 1.2em;
@@ -1388,7 +1406,6 @@ a.eu-cookie-privacyinfo-tag {
 		}
 
 			.order-summary-content .cart .cart-header-row th.picture, .wishlist-content .cart .cart-header-row th.picture {
-				
 			}
 
 			.order-summary-content .cart .cart-header-row th.end, .wishlist-content .cart .cart-header-row th.end {
@@ -1766,7 +1783,7 @@ a.eu-cookie-privacyinfo-tag {
 	}
 
 	.checkout-data .shipping-options-title,
-	.checkout-data .shipping-address-title {
+	.checkout-data .shipping-address-title{
 		color: #555555;
 		font-size: 16px;
 		margin-left: 8px;
@@ -6085,3 +6102,41 @@ pre {
 	color: #7A7A7A !important;
 	font-size: 13px !important;
 }
+
+
+.phones-block {
+	color: #A69898;
+	font-size: 19px;
+    font-weight: bold;
+	font-family: veles;
+}
+
+	.phones-block .ico {
+		background: url("images/red-phone.png") no-repeat scroll 50% 0 transparent;
+		height: 87px;
+	}
+
+	.phones-block td {
+		border: none;
+		padding: 3px;
+	}
+
+	.phones-block .life,
+	.phones-block .kvs,
+	.phones-block .mts {
+		height: 22px;
+		width: 30px;
+	}
+
+	.phones-block .life {
+		background: url("images/life.jpg") no-repeat scroll 50% 0 transparent;
+	}
+
+	.phones-block .kvs {
+		background: url("images/kvs.jpg") no-repeat scroll 50% 0 transparent;
+		height: 25px;
+	}
+
+	.phones-block .mts {
+		background: url("images/mts.jpg") no-repeat scroll 50% 0 transparent;
+	}

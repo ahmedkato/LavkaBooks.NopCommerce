@@ -23,6 +23,15 @@
 			@Html.Partial("LavkaShippingAddress", Model.ShippingAddress)
 			<div class="clear">
 			</div>
+			<div class="inputs">
+				@Html.LabelFor(model => model.CommentText)
+				<div class="input-box">
+					@Html.TextAreaFor(model => model.CommentText, new { @class = "comment-text" })
+				</div>
+				@Html.ValidationMessageFor(model => model.CommentText)
+            </div>
+			<div class="clear">
+			</div>
 			<div class="checkout-buttons">
 				<input type="submit" id="checkout" name="saveorder" value="@T("LavkaShoppingCart.Order.Button")" class="button-1 checkout-button"/>
 			</div>

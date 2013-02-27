@@ -1,8 +1,8 @@
 ﻿Group: Payment methods
-FriendlyName: Cash On Delivery (COD)
-SystemName: Payments.CashOnDelivery
-Version: 1.06
+FriendlyName: Cash Fake
+SystemName: Payments.CashFake
+Version: 0
 SupportedVersions: 2.70
-Author: nopCommerce team
+Author: x
 DisplayOrder: 1
-FileName: Nop.Plugin.Payments.CashOnDelivery.dll
+FileName: Nop.Plugin.Payments.CashFake.dll

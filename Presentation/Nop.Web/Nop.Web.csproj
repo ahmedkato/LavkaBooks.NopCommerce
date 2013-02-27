@@ -1243,7 +1243,9 @@
     <Content Include="Themes\LavkaBooks\Content\images\cash-payment.png" />
     <Content Include="Themes\LavkaBooks\Content\images\cash-shipping.png" />
     <Content Include="Themes\LavkaBooks\Content\images\clock.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\closelabel.gif" />
     <Content Include="Themes\LavkaBooks\Content\images\courier-shipping.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\delivery.png" />
     <Content Include="Themes\LavkaBooks\Content\images\faq.png" />
     <Content Include="Themes\LavkaBooks\Content\images\free-package.png" />
     <Content Include="Themes\LavkaBooks\Content\images\h-border.png" />
@@ -1251,9 +1253,13 @@
     <Content Include="Themes\LavkaBooks\Content\images\ico-inbox.gif" />
     <Content Include="Themes\LavkaBooks\Content\images\ico-rss.gif" />
     <Content Include="Themes\LavkaBooks\Content\images\inactive-tree-node.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\international-postage-guide1.jpg" />
     <Content Include="Themes\LavkaBooks\Content\images\international-shipping.png" />
     <Content Include="Themes\LavkaBooks\Content\images\international-transfer-payment.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\kvs.jpg" />
+    <Content Include="Themes\LavkaBooks\Content\images\life.jpg" />
     <Content Include="Themes\LavkaBooks\Content\images\logo.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\mts.jpg" />
     <Content Include="Themes\LavkaBooks\Content\images\news-ico.png" />
     <Content Include="Themes\LavkaBooks\Content\images\next-page.png" />
     <Content Include="Themes\LavkaBooks\Content\images\not-found.jpg" />
@@ -1266,10 +1272,12 @@
     <Content Include="Themes\LavkaBooks\Content\images\privat-bank-payment.png" />
     <Content Include="Themes\LavkaBooks\Content\images\privat-world-payment.png" />
     <Content Include="Themes\LavkaBooks\Content\images\privat24-payment.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\red-phone.png" />
     <Content Include="Themes\LavkaBooks\Content\images\russia-sng-shipping.png" />
     <Content Include="Themes\LavkaBooks\Content\images\search-ico.png" />
     <Content Include="Themes\LavkaBooks\Content\images\self-shipping.png" />
     <Content Include="Themes\LavkaBooks\Content\images\social-ico.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\social-pi.png" />
     <Content Include="Themes\LavkaBooks\Content\images\star-x-active.gif" />
     <Content Include="Themes\LavkaBooks\Content\images\star-x-inactive.gif" />
     <Content Include="Themes\LavkaBooks\Content\images\store.png" />

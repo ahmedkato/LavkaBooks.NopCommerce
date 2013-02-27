@@ -79,6 +79,7 @@ namespace Nop.Web.Controllers
 		private readonly ICustomerActivityService _customerActivityService;
 		private readonly IGenericAttributeService _genericAttributeService;
 		private readonly ILogger _logger;
+		private readonly IOrderService _orderService;
 
 		private readonly MediaSettings _mediaSettings;
 		private readonly ShoppingCartSettings _shoppingCartSettings;
@@ -159,6 +160,7 @@ namespace Nop.Web.Controllers
 			this._customerActivityService = customerActivityService;
 			this._genericAttributeService = genericAttributeService;
 			this._logger = logger;
+			this._orderService = orderService;
 
 			this._mediaSettings = mediaSettings;
 			this._shoppingCartSettings = shoppingCartSettings;
@@ -1994,7 +1996,7 @@ namespace Nop.Web.Controllers
 
 			var cart = _workContext.CurrentCustomer.ShoppingCartItems.Where(sci => sci.ShoppingCartType == ShoppingCartType.ShoppingCart).ToList();
 			if (cart.Count == 0)
-				return RedirectToRoute("HomePage"); 
+				return RedirectToRoute("HomePage");
 
 			var model = new LavkaShoppingCartModel();
 			PrepareLavkaShoppingCartModel(model, cart);
@@ -2041,7 +2043,7 @@ namespace Nop.Web.Controllers
 			//updated cart
 			cart = _workContext.CurrentCustomer.ShoppingCartItems.Where(sci => sci.ShoppingCartType == ShoppingCartType.ShoppingCart).ToList();
 			if (cart.Count == 0)
-				return RedirectToRoute("HomePage"); 
+				return RedirectToRoute("HomePage");
 
 			var model = new LavkaShoppingCartModel();
 			PrepareLavkaShoppingCartModel(model, cart);
@@ -2107,6 +2109,17 @@ namespace Nop.Web.Controllers
 				var placeOrderResult = _orderProcessingService.PlaceOrder(processPaymentRequest);
 				if (placeOrderResult.Success)
 				{
+					if (!string.IsNullOrEmpty(model.CommentText))
+					{
+						placeOrderResult.PlacedOrder.OrderNotes.Add(
+							   new OrderNote
+							   {
+								   Note = model.CommentText,
+								   DisplayToCustomer = true,
+								   CreatedOnUtc = DateTime.UtcNow
+							   });
+						_orderService.UpdateOrder(placeOrderResult.PlacedOrder);
+					}
 					return RedirectToRoute("CheckoutCompleted");
 				}
 				else

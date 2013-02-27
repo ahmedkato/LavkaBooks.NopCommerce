@@ -1,4 +1,4 @@
-Group: Payment methods
+﻿Group: Payment methods
 FriendlyName: MoneyTransfer Fake
 SystemName: Payments.MoneyTransferFake
 Version: 0

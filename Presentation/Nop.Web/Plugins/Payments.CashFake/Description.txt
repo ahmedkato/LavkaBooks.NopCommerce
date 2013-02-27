@@ -1,8 +1,0 @@
-Group: Payment methods
-FriendlyName: Cash Fake
-SystemName: Payments.CashFake
-Version: 0
-SupportedVersions: 2.70
-Author: x
-DisplayOrder: 1
-FileName: Nop.Plugin.Payments.CashFake.dll
