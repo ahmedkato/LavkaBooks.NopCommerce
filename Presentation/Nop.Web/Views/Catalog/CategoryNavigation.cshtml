@@ -2,66 +2,69 @@
 @using Nop.Web.Models.Catalog;
 @helper RenderCategoryLine(CategoryNavigationModel.CategoryModel category)
 {
-    var categoryPadding = 15;
-    <li class="@(category.Id == Model.CurrentCategoryId ? "active" : "")">
-        @category.Name
-        @if (category.NumberOfProducts.HasValue)
-        {
-            <text> (@(category.NumberOfProducts.Value))</text>
-        }
-        <input type="hidden" name="url" value="@Url.RouteUrl("Category", new { SeName = category.SeName })" />
-        @if (category.SubCategories.Count > 0)
-        {
-            <ul class="sublist">
-                @foreach (var subCategory in category.SubCategories)
-                {
-                    @RenderCategoryLine(subCategory)
-                }
-            </ul>
-        }
-    </li>
+	var categoryPadding = 15;
+	<li class="@(category.Id == Model.CurrentCategoryId ? "active" : "")">
+		<a href="@Url.RouteUrl("Category", new { SeName = category.SeName })">
+			@category.Name
+			@if (category.NumberOfProducts.HasValue)
+			{
+				<text> (@(category.NumberOfProducts.Value))</text>
+			}
+		</a>
+		@if (category.SubCategories.Count > 0)
+		{
+			<ul class="sublist">
+				@foreach (var subCategory in category.SubCategories)
+				{
+					@RenderCategoryLine(subCategory)
+				}
+			</ul>
+		}
+	</li>
 }
 @if (Model.Categories.Count > 0)
 {
-    <div class="block block-category-navigation">
-        <div class="title">
-            <strong>@T("Categories")</strong>
-        </div>
-        <div class="clear">
-        </div>
-        <div class="listbox">
-            <ul>
-                @foreach (var category in Model.Categories)
-                {
-                    @RenderCategoryLine(category)
-                }
-            </ul>
-        </div>
-    </div>
+	<div class="block block-category-navigation">
+		<div class="title">
+			<strong>@T("Categories")</strong>
+		</div>
+		<div class="clear">
+		</div>
+		<div class="listbox">
+			<ul>
+				@foreach (var category in Model.Categories)
+	{
+					@RenderCategoryLine(category)
+	}
+			</ul>
+		</div>
+	</div>
 }
 <script type="text/javascript">
-    $(document).ready(function () {
-        var navBlock = $(".block-category-navigation .listbox > ul");
-        navBlock.find("li").click(function (event) {
-            event.stopPropagation();
-            var sublist = $(this).find(".sublist");
-            if (sublist.length > 0) {
-                if (sublist.is(":hidden")) {
-                    sublist.show();
-                    $(this).removeClass("rolldown").addClass("rollup");
-                }
-                else {
-                    sublist.hide();
-                    $(this).removeClass("rollup").addClass("rolldown");
-                }
-            }
-            else {
-                document.location.href = $(this).find("input[name=url]").val();
-            }
-        });
-        var active = navBlock.find(".active");
-        navBlock.find("li").has(".sublist").addClass("rolldown");
-        active.parents("li").removeClass("rolldown").addClass("rollup");
-        active.parents("ul").show();
-    });
+	$(document).ready(function () {
+		var navBlock = $(".block-category-navigation .listbox > ul");
+		navBlock.find("li").each(function () {
+			var link = $(this).find("a:first");
+			if (link.next().hasClass("sublist")) {
+				var sublist = link.next();
+				if (sublist.length > 0) {
+					link.replaceWith("<div>" + link.text() + "</div>");
+				}
+			}
+		});
+		$(".rolldown > div").live("click", function (event) {
+			event.stopPropagation();
+			$(this).parents("li").find(".sublist").show();
+			$(this).parents("li").removeClass("rolldown").addClass("rollup");
+		});
+		$(".rollup > div").live("click", function (event) {
+			event.stopPropagation();
+			$(this).parents("li").find(".sublist").hide();
+			$(this).parents("li").removeClass("rollup").addClass("rolldown");
+		});
+		var active = navBlock.find(".active");
+		navBlock.find("li").has(".sublist").addClass("rolldown");
+		active.parents("li").removeClass("rolldown").addClass("rollup");
+		active.parents("ul").show();
+	});
 </script>

@@ -1007,7 +1007,15 @@ a.eu-cookie-privacyinfo-tag {
 .block-category-navigation, .block-manufacturer-navigation, .block-recently-viewed-products, .block-info, .block-newsletter, .block-popular-tags, .block-popular-blogtags, .block-blog-archive, .block-poll, .block-account-navigation {
 }
 
-	.block-category-navigation .active, .block-manufacturer-navigation .active a {
+	.block-category-navigation a {
+		font-size: 13px;
+		color: #7A7A7A;
+		line-height: 18px;
+		font-weight: 400;
+		font-family: verdana, arial;
+	}
+
+	.block-category-navigation .active a, .block-manufacturer-navigation .active a {
 		color: #DB1640;
 		text-decoration: none;
 	}
