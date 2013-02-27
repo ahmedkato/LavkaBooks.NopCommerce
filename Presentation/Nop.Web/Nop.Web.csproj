@@ -1272,6 +1272,8 @@
     <Content Include="Themes\LavkaBooks\Content\images\privat-bank-payment.png" />
     <Content Include="Themes\LavkaBooks\Content\images\privat-world-payment.png" />
     <Content Include="Themes\LavkaBooks\Content\images\privat24-payment.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\pubimage_015.png" />
+    <Content Include="Themes\LavkaBooks\Content\images\pubimage_016.png" />
     <Content Include="Themes\LavkaBooks\Content\images\red-phone.png" />
     <Content Include="Themes\LavkaBooks\Content\images\russia-sng-shipping.png" />
     <Content Include="Themes\LavkaBooks\Content\images\search-ico.png" />

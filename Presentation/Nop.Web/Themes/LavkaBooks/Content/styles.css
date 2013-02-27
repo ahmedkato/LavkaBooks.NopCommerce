@@ -1783,7 +1783,7 @@ a.eu-cookie-privacyinfo-tag {
 	}
 
 	.checkout-data .shipping-options-title,
-	.checkout-data .shipping-address-title{
+	.checkout-data .shipping-address-title {
 		color: #555555;
 		font-size: 16px;
 		margin-left: 8px;
@@ -6107,7 +6107,7 @@ pre {
 .phones-block {
 	color: #A69898;
 	font-size: 19px;
-    font-weight: bold;
+	font-weight: bold;
 	font-family: veles;
 }
 
@@ -6139,4 +6139,27 @@ pre {
 
 	.phones-block .mts {
 		background: url("images/mts.jpg") no-repeat scroll 50% 0 transparent;
+	}
+
+.liq-pay-block {
+}
+
+	.liq-pay-block table {
+		margin: 0 auto;
+	}
+
+	.liq-pay-block td {
+		border: none;
+	}
+
+	.liq-pay-block .vbv {
+		background: url("images/pubimage_016.png") no-repeat scroll 0 0 transparent;
+		height: 38px;
+		width: 79px;
+	}
+
+	.liq-pay-block .ms {
+		background: url("images/pubimage_015.png") no-repeat scroll 0 0 transparent;
+		height: 35px;
+		width: 79px;
 	}
