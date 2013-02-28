@@ -30,6 +30,16 @@
 			@Html.ValidationMessageFor(model => model.Email)
 		</td>
 	</tr>
+	@if (Model.CountryEnabled)
+ {
+		<tr>
+			<td>
+				@Html.DropDownListFor(model => model.CountryId, Model.AvailableCountries, new { @class = "drop-down" })
+				@Html.RequiredHint()
+				@Html.ValidationMessageFor(model => model.CountryId)
+			</td>
+		</tr>
+ }
 	@if (Model.CityEnabled)
  {
 		<tr>

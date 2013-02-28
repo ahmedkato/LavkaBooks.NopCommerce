@@ -892,6 +892,7 @@ namespace Nop.Web.Controllers
 						_workContext.CurrentCustomer.Addresses.Add(address);
 					}
 					_workContext.CurrentCustomer.ShippingAddress = address;
+					_workContext.CurrentCustomer.BillingAddress = address;
 					_customerService.UpdateCustomer(_workContext.CurrentCustomer);
 				}
 			}

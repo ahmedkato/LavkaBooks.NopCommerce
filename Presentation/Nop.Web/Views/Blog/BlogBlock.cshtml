@@ -20,7 +20,7 @@
                                 @item.Title</a>
 							<div class="blog-date">@item.CreatedOn.ToString("D")</div>
                             <div class="blog-body">
-                                @Html.Raw(HttpUtility.HtmlDecode(item.Body.Length > 40 ? item.Body.Substring(0, 40) : item.Body))
+                                @Html.Raw(HttpUtility.HtmlDecode(item.Body.Length > 100 ? item.Body.Substring(0, 100) : item.Body))
                             </div>
                             <a href="@Url.RouteUrl("BlogPost", new { blogPostId = item.Id, SeName = item.SeName })" class="read-more">@T("Blog.MoreInfo")</a>
                         </div>
