@@ -304,9 +304,9 @@ namespace Nop.Admin.Controllers
             if (string.IsNullOrEmpty(option))
                 return;
 
-            var specification = attributes.Single(x => x.Name.Equals(attribute));
+			var specification = attributes.Single(x => x.Name.Equals(attribute, StringComparison.CurrentCultureIgnoreCase));
 
-            if (!specification.SpecificationAttributeOptions.Any(x => x.Name.Equals(option)))
+            if (!specification.SpecificationAttributeOptions.Any(x => x.Name.Equals(option, StringComparison.CurrentCultureIgnoreCase)))
             {
                 _specificationAttributeService.InsertSpecificationAttributeOption(
                     new SpecificationAttributeOption
@@ -324,10 +324,23 @@ namespace Nop.Admin.Controllers
                     {
                         ProductId = productId,
                         SpecificationAttributeOptionId = specAttributeOption.Id,
-                        AllowFiltering = false,
+						AllowFiltering = IsAllowFiltering(attribute),
                         ShowOnProductPage = true
                     });
         }
+
+		[NonAction]
+		private bool IsAllowFiltering(string attribute)
+		{
+			var allowFiltering = false;
+			if (attribute.Equals(BookFields.Author.ToString())
+				|| attribute.Equals(BookFields.Publisher.ToString())
+				|| attribute.Equals(BookFields.Series.ToString()))
+			{
+				allowFiltering = true;
+			}
+			return allowFiltering;
+		}
 
         [NonAction]
         private void FillProductPictureUrl(BookModel model, int id)

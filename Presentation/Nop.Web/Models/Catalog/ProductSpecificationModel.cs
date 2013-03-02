@@ -11,5 +11,7 @@ namespace Nop.Web.Models.Catalog
         public string SpecificationAttributeOption { get; set; }
 
         public int SpecificationAttributeOrder { get; set; }
+
+		public bool AllowFiltering { get; set; }
     }
 }

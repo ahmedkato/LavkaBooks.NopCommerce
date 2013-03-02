@@ -1710,6 +1710,7 @@
     <Content Include="Views\ShoppingCart\LavkaShippingAddress.cshtml" />
     <Content Include="Views\ShoppingCart\_CustomCreateOrUpdateAddress.cshtml" />
     <Content Include="Views\Catalog\_CustomProductVariantAddToCart.cshtml" />
+    <Content Include="Views\Catalog\SearchBySpecification.cshtml" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

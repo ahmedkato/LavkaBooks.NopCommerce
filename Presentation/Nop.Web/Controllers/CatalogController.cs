@@ -455,6 +455,7 @@ namespace Nop.Web.Controllers
 				   {
 					   return new ProductSpecificationModel()
 					   {
+						   AllowFiltering = psa.AllowFiltering,
 						   SpecificationAttributeId = psa.SpecificationAttributeOption.SpecificationAttributeId,
 						   SpecificationAttributeName = psa.SpecificationAttributeOption.SpecificationAttribute.GetLocalized(x => x.Name),
 						   SpecificationAttributeOption = psa.SpecificationAttributeOption.GetLocalized(x => x.Name),
@@ -3291,6 +3292,26 @@ namespace Nop.Web.Controllers
 						  })
 						  .ToList();
 			return Json(result, JsonRequestBehavior.AllowGet);
+		}
+
+		[NopHttpsRequirement(SslRequirement.No)]
+		[ValidateInput(true)]
+		public ActionResult SearchBySpecification(int id, string value)
+		{
+			var model = new SearchModel();
+			var attr = _specificationAttributeService.GetSpecificationAttributeById(id);
+
+			if (attr != null)
+			{
+				var products = attr.SpecificationAttributeOptions
+					.Where(x => x.Name.Equals(value, StringComparison.CurrentCultureIgnoreCase))
+					.SelectMany(x => x.ProductSpecificationAttributes)
+					.Select(x => x.Product);
+
+				model.Products = PrepareProductOverviewModels(products, prepareSpecificationAttributes: true).ToList();
+			}
+			model.NoResults = !model.Products.Any();
+			return View(model);
 		}
 
 		#endregion
