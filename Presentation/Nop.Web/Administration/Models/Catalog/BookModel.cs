@@ -1,4 +1,6 @@
-﻿using Nop.Web.Framework;
+﻿using Nop.Admin.Models.Customers;
+using Nop.Admin.Validators.Catalog;
+using Nop.Web.Framework;
 using Nop.Web.Framework.Localization;
 using Nop.Web.Framework.Mvc;
 using System;
@@ -6,9 +8,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
+using FluentValidation.Attributes;
 
 namespace Nop.Admin.Models.Catalog
 {
+	[Validator(typeof(BookValidator))]
     public class BookModel : BaseNopEntityModel, ILocalizedModel<ProductLocalizedModel>
     {
         public BookModel()

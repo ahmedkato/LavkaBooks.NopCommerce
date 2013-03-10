@@ -125,6 +125,8 @@ namespace Nop.Services.Catalog
 
 		IList<SpecificationAttributeOption> SearchSpecificationAttributeOptionByAuthor(string author);
 
+		IList<SpecificationAttributeOption> SearchSpecificationAttributeOptionByISBN(string isbn);
+
 		#endregion
 	}
 }

@@ -291,6 +291,7 @@
     <Compile Include="Models\Cms\WidgetModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Validators\Catalog\CategoryValidator.cs" />
+    <Compile Include="Validators\Catalog\BookValidator.cs" />
     <Compile Include="Validators\Catalog\ProductTagValidator.cs" />
     <Compile Include="Validators\Catalog\ManufacturerValidator.cs" />
     <Compile Include="Validators\Common\AddressValidator.cs" />

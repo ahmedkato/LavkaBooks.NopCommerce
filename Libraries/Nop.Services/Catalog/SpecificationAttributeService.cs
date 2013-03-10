@@ -374,6 +374,21 @@ namespace Nop.Services.Catalog
 				                  .ToList();
 		}
 
+		public IList<SpecificationAttributeOption> SearchSpecificationAttributeOptionByISBN(string isbn)
+		{
+			var isbnWithoutSpaces = isbn.Trim().Trim(new []{'-'});
+			var attribute = _specificationAttributeRepository
+				.Table
+				.SingleOrDefault(x => x.Name.Equals("isbn", StringComparison.CurrentCultureIgnoreCase));
+
+			return attribute == null
+					   ? new List<SpecificationAttributeOption>()
+					   : attribute.SpecificationAttributeOptions
+								  .Where(x => x.Name.Equals(isbn, StringComparison.CurrentCultureIgnoreCase)
+									  || x.Name.Equals(isbnWithoutSpaces, StringComparison.CurrentCultureIgnoreCase))
+								  .ToList();
+		}
+
 		#endregion
 
 		#endregion
