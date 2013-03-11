@@ -1553,7 +1553,7 @@
     <Content Include="Views\Catalog\ProductReviewOverview.cshtml" />
     <Content Include="Views\Catalog\ProductBreadcrumb.cshtml" />
     <Content Include="Views\Catalog\ProductReviews.cshtml" />
-    <Content Include="Views\Catalog\ProductSpecifications.cshtml" />
+    <Content Include="Views\Catalog\_ProductSpecifications.cshtml" />
     <Content Include="Views\Catalog\ProductTierPrices.cshtml" />
     <Content Include="Views\Catalog\_GiftCardInfo.cshtml" />
     <Content Include="Views\Catalog\_ProductVariantLine.cshtml" />

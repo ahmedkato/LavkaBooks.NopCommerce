@@ -1400,6 +1400,7 @@ namespace Nop.Web.Controllers
 
 			//prepare the model
 			var model = PrepareProductDetailsPageModel(product);
+			model.SpecificationAttributeModels = PrepareProductSpecificationModel(product); 
 
 			//check whether we have at leat one variant
 			if (model.ProductVariantModels.Count == 0)
@@ -2197,18 +2198,6 @@ namespace Nop.Web.Controllers
 				TotalReviews = product.ApprovedTotalReviews,
 				AllowCustomerReviews = product.AllowCustomerReviews
 			};
-			return PartialView(model);
-		}
-
-		[ChildActionOnly]
-		//[OutputCache(Duration = 120, VaryByCustom = "WorkingLanguage")]
-		public ActionResult ProductSpecifications(int productId)
-		{
-			var product = _productService.GetProductById(productId);
-			if (product == null)
-				throw new ArgumentException("No product found with the specified id");
-
-			var model = PrepareProductSpecificationModel(product);
 			return PartialView(model);
 		}
 
