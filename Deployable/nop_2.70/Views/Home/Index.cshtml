@@ -1,0 +1,11 @@
+﻿@{
+    Layout = "~/Views/Shared/_CustomColumnsTwo.cshtml";
+}
+<div class="page home-page">
+    <div class="page-body">
+        @Html.Widget("home_page_top")
+        @Html.Action("HomepageBestSellers", "Catalog")
+        @Html.Action("HomepageRecentlyAddedProducts", "Catalog")
+        @Html.Widget("home_page_bottom")
+    </div>
+</div>

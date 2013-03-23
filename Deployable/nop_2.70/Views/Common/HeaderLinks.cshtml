@@ -1,0 +1,85 @@
+﻿@model HeaderLinksModel
+@using Nop.Web.Models.Common;
+<div class="header-links">
+    <table>
+        <tr>
+            <td>
+                <ul>
+                    @Html.Widget("header_links_before")
+                    <li><a href="@Url.RouteUrl("HomePage")t/SippingPaymentInfo#payment">@T("Checkout.Progress.Payment")</a></li>
+                    <li><a href="@Url.RouteUrl("HomePage")t/SippingPaymentInfo#shipping">@T("Checkout.Progress.Shipping")</a></li>
+                    @if (Model.IsCustomerImpersonated)
+                    {
+                        <li><span class="impersonate">(@string.Format(T("Account.ImpersonatedAs").Text, Model.CustomerEmailUsername))
+                        - <a href="@Url.RouteUrl("Logout")" class="finish-impersonation" title="@T("Account.ImpersonatedAs.Finish.Hint")">@T("Account.ImpersonatedAs.Finish")</a>
+                            ) </span></li>
+                    }
+                    @if (Model.DisplayAdminLink)
+                    {
+                        <li><a href="@Url.Content("~/admin")" class="ico-admin">@T("Account.Administration")</a>
+                        </li>
+                    }
+                    @if (Model.IsAuthenticated)
+                    {
+                        <li><a href="@Url.RouteUrl("CustomerInfo")" class="account">@T("MyLavka")@*@Model.CustomerEmailUsername*@</a></li>
+                        <li><a href="@Url.RouteUrl("Logout")" class="ico-logout">@T("Account.Logout")</a></li>
+            
+                        if (Model.AllowPrivateMessages)
+                        {
+                        <li><a href="@Url.RouteUrl("PrivateMessages", new { tab = "" })" class="ico-inbox">@T("PrivateMessages.Inbox")</a>
+                            @Model.UnreadPrivateMessages</li>
+                            if (!string.IsNullOrEmpty(Model.AlertMessage))
+                            {
+                        <script type="text/javascript">
+                            $(document).ready(function () {
+                                displayPopupNotification('@(Model.AlertMessage)', 'success', false);
+                            });
+                        </script>
+                            }
+                        }
+                    }
+                    else
+                    {
+                        <li><a href="@Url.RouteUrl("Register")" class="ico-register">@T("Account.Register")</a></li>
+                        <li><a href="@Url.RouteUrl("Login")" class="ico-login">@T("Account.Login")</a></li>
+                    }
+                    @Html.Widget("header_links_after")
+                </ul>
+            </td>
+            <td>
+                @if (Model.ShoppingCartEnabled)
+                {
+                    <div id="topcartlink">
+                        @if (@Model.ShoppingCartItems > 0)
+                        {
+                            <a href="@Url.RouteUrl("ShoppingCart")" class="ico-cart"></a>
+                        }
+                        else
+                        {
+                            <a href="@Url.RouteUrl("ShoppingCart")" class="ico-cart-free"></a>
+                        }
+                        @*<a href="@Url.RouteUrl("ShoppingCart")" class="ico-cart">@T("ShoppingCart")</a>
+                        <a href="@Url.RouteUrl("ShoppingCart")" class="cart-qty">(@Model.ShoppingCartItems)</a>*@
+                    </div>
+                }
+            </td>
+        </tr>
+    </table>
+    @if (Model.ShoppingCartEnabled)
+    {
+        <script type="text/javascript">
+            $('#topcartlink').live('mouseenter', function () {
+                $('#flyout-cart').addClass('active');
+            });
+            $('#topcartlink').live('mouseleave', function () {
+                $('#flyout-cart').removeClass('active');
+            });
+            $('#flyout-cart').live('mouseenter', function () {
+                $('#flyout-cart').addClass('active');
+            });
+            $('#flyout-cart').live('mouseleave', function () {
+                $('#flyout-cart').removeClass('active');
+            });
+        </script>
+    }
+</div>

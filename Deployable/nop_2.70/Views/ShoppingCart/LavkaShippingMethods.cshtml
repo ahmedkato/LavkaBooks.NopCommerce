@@ -1,0 +1,44 @@
+﻿@model CheckoutShippingMethodModel
+@using Nop.Web.Models.Checkout;
+<div class="checkout-data">
+    <div class="shipping-options-title">
+        @T("LavkaShoppingCart.ShippingMethodsTitle")
+    </div>
+    <div class="shipping-options">
+        @if (Model.Warnings.Count == 0)
+        {
+            <table>
+                <tr>
+                    <td>
+                        <select id="shippingMethod" name="ShippingMethod">
+                            @for (int i = 0; i < Model.ShippingMethods.Count; i++)
+                            {
+                                var shippingMethod = Model.ShippingMethods[i];
+                                <option id="shippingoption_@(i)" value="@(shippingMethod.Name)___@(shippingMethod.ShippingRateComputationMethodSystemName)" selected="@shippingMethod.Selected">@shippingMethod.Name</option>
+                            }
+                        </select>
+                    </td>
+                    <td>
+                        <div class="shipping-options-message">
+                            @T("LavkaShoppingCart.ShippingMethodsMessage")&nbsp;
+							<a href="@Url.RouteUrl("HomePage")t/SippingPaymentInfo#shipping">@T("Checkout.Progress.Shipping")</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        }
+        else
+        {
+            <div class="clear">
+            </div>
+            <div class="message-error">
+                <ul>
+                    @for (int i = 0; i < Model.Warnings.Count; i++)
+                    {
+                        <li>@Model.Warnings[i]</li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+</div>

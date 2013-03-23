@@ -1,0 +1,37 @@
+﻿@model FooterModel
+@using Nop.Web.Models.Common;
+<div class="footer">
+	<table>
+		<tr>
+			<td style="width: 30%;">
+				<div class="footer-disclaimer">Дружелюбный магазин "Книжная Лавка"</div>
+				<div class="footer-disclaimer">
+					@T("Content.CopyrightNotice", DateTime.Now.Year.ToString(), Model.StoreName)
+				</div>
+				<div class="footer-disclaimer">@T("Content.Rights")</div>
+			</td>
+			<td style="width: 40%;">
+				<a href="mailto:lavkabooks@gmail.com" class="social email"></a>
+				<a href="https://www.facebook.com/thelavkabooks" class="social facebook"></a>
+				<a href="http://vk.com/lavkabooks" class="social vkontakt"></a>
+				<a href="http://twitter.com/lavkabooks" class="social twitter"></a>
+				<a href="http://pinterest.com/lavkabooks/" class="social pinterest"></a>
+				<a href="callto://lavkabooks" class="social skype"></a>
+			</td>
+			<td style="width: 30%;">
+				<div class="footer-poweredby">
+					Powered by <a href="http://www.nopcommerce.com/">nopCommerce</a>
+					<!--Would you like
+					to remove the "Powered by nopCommerce" link in the bottom of the footer? Find more
+					info here http://www.nopcommerce.com/copyrightremoval.aspx -->
+				</div>
+				<div class="footer-disclaimer">Designed by R.Kuleshov</div>
+			</td>
+		</tr>
+	</table>
+	<div class="footer-store-theme">
+		@Html.Action("StoreThemeSelector", "Common")
+	</div>
+	@Html.Action("ChangeDeviceBlock", "Common")
+	@Html.Widget("footer")
+</div>

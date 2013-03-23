@@ -1,0 +1,139 @@
+﻿@model Nop.Admin.Models.Catalog.BookModel
+
+@Html.ValidationSummary(true)
+@Html.HiddenFor(model => model.Id)
+<table class="book-table">
+    <tr>
+        <td></td>
+        <td></td>
+        <td>
+            <div class="push-all"></div>
+        </td>
+        <td>
+            <div>
+                <input type="button" class="service-btn" id="g-btn" value="Google" />
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <div class="editor-label">
+                @Html.NopLabelFor(model => model.Name):
+            </div>
+        </td>
+        <td>
+            <div class="editor-field">
+                @Html.EditorFor(model => model.Name)
+                @Html.ValidationMessageFor(model => model.Name)
+            </div>
+        </td>
+        <td>
+            <div class="push"></div>
+        </td>
+        <td>
+            <div>
+                <input type="text" class="service title" />
+            </div>
+        </td>
+    </tr>
+    @foreach (var item in Model.Spec)
+    {
+        <tr>
+            <td>
+                <div class="editor-label">
+                    @T("Admin.Catalog.Products.SpecificationAttributes.Books." + item.Key)
+                </div>
+            </td>
+            <td>
+                <div class="editor-field">
+                    <input id="@item.Key" type="text" name="@item.Key" value="@item.Value"/>
+                </div>
+            </td>
+            <td>
+                <div class="push"></div>
+            </td>
+            <td>
+                <div>
+                    <input type="text" class="service @item.Key" />
+                </div>
+            </td>
+        </tr>
+    }
+    <tr>
+        <td>
+            <div class="editor-label">
+                @Html.NopLabelFor(model => model.PictureUrl):
+            </div>
+        </td>
+        <td>
+            <div class="editor-field">
+                @Html.EditorFor(model => model.PictureUrl)
+                @Html.ValidationMessageFor(model => model.PictureUrl)
+            </div>
+            <div>
+                <img src="#" />
+            </div>
+        </td>
+        <td>
+            <div class="push"></div>
+        </td>
+        <td>
+            <div>
+                <input type="text" class="service picture" />
+            </div>
+            <div>
+                <img src="#" />
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <div class="editor-label">
+                @T("Categories")
+            </div>
+        </td>
+        <td>
+            <div class="editor-field">
+                @Html.ListBox("CategoryIds", new MultiSelectList(Model.AvailableCategories, "Value", "Text", Model.CategoryIds), new { size = "8" })
+            </div>
+        </td>
+        <td></td>
+        <td></td>
+    </tr>
+    <tr>
+        <td>
+            <div class="editor-label">
+                @Html.NopLabelFor(model => model.FullDescription):
+            </div>
+        </td>
+        <td>
+            <div class="editor-field">
+                @Html.TextAreaFor(model => model.FullDescription)
+                @Html.ValidationMessageFor(model => model.FullDescription)
+            </div>
+        </td>
+        <td>
+            <div class="push"></div>
+        </td>
+        <td>
+            <div class="editor-field">
+                <textarea class="service description"></textarea>
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <div class="editor-label">
+                @Html.NopLabelFor(model => model.Price):
+            </div>
+        </td>
+        <td>
+            <div class="editor-field">
+                @Html.EditorFor(model => model.Price)
+                @Html.ValidationMessageFor(model => model.Price)
+            </div>
+        </td>
+        <td></td>
+        <td></td>
+    </tr>
+</table>

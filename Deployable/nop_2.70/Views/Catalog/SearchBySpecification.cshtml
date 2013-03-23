@@ -1,0 +1,45 @@
+﻿@model SearchModel
+@{
+    Layout = "~/Views/Shared/_CustomColumnsTwo.cshtml";
+
+    //title
+    Html.AddTitleParts(T("PageTitle.Search").Text);
+}
+@using Nop.Core;
+@using Nop.Core.Infrastructure;
+@using Nop.Web;
+@using Nop.Web.Models.Catalog;
+@using Nop.Web.Extensions;
+<div class="page search-page">
+    <div class="page-title">
+        <h1>@T("Search")</h1>
+    </div>
+    <div class="clear">
+    </div>
+    <div class="page-body">
+        @using (Html.BeginRouteForm("ProductSearch", FormMethod.Get))
+        {
+            <div class="search-results">
+                @if (Model.NoResults)
+                {
+                    <span class="result">
+                        @T("Search.NoResultsText")
+						<div class="img"></div>
+                    </span>
+                }
+                <div class="product-grid">
+                    @(Html.DataList<ProductOverviewModel>(Model.Products, 3,
+                            @<div class="item-box">
+                                @Html.Partial("_CustomProductBox", item)
+                            </div>
+                        ))
+                </div>
+                <div class="clear">
+                </div>
+                <div class="pager">
+                    @Html.Pager(Model.PagingFilteringContext).QueryParam("pagenumber").BooleanParameterName("as").BooleanParameterName("isc").BooleanParameterName("sid")
+                </div>
+            </div>
+        }
+    </div>
+</div>

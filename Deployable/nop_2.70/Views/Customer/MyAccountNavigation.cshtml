@@ -1,0 +1,61 @@
+﻿@model CustomerNavigationModel          
+@using Nop.Web.Models.Customer;
+@*IE6 hack here. maybe move to a stylesheet file with IE6 hacks?*@
+<!--[if lt IE 7]>
+<STYLE type="text/css">
+   .block-account-navigation a{white-space:normal!important;}
+ </STYLE>
+<![endif]-->
+<ul class="my-menu">
+	@Html.Widget("account_navigation_before")
+	@{
+		var path = ((System.Web.HttpApplication)(this.ApplicationInstance)).Request.Path;
+		var urls = new Dictionary<string, string>();
+		if (!Model.HideInfo)
+		{
+			urls.Add(Url.RouteUrl("CustomerInfo"), T("Account.CustomerInfo").Text);
+		}
+		if (!Model.HideAddresses)
+		{
+			urls.Add(Url.RouteUrl("CustomerAddresses"), T("Account.CustomerAddresses").Text);
+		}
+		if (!Model.HideOrders)
+		{
+			urls.Add(Url.RouteUrl("CustomerOrders"), T("Account.CustomerOrders").Text);
+		}
+		if (!Model.HideReturnRequests)
+		{
+			urls.Add(Url.RouteUrl("CustomerReturnRequests"), T("Account.CustomerReturnRequests").Text);
+		}
+		if (!Model.HideDownloadableProducts)
+		{
+			urls.Add(Url.RouteUrl("CustomerDownloadableProducts"), T("Account.DownloadableProducts").Text);
+		}
+		if (!Model.HideBackInStockSubscriptions)
+		{
+			urls.Add(Url.RouteUrl("CustomerBackInStockSubscriptions"), T("Account.BackInStockSubscriptions").Text);
+		}
+		if (!Model.HideRewardPoints)
+		{
+			urls.Add(Url.RouteUrl("CustomerRewardPoints"), T("Account.RewardPoints").Text);
+		}
+		if (!Model.HideChangePassword)
+		{
+			urls.Add(Url.RouteUrl("CustomerChangePassword"), T("Account.ChangePassword").Text);
+		}
+		if (!Model.HideAvatar)
+		{
+			urls.Add(Url.RouteUrl("CustomerAvatar"), T("Account.Avatar").Text);
+		}
+		if (!Model.HideForumSubscriptions)
+		{
+			urls.Add(Url.RouteUrl("CustomerForumSubscriptions"), T("Account.ForumSubscriptions").Text);
+		}
+		urls.Add(Url.RouteUrl("CustomerWishlist"), T("Account.Wishlist").Text);
+	}
+	@foreach (var url in urls)
+	{
+		<li><a href="@url.Key" class="@((path == url.Key) ? "active" : "")">@url.Value</a></li>        
+	}
+	@Html.Widget("account_navigation_after")
+</ul>

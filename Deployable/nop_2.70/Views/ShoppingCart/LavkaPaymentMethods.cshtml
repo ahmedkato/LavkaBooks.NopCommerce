@@ -1,0 +1,39 @@
+﻿@model CheckoutPaymentMethodModel
+@using Nop.Web.Models.Checkout;
+<div class="checkout-data">
+    <div class="shipping-options-title">
+        @T("LavkaShoppingCart.PaymentMethodTitle")
+    </div>
+    <div class="payment-methods">
+        @if (Model.PaymentMethods.Count > 0)
+        {
+            <table>
+                <tr>
+                    <td>
+                        <select id="paymentMethod" name="PaymentMethod">
+                            @for (int i = 0; i < Model.PaymentMethods.Count; i++)
+                            {
+                                var paymentMethod = Model.PaymentMethods[i];
+                                <option id="paymentoption_@(i)" value="@(paymentMethod.PaymentMethodSystemName)" selected="@paymentMethod.Selected">@paymentMethod.Name</option>
+                            }
+                        </select>
+                    </td>
+                    <td>
+                        <div class="payment-options-message">
+                            @T("LavkaShoppingCart.PaymentMethodsMessage")&nbsp;
+							<a href="@Url.RouteUrl("HomePage")t/SippingPaymentInfo#payment">@T("Checkout.Progress.Payment")</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        }
+        else
+        {
+            <div class="clear">
+            </div>
+            <div class="message-error">
+                @T("Checkout.NoPaymentMethods")
+            </div>
+        }
+    </div>
+</div>

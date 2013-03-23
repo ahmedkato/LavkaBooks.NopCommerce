@@ -1,0 +1,25 @@
+﻿@model ProductDetailsModel.ProductVariantModel.AddToCartModel
+@using Nop.Web.Models.Catalog;
+@using Nop.Core.Domain.Orders;
+<div class="add-to-cart">
+    @if (Model.CustomerEntersPrice)
+    {
+        <div class="customer-entered-price">
+            @Html.LabelFor(model => model.CustomerEnteredPrice, new { @class = "enter-price-label" }):
+            @*round price*@
+            @Html.TextBox("CustomerEnteredPrice", Convert.ToInt32(Math.Ceiling(Model.CustomerEnteredPrice)), new { @class = "enter-price-input" })
+            <div class="price-range">
+                @Model.CustomerEnteredPriceRange
+            </div>
+        </div>
+    }
+    @if (!Model.DisableBuyButton || !Model.DisableWishlistButton)
+    {
+        <div>
+            @if (!Model.DisableBuyButton)
+            {
+                <input type="button" class="button-1 add-to-cart-button" value="@(Model.AvailableForPreOrder ? T("ShoppingCart.PreOrder") : T("ShoppingCart.AddToCart"))" onclick="AjaxCart.addproductvarianttocart('@Url.RouteUrl("AddProductVariantToCart", new { productVariantId = Model.ProductVariantId, shoppingCartTypeId = (int)ShoppingCartType.ShoppingCart })', '#product-details-form');return false;" />
+            }
+        </div>
+    }
+</div>

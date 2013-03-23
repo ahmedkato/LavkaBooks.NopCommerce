@@ -1,0 +1,8 @@
+﻿Group: Payment methods
+FriendlyName: LiqPay Fake
+SystemName: Payments.LiqPayFake
+Version: 0
+SupportedVersions: 2.70
+Author: x
+DisplayOrder: 1
+FileName: Nop.Plugin.Payments.LiqPayFake.dll

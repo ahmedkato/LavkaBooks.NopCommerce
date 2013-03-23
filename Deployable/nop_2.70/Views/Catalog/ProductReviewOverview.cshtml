@@ -1,0 +1,28 @@
+﻿@model ProductReviewOverviewModel
+@using Nop.Web.Models.Catalog;
+@{
+    int ratingPercent = 0;
+    if (Model.TotalReviews != 0)
+    {
+        ratingPercent = ((Model.RatingSum * 100) / Model.TotalReviews) / 5;
+    }    
+}
+@if (Model.AllowCustomerReviews)
+{
+    var title = string.Format(T("Reviews").Text, Model.TotalReviews);
+    <div class="product-reviews-overview">
+        <div class="title inactive"><span>@(title)</span>
+            @if (Model.TotalReviews > 0)
+            {
+                /*CSS stars: http://www.thebroth.com/blog/119/css-rating-stars*/
+                <div class="product-review-box">
+                    <div class="rating">
+                        <div style="width: @(ratingPercent)%">
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+        @Html.Action("ProductReviews", "Catalog", new { productId = Model.ProductId })
+    </div>
+}

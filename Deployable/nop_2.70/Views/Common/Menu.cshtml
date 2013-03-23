@@ -1,0 +1,18 @@
+﻿@model MenuModel
+@using Nop.Web.Models.Common;
+<ul class="top-menu">
+    @Html.Widget("header_menu_before")
+    @{
+        var path = ((System.Web.HttpApplication)(this.ApplicationInstance)).Request.Path;
+        var urls = new Dictionary<string, string>();
+        urls.Add(Url.RouteUrl("HomePage"), T("HomePage").Text);
+        urls.Add(Url.RouteUrl("HomePage") + "t/aboutus", T("AboutUs").Text);
+        urls.Add(Url.RouteUrl("ContactUs"), T("ContactUs").Text);
+        urls.Add(Url.RouteUrl("Inter"), T("Interestingness").Text);
+    }
+    @foreach (var url in urls)
+    {
+        <li><a href="@url.Key" class="@((path == url.Key) ? "active" : "")">@url.Value</a></li>        
+    }
+    @Html.Widget("header_menu_after")
+</ul>

@@ -1,0 +1,40 @@
+﻿@model LavkaShoppingCartModel
+@using Nop.Core.Domain.Orders
+@using Nop.Web.Models.Checkout
+@using Nop.Web.Models.ShoppingCart;
+@{
+	Layout = "~/Views/Shared/_CustomColumnsTwo.cshtml";
+
+	//title
+	Html.AddTitleParts(T("PageTitle.ShoppingCart").Text);
+}
+<div class="page shopping-cart-page">
+	@using (Html.BeginRouteForm("ShoppingCartLavkaBooks", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+		<div class="page-title">
+			<h1>@T("ShoppingCart")</h1>
+		</div>
+		<div class="clear">
+		</div>
+		<div class="page-body">
+			@Html.Partial("LavkaOrderSummary", Model)
+			@Html.Partial("LavkaShippingMethods", Model.ShippingMethods)
+			@Html.Partial("LavkaPaymentMethods", Model.PaymentMethods)
+			@Html.Partial("LavkaShippingAddress", Model.ShippingAddress)
+			<div class="clear">
+			</div>
+			<div class="inputs">
+				@Html.LabelFor(model => model.CommentText)
+				<div class="input-box">
+					@Html.TextAreaFor(model => model.CommentText, new { @class = "comment-text" })
+				</div>
+				@Html.ValidationMessageFor(model => model.CommentText)
+            </div>
+			<div class="clear">
+			</div>
+			<div class="checkout-buttons">
+				<input type="submit" id="checkout" name="saveorder" value="@T("LavkaShoppingCart.Order.Button")" class="button-1 checkout-button"/>
+			</div>
+		</div>
+	 }
+</div>

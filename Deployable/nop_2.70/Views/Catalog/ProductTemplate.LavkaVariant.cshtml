@@ -1,0 +1,172 @@
+﻿@model ProductDetailsModel
+@using Nop.Core;
+@using Nop.Core.Domain.Common;
+@using Nop.Core.Domain.Seo;
+@using Nop.Core.Infrastructure;
+@using Nop.Web;
+@using Nop.Web.Models.Catalog;
+@using Nop.Core.Domain.Orders;
+@{
+	Layout = "~/Views/Shared/_CustomColumnsTwo.cshtml";
+
+	//title, meta
+	Html.AddTitleParts(!String.IsNullOrEmpty(Model.MetaTitle) ? Model.MetaTitle : Model.Name);
+	Html.AddMetaDescriptionParts(Model.MetaDescription);
+	Html.AddMetaKeywordParts(Model.MetaKeywords);
+
+	var canonicalUrlsEnabled = EngineContext.Current.Resolve<SeoSettings>().CanonicalUrlsEnabled;
+	if (canonicalUrlsEnabled)
+	{
+		var productUrl = Url.RouteUrl("Product", new { SeName = Model.SeName }, this.Request.Url.Scheme);
+		Html.AddCanonicalUrlParts(productUrl);
+	}
+}
+@{
+	var defaultProductVariant = Model.ProductVariantModels.Count > 0 ? Model.ProductVariantModels[0] : null;
+}
+<!--product breadcrumb-->
+@Html.Action("ProductBreadcrumb", "Catalog", new { productId = Model.Id })
+<div class="clear">
+</div>
+<script type="text/javascript">
+	$(document).ready(function () {
+		$(".product-reviews-overview > .title").click(function () {
+			var list = $(".product-review-list");
+			if (list.is(":visible")) {
+				list.hide();
+				$(this).addClass("inactive");
+				$(this).removeClass("active");
+			}
+			else {
+				list.show();
+				$(this).addClass("active");
+				$(this).removeClass("inactive");
+			}
+		});
+		$(".product-reviews > .title").click(function () {
+			var form = $("#review-form");
+			if (form.is(":visible")) {
+				form.hide();
+				$(this).addClass("inactive");
+				$(this).removeClass("active");
+			}
+			else {
+				form.show();
+				$(this).addClass("active");
+				$(this).removeClass("inactive");
+			}
+		});
+		$(".product-specs-box .additionally").click(function () {
+			var table = $(".data-table-additionally");
+			if (table.is(":visible")) {
+				table.hide();
+				$(this).addClass("inactive");
+				$(this).removeClass("active");
+			}
+			else {
+				table.show();
+				$(this).addClass("active");
+				$(this).removeClass("inactive");
+			}
+		});
+	});
+</script>
+<div class="page product-details-page">
+	<div class="page-body">
+		@Html.Widget("productdetails_top")
+		@using (Html.BeginRouteForm("Product", new { SeName = Model.SeName }, FormMethod.Post, new { id = "product-details-form" }))
+  {
+			<div class="product-essential">
+				@Html.Widget("productdetails_before_pictures")
+				<!--product pictures-->
+				@Html.Partial("_ProductDetailsPictures", Model)
+				@Html.Widget("productdetails_after_pictures")
+				@if (!defaultProductVariant.AddToCart.DisableWishlistButton)
+	{
+					<div class="wishlist">
+						<a href="#" class="add-to-wishlist-button" onclick="AjaxCart.addproductvarianttocart('@Url.RouteUrl("AddProductVariantToCart", new { productVariantId = defaultProductVariant.AddToCart.ProductVariantId, shoppingCartTypeId = (int)ShoppingCartType.Wishlist })', '#product-details-form');return false;">@T("ShoppingCart.AddToWishlist")<div class="wishlist-image"></div>
+						</a>
+					</div>
+	}
+				<div class="overview">
+					<h1 class="product-name">
+						@Model.Name
+					</h1>
+					@Html.Partial("_ProductSpecifications", Model.SpecificationAttributeModels)
+					@Html.Action("ShareButton", "Catalog")
+					@if (!defaultProductVariant.AddToCart.DisableBuyButton || !defaultProductVariant.AddToCart.DisableWishlistButton)
+	 {
+						<div class="checkout-buttons">
+							@Html.ActionLink(T("LavkaShoppingCart.Order.Button").Text, "BlitzOrder",
+							new
+							{
+								productVariantId = defaultProductVariant.AddToCart.ProductVariantId,
+								shoppingCartTypeId = (int)ShoppingCartType.ShoppingCart
+							}, null)
+						</div>
+	 }
+				</div>
+				<div>
+					<div class="clear">
+					</div>
+					@Html.Widget("productdetails_overview_top")
+					<!--product SKU, manufacturer part number, stock info-->
+					@Html.Partial("_ProductVariant_SKU_Man_Stock", defaultProductVariant)
+					<div class="clear">
+					</div>
+					<!--Back in stock subscription-->
+					@Html.Partial("_ProductVariantBackInStockSubscription", defaultProductVariant)
+					<div class="clear">
+					</div>
+					<!--product manufacturers-->
+					@Html.Action("ProductManufacturers", "Catalog", new { productId = Model.Id })
+					<div class="clear">
+					</div>
+					<!--sample download-->
+					@Html.Partial("_DownloadSample", defaultProductVariant)
+					<div class="clear">
+					</div>
+					@{
+	 var dataDictPrice = new ViewDataDictionary();
+	 dataDictPrice.TemplateInfo.HtmlFieldPrefix = string.Format("price_{0}", defaultProductVariant.Id);
+						@Html.Partial("_ProductVariantPrice", defaultProductVariant.ProductVariantPrice, dataDictPrice)
+                            
+	 var dataDictAddToCart = new ViewDataDictionary();
+	 dataDictAddToCart.TemplateInfo.HtmlFieldPrefix = string.Format("addtocart_{0}", defaultProductVariant.Id);
+						@Html.Partial("_CustomProductVariantAddToCart", defaultProductVariant.AddToCart, dataDictAddToCart)                    
+					}
+					<div class="clear">
+					</div>
+					@Html.Widget("productdetails_overview_bottom")
+				</div>
+				<div class="full-description">
+					<h4>@T("Catalog.Products.Variants.Fields.Description")</h4>
+					@Html.Raw(Model.FullDescription)
+				</div>
+			</div>
+			<div class="clear">
+			</div>
+			<!--product reviews-->
+			@Html.Action("ProductReviewOverview", "Catalog", new { productId = Model.Id })
+			<div class="clear">
+			</div>
+			<div class="product-collateral">
+				@Html.Action("ProductTags", "Catalog", new { productId = Model.Id })
+				<div class="clear">
+				</div>
+				@Html.Action("ProductsAlsoPurchased", "Catalog", new { productId = Model.Id })
+				<div class="clear">
+				</div>
+			</div>
+  }
+		@Html.Action("RelatedProducts", "Catalog", new { productId = Model.Id })
+		<div class="x-ceo">
+			@string.Format(T("LavkaBooks.Ceo").Text, Model.Name,
+					   Model.SpecificationAttributeModels
+							.Where(x => x.SpecificationAttributeName.Equals("Author", StringComparison.CurrentCultureIgnoreCase))
+							.Select(x => x.SpecificationAttributeOption)
+							.FirstOrDefault())
+		</div>
+		@Html.Widget("productdetails_bottom")
+	</div>
+</div>

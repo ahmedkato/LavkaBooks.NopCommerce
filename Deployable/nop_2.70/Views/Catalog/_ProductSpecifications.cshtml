@@ -1,0 +1,58 @@
+﻿@model IList<ProductSpecificationModel>
+@using Nop.Web.Models.Catalog;
+@if (Model.Count > 0)
+{
+	var items = Model.OrderBy(x => x.SpecificationAttributeOrder);
+    <div class="product-specs-box">
+        <div class="product-specs-list">
+            <table class="data-table">
+                <col width="25%" />
+                <col />
+                <tbody>
+                    @foreach (var item in items.Where(x => x.SpecificationAttributeOrder < 7))
+                    {
+                        <tr>
+                            <td class="a-left specname">
+                                @T("Admin.Catalog.Products.SpecificationAttributes.Books." + item.SpecificationAttributeName)
+                            </td>
+                            <td class="a-left specvalue">
+								@if (item.AllowFiltering)
+								{
+									@Html.ActionLink(item.SpecificationAttributeOption, "SearchBySpecification", "Catalog", new { id = item.SpecificationAttributeId, value = item.SpecificationAttributeOption }, new { })
+								}
+								else
+								{
+									@item.SpecificationAttributeOption
+								}
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @{
+				var itemsAdditionally = items.Where(x => x.SpecificationAttributeOrder > 6);
+            }
+            @if (itemsAdditionally.Any())
+            {
+                <div class="additionally inactive">@T("Products.Specs.Additionally")</div>
+                <table class="data-table-additionally">
+                    <col width="25%" />
+                    <col />
+                    <tbody>
+                        @foreach (var item in itemsAdditionally)
+                        {
+                            <tr>
+                                <td class="a-left specname">
+                                    @T("Admin.Catalog.Products.SpecificationAttributes.Books." + item.SpecificationAttributeName)
+                                </td>
+                                <td class="a-left specvalue">
+                                    @item.SpecificationAttributeOption
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+}
