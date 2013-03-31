@@ -1,2 +1,2 @@
 DataProvider: sqlserver
-DataConnectionString: Data Source=(local);Initial Catalog=lavka1;Integrated Security=True;Persist Security Info=False;MultipleActiveResultSets=True
+DataConnectionString: Data Source=5.153.20.156,779;Initial Catalog=aquiladev_lavkabooks;Integrated Security=False;Persist Security Info=False;User ID=aquiladev_sa;Password="1234567890-=q";MultipleActiveResultSets=True
