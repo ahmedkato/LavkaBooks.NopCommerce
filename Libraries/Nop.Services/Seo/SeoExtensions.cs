@@ -1353,7 +1353,6 @@ namespace Nop.Services.Seo
 					_seoCharacterTable.Add(ToUnichar("0451"), "yo");// CYRILLIC SMALL LETTER IO
 				}
 			}
-
 		}
 
 		/// <summary>

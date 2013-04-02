@@ -8,11 +8,22 @@
 @using Nop.Core.Domain.Orders;
 @{
 	Layout = "~/Views/Shared/_CustomColumnsTwo.cshtml";
-
+	
+	//title, author
+	var title = String.IsNullOrEmpty(Model.MetaTitle) ? Model.Name : Model.MetaTitle;
+	var author = Model.SpecificationAttributeModels
+							.Where(x => x.SpecificationAttributeName.Equals("Author", StringComparison.CurrentCultureIgnoreCase))
+							.Select(x => x.SpecificationAttributeOption)
+							.FirstOrDefault();
+	
 	//title, meta
-	Html.AddTitleParts(!String.IsNullOrEmpty(Model.MetaTitle) ? Model.MetaTitle : Model.Name);
+	Html.AddTitleParts(String.Format(T("LavkaBooks.CommonBookTitle").Text, title));
 	Html.AddMetaDescriptionParts(Model.MetaDescription);
+	Html.AddMetaDescriptionParts(String.Format(T("LavkaBooks.CommonBookMetaDescription").Text, title));
+	Html.AddMetaKeywordParts(title);
+	Html.AddMetaKeywordParts(author);
 	Html.AddMetaKeywordParts(Model.MetaKeywords);
+	Html.AddMetaKeywordParts(T("LavkaBooks.CommonBookMetaKeywords").Text);
 
 	var canonicalUrlsEnabled = EngineContext.Current.Resolve<SeoSettings>().CanonicalUrlsEnabled;
 	if (canonicalUrlsEnabled)
@@ -161,11 +172,7 @@
   }
 		@Html.Action("RelatedProducts", "Catalog", new { productId = Model.Id })
 		<div class="x-ceo">
-			@string.Format(T("LavkaBooks.Ceo").Text, Model.Name,
-					   Model.SpecificationAttributeModels
-							.Where(x => x.SpecificationAttributeName.Equals("Author", StringComparison.CurrentCultureIgnoreCase))
-							.Select(x => x.SpecificationAttributeOption)
-							.FirstOrDefault())
+			@string.Format(T("LavkaBooks.Seo").Text, Model.Name, author)
 		</div>
 		@Html.Widget("productdetails_bottom")
 	</div>
