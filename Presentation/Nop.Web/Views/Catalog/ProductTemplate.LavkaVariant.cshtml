@@ -17,13 +17,11 @@
 							.FirstOrDefault();
 	
 	//title, meta
-	Html.AddTitleParts(String.Format(T("LavkaBooks.CommonBookTitle").Text, title));
+	Html.AddTitleParts(String.Format(T("LavkaBooks.CommonBookTitle").Text, title, author));
 	Html.AddMetaDescriptionParts(Model.MetaDescription);
 	Html.AddMetaDescriptionParts(String.Format(T("LavkaBooks.CommonBookMetaDescription").Text, title));
-	Html.AddMetaKeywordParts(title);
-	Html.AddMetaKeywordParts(author);
 	Html.AddMetaKeywordParts(Model.MetaKeywords);
-	Html.AddMetaKeywordParts(T("LavkaBooks.CommonBookMetaKeywords").Text);
+	Html.AddMetaKeywordParts(String.Format(T("LavkaBooks.CommonBookMetaKeywords").Text, title, author));
 
 	var canonicalUrlsEnabled = EngineContext.Current.Resolve<SeoSettings>().CanonicalUrlsEnabled;
 	if (canonicalUrlsEnabled)
