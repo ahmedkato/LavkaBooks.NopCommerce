@@ -2411,16 +2411,12 @@ namespace Nop.Web.Controllers
 			if (!_catalogSettings.ShowBestsellersOnHomepage || _catalogSettings.NumberOfBestsellersOnHomepage == 0)
 				return Content("");
 
-			//load and cache report
-			var report = _cacheManager.Get(ModelCacheEventConsumer.HOMEPAGE_BESTSELLERS_IDS_KEY,
-				() =>
-					//group by products (not product variants)
-					_orderReportService
-					.BestSellersReport(null, null, null, null, null, 0, _catalogSettings.NumberOfBestsellersOnHomepage, groupBy: 2));
-
+			var bestsellerTag = _productTagService.GetProductTagByName("bestseller");
+			if(bestsellerTag == null)
+				return Content("");
 
 			//load products
-			var products = _productService.GetProductsByIds(report.Select(x => x.EntityId).ToArray());
+			var products = bestsellerTag.Products;
 			//ACL
 			products = products.Where(p => _aclService.Authorize(p)).ToList();
 			//prepare model

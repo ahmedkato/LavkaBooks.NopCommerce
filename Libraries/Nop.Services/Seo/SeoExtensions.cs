@@ -1322,7 +1322,7 @@ namespace Nop.Services.Seo
 					_seoCharacterTable.Add(ToUnichar("0431"), "b");	// CYRILLIC SMALL LETTER BE
 					_seoCharacterTable.Add(ToUnichar("0432"), "v");	// CYRILLIC SMALL LETTER VE
 					_seoCharacterTable.Add(ToUnichar("0433"), "g");	// CYRILLIC SMALL LETTER GHE
-					_seoCharacterTable.Add(ToUnichar("0434"), "v");	// CYRILLIC SMALL LETTER DE
+					_seoCharacterTable.Add(ToUnichar("0434"), "d");	// CYRILLIC SMALL LETTER DE
 					_seoCharacterTable.Add(ToUnichar("0435"), "e");	// CYRILLIC SMALL LETTER IE
 					_seoCharacterTable.Add(ToUnichar("0436"), "zh");// CYRILLIC SMALL LETTER ZHE
 					_seoCharacterTable.Add(ToUnichar("0437"), "z");	// CYRILLIC SMALL LETTER ZE
