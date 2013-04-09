@@ -2416,7 +2416,7 @@ namespace Nop.Web.Controllers
 				return Content("");
 
 			//load products
-			var products = bestsellerTag.Products;
+			var products = bestsellerTag.Products.Take(_catalogSettings.NumberOfBestsellersOnHomepage);
 			//ACL
 			products = products.Where(p => _aclService.Authorize(p)).ToList();
 			//prepare model

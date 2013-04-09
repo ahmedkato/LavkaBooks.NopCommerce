@@ -2381,6 +2381,10 @@ a.eu-cookie-privacyinfo-tag {
 		vertical-align: top;
 	}
 
+.also-purchased-products-grid {
+	margin-top: 10px;
+}
+
 .also-purchased-products-grid td {
 	border: none;
 }
