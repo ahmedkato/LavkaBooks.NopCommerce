@@ -1311,9 +1311,9 @@ namespace Nop.Services.Seo
 					_seoCharacterTable.Add(ToUnichar("0427"), "Ch");// CYRILLIC CAPITAL LETTER CHE
 					_seoCharacterTable.Add(ToUnichar("0428"), "Sh");// CYRILLIC CAPITAL LETTER SHA
 					_seoCharacterTable.Add(ToUnichar("0429"), "Shch");// CYRILLIC CAPITAL LETTER SHCHA
-					_seoCharacterTable.Add(ToUnichar("042A"), "'");	// CYRILLIC CAPITAL LETTER HARD SIGN
+					_seoCharacterTable.Add(ToUnichar("042A"), "");	// CYRILLIC CAPITAL LETTER HARD SIGN
 					_seoCharacterTable.Add(ToUnichar("042B"), "Y");	// CYRILLIC CAPITAL LETTER YERU
-					_seoCharacterTable.Add(ToUnichar("042C"), "'");	// CYRILLIC CAPITAL LETTER SOFT SIGN
+					_seoCharacterTable.Add(ToUnichar("042C"), "");	// CYRILLIC CAPITAL LETTER SOFT SIGN
 					_seoCharacterTable.Add(ToUnichar("042D"), "E");	// CYRILLIC CAPITAL LETTER E
 					_seoCharacterTable.Add(ToUnichar("042E"), "Yu");// CYRILLIC CAPITAL LETTER YU
 					_seoCharacterTable.Add(ToUnichar("042F"), "Ya");// CYRILLIC CAPITAL LETTER YA
@@ -1344,13 +1344,19 @@ namespace Nop.Services.Seo
 					_seoCharacterTable.Add(ToUnichar("0447"), "ch");// CYRILLIC SMALL LETTER CHE
 					_seoCharacterTable.Add(ToUnichar("0448"), "sh");// CYRILLIC SMALL LETTER SHA
 					_seoCharacterTable.Add(ToUnichar("0449"), "shch");// CYRILLIC SMALL LETTER SHCHA
-					_seoCharacterTable.Add(ToUnichar("044A"), "'");	// CYRILLIC SMALL LETTER HARD SIGN
+					_seoCharacterTable.Add(ToUnichar("044A"), "");	// CYRILLIC SMALL LETTER HARD SIGN
 					_seoCharacterTable.Add(ToUnichar("044B"), "y");	// CYRILLIC SMALL LETTER YERU
-					_seoCharacterTable.Add(ToUnichar("044C"), "'");	// CYRILLIC SMALL LETTER SOFT SIGN
+					_seoCharacterTable.Add(ToUnichar("044C"), "");	// CYRILLIC SMALL LETTER SOFT SIGN
 					_seoCharacterTable.Add(ToUnichar("044D"), "e");	// CYRILLIC SMALL LETTER E
 					_seoCharacterTable.Add(ToUnichar("044E"), "yu");// CYRILLIC SMALL LETTER YU
 					_seoCharacterTable.Add(ToUnichar("044F"), "ya");// CYRILLIC SMALL LETTER YA
 					_seoCharacterTable.Add(ToUnichar("0451"), "yo");// CYRILLIC SMALL LETTER IO
+					_seoCharacterTable.Add(ToUnichar("0406"), "I");	// CYRILLIC CAPITAL LETTER BYELORUSSIAN-UKRAINIAN I
+					_seoCharacterTable.Add(ToUnichar("0456"), "i");	// CYRILLIC SMALL LETTER BYELORUSSIAN-UKRAINIAN I
+					_seoCharacterTable.Add(ToUnichar("0407"), "I");	// CYRILLIC CAPITAL LETTER YI (Ukrainian)
+					_seoCharacterTable.Add(ToUnichar("0457"), "i");	// CYRILLIC SMALL LETTER YI (Ukrainian)
+					_seoCharacterTable.Add(ToUnichar("0404"), "E");	// CYRILLIC CAPITAL LETTER UKRAINIAN IE
+					_seoCharacterTable.Add(ToUnichar("0454"), "e");	// CYRILLIC SMALL LETTER UKRAINIAN IE
 				}
 			}
 		}
