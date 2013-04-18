@@ -54,7 +54,7 @@
 				|| shipping.indexOf('Самовывоз') == 0) {
 				payment.find('option[value="Payments.CashOnDeliveryFake"]').hide();
 			}
-			if (shipping.indexOf('Новая Почта') == 0
+			else if (shipping.indexOf('Новая Почта') == 0
 				|| shipping.indexOf('Деливери') == 0
 				|| shipping.indexOf('Другие службы доставки') == 0
 				|| shipping.indexOf('Доставка почтой в Россию и страны зарубежья') == 0
@@ -62,8 +62,16 @@
 				payment.find('option[value="Payments.CashOnDeliveryFake"]').hide();
 				payment.find('option[value="Payments.CashFake"]').hide();
 			}
-			if (shipping.indexOf('Укрпочта') == 0) {
+			else if (shipping.indexOf('Укрпочта') == 0) {
 				payment.find('option[value="Payments.CashFake"]').hide();
+			}
+			if (!shipping.indexOf('Доставка почтой в Россию и страны зарубежья') == 0
+				&& !shipping.indexOf('Международные почтовые компании') == 0) {
+				payment.find('option[value="Payments.WebMoneyFake"]').hide();
+			}
+
+			if (!payment.find('option:selected').is(':visible')) {
+				payment.find('option:visible').first().prop('selected', true);
 			}
 
 			function showAll() {
