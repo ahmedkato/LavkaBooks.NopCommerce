@@ -3200,7 +3200,8 @@ namespace Nop.Web.Controllers
 					{
 						var productsByAuthor = authors
 							.SelectMany(x => x.ProductSpecificationAttributes)
-							.Select(x => x.Product);
+							.Select(x => x.Product)
+							.Where(x => !x.Deleted && x.Published);
 						model.Products = PrepareProductOverviewModels(productsByAuthor, prepareSpecificationAttributes: true).ToList();
 					}
 
@@ -3291,7 +3292,8 @@ namespace Nop.Web.Controllers
 				var products = attr.SpecificationAttributeOptions
 					.Where(x => x.Name.Equals(value, StringComparison.CurrentCultureIgnoreCase))
 					.SelectMany(x => x.ProductSpecificationAttributes)
-					.Select(x => x.Product);
+					.Select(x => x.Product)
+					.Where(x => !x.Deleted && x.Published);
 
 				model.Products = PrepareProductOverviewModels(products, prepareSpecificationAttributes: true).ToList();
 			}
