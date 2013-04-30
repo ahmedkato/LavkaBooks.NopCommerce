@@ -805,7 +805,6 @@ namespace Nop.Web.Controllers
 
 			var model = category.ToModel();
 
-
 			//sorting
 			model.PagingFilteringContext.AllowProductSorting = _catalogSettings.AllowProductSorting;
 			if (model.PagingFilteringContext.AllowProductSorting)
