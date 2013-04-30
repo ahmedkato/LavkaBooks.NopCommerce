@@ -178,6 +178,7 @@
     <Compile Include="Controllers\BlogController.cs" />
     <Compile Include="Controllers\BackwardCompatibility1XController.cs" />
     <Compile Include="Controllers\BackwardCompatibility2XController.cs" />
+    <Compile Include="Controllers\FreeController.cs" />
     <Compile Include="Controllers\ReturnRequestController.cs" />
     <Compile Include="Controllers\KeepAliveController.cs" />
     <Compile Include="Controllers\ExternalAuthenticationController.cs" />
@@ -277,6 +278,8 @@
     <Compile Include="Models\Customer\ForumSubscriptionModel.cs" />
     <Compile Include="Models\Customer\ExternalAuthenticationMethodModel.cs" />
     <Compile Include="Models\Customer\CustomerWishlistModel.cs" />
+    <Compile Include="Models\Free\FreeModel.cs" />
+    <Compile Include="Models\Free\FreeProductModel.cs" />
     <Compile Include="Models\Install\InstallModel.cs" />
     <Compile Include="Models\Cms\RenderWidgetModel.cs" />
     <Compile Include="Models\News\AddNewsCommentModel.cs" />
@@ -1706,6 +1709,7 @@
     <Content Include="Views\ShoppingCart\_CustomCreateOrUpdateAddress.cshtml" />
     <Content Include="Views\Catalog\_CustomProductVariantAddToCart.cshtml" />
     <Content Include="Views\Catalog\SearchBySpecification.cshtml" />
+    <Content Include="Views\Free\Freelist.cshtml" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

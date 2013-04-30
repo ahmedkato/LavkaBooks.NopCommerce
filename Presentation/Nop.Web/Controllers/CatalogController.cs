@@ -806,8 +806,6 @@ namespace Nop.Web.Controllers
 			var model = category.ToModel();
 
 
-
-
 			//sorting
 			model.PagingFilteringContext.AllowProductSorting = _catalogSettings.AllowProductSorting;
 			if (model.PagingFilteringContext.AllowProductSorting)
@@ -826,7 +824,6 @@ namespace Nop.Web.Controllers
 						});
 				}
 			}
-
 
 
 			//view mode
@@ -935,9 +932,6 @@ namespace Nop.Web.Controllers
 			}
 
 
-
-
-
 			//category breadcrumb
 			model.DisplayCategoryBreadcrumb = _catalogSettings.CategoryBreadcrumbEnabled;
 			if (model.DisplayCategoryBreadcrumb)
@@ -952,8 +946,6 @@ namespace Nop.Web.Controllers
 					});
 				}
 			}
-
-
 
 
 			//subcategories
@@ -988,9 +980,7 @@ namespace Nop.Web.Controllers
 				})
 				.ToList();
 
-
-
-
+			
 			//featured products
 			//Question: should we use '_catalogSettings.ShowProductsFromSubcategories' setting for displaying featured products?
 			if (!_catalogSettings.IgnoreFeaturedProducts && _categoryService.GetTotalNumberOfFeaturedProducts(categoryId) > 0)
@@ -3282,21 +3272,33 @@ namespace Nop.Web.Controllers
 
 		[NopHttpsRequirement(SslRequirement.No)]
 		[ValidateInput(true)]
-		public ActionResult SearchBySpecification(int id, string value)
+		public ActionResult SearchBySpecification(int id, string value, CatalogPagingFilteringModel command)
 		{
 			var model = new SearchModel();
-			var attr = _specificationAttributeService.GetSpecificationAttributeById(id);
 
-			if (attr != null)
+			if (command.PageSize <= 0) command.PageSize = _catalogSettings.SearchPageProductsPerPage;
+			if (command.PageNumber <= 0) command.PageNumber = 1;
+
+			IList<int> alreadyFilteredSpecOptionIds = 
+				_specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttribute(id)
+							.Where(x => x.Name.Equals(value, StringComparison.CurrentCultureIgnoreCase))
+							.Select(x => x.Id).ToList();
+
+			if (alreadyFilteredSpecOptionIds.Any())
 			{
-				var products = attr.SpecificationAttributeOptions
-					.Where(x => x.Name.Equals(value, StringComparison.CurrentCultureIgnoreCase))
-					.SelectMany(x => x.ProductSpecificationAttributes)
-					.Select(x => x.Product)
-					.Where(x => !x.Deleted && x.Published);
-
+				IList<int> categoryIds = _categoryService.GetAllCategories().Select(x => x.Id).ToList();
+				IList<int> filterableSpecificationAttributeOptionIds = null;
+				var products = _productService.SearchProducts(categoryIds, 0,
+					_catalogSettings.IncludeFeaturedProductsInNormalLists ? null : (bool?)false,
+					null, null, 0, string.Empty, false, false, 
+					_workContext.WorkingLanguage.Id, alreadyFilteredSpecOptionIds,
+					(ProductSortingEnum)command.OrderBy, command.PageNumber - 1, command.PageSize,
+					false, out filterableSpecificationAttributeOptionIds);
 				model.Products = PrepareProductOverviewModels(products, prepareSpecificationAttributes: true).ToList();
+
+				model.PagingFilteringContext.LoadPagedList(products);
 			}
+
 			model.NoResults = !model.Products.Any();
 			return View(model);
 		}
