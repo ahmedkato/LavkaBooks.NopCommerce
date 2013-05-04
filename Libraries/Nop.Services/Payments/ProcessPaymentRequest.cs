@@ -25,6 +25,11 @@ namespace Nop.Services.Payments
         public decimal OrderTotal { get; set; }
 
         /// <summary>
+        /// Gets or sets a comments
+        /// </summary>
+        public string Comments { get; set; }
+
+        /// <summary>
         /// /// <summary>
         /// Gets or sets a payment method identifier
         /// </summary>

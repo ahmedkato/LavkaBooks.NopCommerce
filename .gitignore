@@ -108,3 +108,4 @@ Backup*/
 UpgradeLog*.XML
 
 Presentation/Nop.Web/Content/Images/Thumbs/
+Settings.txt

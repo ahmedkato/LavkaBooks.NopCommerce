@@ -3299,6 +3299,17 @@ namespace Nop.Web.Controllers
 			}
 
 			model.NoResults = !model.Products.Any();
+
+            //event
+            _eventPublisher.Publish(new ProductSearchEvent()
+                                    {
+                                        SearchTerm = value,
+                                        SearchInDescriptions = false,
+                                        CategoryIds = new List<int>(),
+                                        ManufacturerId = 0,
+                                        WorkingLanguageId = _workContext.WorkingLanguage.Id
+                                    });
+
 			return View(model);
 		}
 

@@ -6071,6 +6071,10 @@ pre {
 	padding-top: 10px;
 }
 
+.enter-address .text-box-phone {
+	width: 200px;
+}
+
 /*jQuery dialog*/
 
 .ui-dialog {

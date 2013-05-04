@@ -2107,20 +2107,10 @@ namespace Nop.Web.Controllers
 
 				processPaymentRequest.CustomerId = _workContext.CurrentCustomer.Id;
 				processPaymentRequest.PaymentMethodSystemName = _workContext.CurrentCustomer.SelectedPaymentMethodSystemName;
+                processPaymentRequest.Comments = model.CommentText;
 				var placeOrderResult = _orderProcessingService.PlaceOrder(processPaymentRequest);
 				if (placeOrderResult.Success)
 				{
-					if (!string.IsNullOrEmpty(model.CommentText))
-					{
-						placeOrderResult.PlacedOrder.OrderNotes.Add(
-							   new OrderNote
-							   {
-								   Note = model.CommentText,
-								   DisplayToCustomer = true,
-								   CreatedOnUtc = DateTime.UtcNow
-							   });
-						_orderService.UpdateOrder(placeOrderResult.PlacedOrder);
-					}
 					return RedirectToRoute("CheckoutCompleted");
 				}
 				else
