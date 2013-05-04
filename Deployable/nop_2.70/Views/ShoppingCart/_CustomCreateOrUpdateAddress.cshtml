@@ -14,7 +14,8 @@
  {
 		<tr>
 			<td>
-				@Html.TextBoxFor(model => model.PhoneNumber, new { @class = "text-box", placeholder = T("Account.Address.Phone.Hint") })
+				<span>+3 80</span>
+				@Html.TextBoxFor(model => model.PhoneNumber, new { @class = "text-box text-box-phone", placeholder = T("Account.Address.Phone.Hint") })
 				@if (Model.PhoneRequired)
 	{
 					@Html.RequiredHint()
