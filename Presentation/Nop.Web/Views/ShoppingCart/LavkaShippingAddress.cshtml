@@ -28,30 +28,28 @@
 		<div class="shipping-address-title">@T("LavkaShoppingCart.ContactInfo")</div>
 		<div class="enter-address-body">
 			@if (Model.ExistingAddresses.Count > 0)
-   {
+			{
 				<div>
 					<select id="shippingAddressId" name="ShippingAddressId" class="address-select">
 						@foreach (var address in Model.ExistingAddresses)
-	  {
-		  var addressLine = "";
-		  addressLine += address.FirstName;
-		  addressLine += " " + address.LastName;
-		  if (address.StreetAddressEnabled && !String.IsNullOrEmpty(address.Address1))
-		  {
-			  addressLine += ", " + address.Address1;
-		  }
-		  if (address.CityEnabled && !String.IsNullOrEmpty(address.City))
-		  {
-			  addressLine += ", " + address.City;
-		  }
+						{
+							var addressLine = "";
+							addressLine += address.FirstName;
+							addressLine += " " + address.LastName;
+							if (address.StreetAddressEnabled && !String.IsNullOrEmpty(address.Address1))
+							{
+								addressLine += ", " + address.Address1;
+							}
+							if (address.CityEnabled && !String.IsNullOrEmpty(address.City))
+							{
+								addressLine += ", " + address.City;
+							}
 							<option value="@(address.Id)">@(addressLine)</option>
-	  }
+						}
 						<option value="" selected="@Model.NewAddressPreselected">@T("Checkout.NewAddress")</option>
 					</select>
 				</div>
-				<div class="clear">
-				</div>
-   }
+			}
 			<div id="shipping-new-address-form" style="display: none">
 				@{
 					var dataDictAddress = new ViewDataDictionary();

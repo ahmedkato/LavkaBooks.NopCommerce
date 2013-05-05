@@ -11,19 +11,19 @@
 		</td>
 	</tr>
 	@if (Model.PhoneEnabled)
- {
+	{
 		<tr>
 			<td>
-				<span>+3 80</span>
-				@Html.TextBoxFor(model => model.PhoneNumber, new { @class = "text-box text-box-phone", placeholder = T("Account.Address.Phone.Hint") })
+				@Html.TextBoxFor(model => model.PhoneNumber, new { @class = "text-box", placeholder = T("Account.Address.Phone.Hint") })
 				@if (Model.PhoneRequired)
-	{
+				{
 					@Html.RequiredHint()
-	}
+				}
 				@Html.ValidationMessageFor(model => model.PhoneNumber)
+				<div class="text-box-helper">@T("Account.Fields.Phone.SaggestFormat")</div>
 			</td>
 		</tr>
- }
+	}
 	<tr>
 		<td>
 			@Html.TextBoxFor(model => model.Email, new { @class = "text-box", placeholder = T("Account.Address.Email.Hint") })
@@ -32,7 +32,7 @@
 		</td>
 	</tr>
 	@if (Model.CountryEnabled)
- {
+	{
 		<tr>
 			<td>
 				@Html.DropDownListFor(model => model.CountryId, Model.AvailableCountries, new { @class = "drop-down" })
@@ -40,32 +40,32 @@
 				@Html.ValidationMessageFor(model => model.CountryId)
 			</td>
 		</tr>
- }
+	}
 	@if (Model.CityEnabled)
- {
+	{
 		<tr>
 			<td>
 				@Html.TextBoxFor(model => model.City, new { @class = "text-box", placeholder = T("Account.Address.City.Hint") })
 
 				@if (Model.CityRequired)
-	{
+				{
 					@Html.RequiredHint()
-	}
+				}
 				@Html.ValidationMessageFor(model => model.City)
 			</td>
 		</tr>
- }
+	}
 	@if (Model.StreetAddressEnabled)
- {
+	{
 		<tr>
 			<td>
 				@Html.TextBoxFor(model => model.Address1, new { @class = "text-box", placeholder = T("Account.Address.Address.Hint") })
 				@if (Model.StreetAddressRequired)
-	{
+				{
 					@Html.RequiredHint()
-	}
+				}
 				@Html.ValidationMessageFor(model => model.Address1)
 			</td>
 		</tr>
- }
+	}
 </table>
