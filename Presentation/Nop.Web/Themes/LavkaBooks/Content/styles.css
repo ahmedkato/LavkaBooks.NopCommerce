@@ -1579,6 +1579,11 @@ a.eu-cookie-privacyinfo-tag {
 	padding: 10px 0 10px 10px;
 }
 
+.order-summary-content .common-buttons-block input,
+.shopping-cart-page .checkout-button {
+	height: 38px;
+}
+
 .order-summary-content .addon-buttons {
 	clear: both;
 	float: right;
