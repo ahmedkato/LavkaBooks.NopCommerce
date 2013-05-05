@@ -10,7 +10,7 @@
 }
 <div class="page shopping-cart-page">
 	@using (Html.BeginRouteForm("ShoppingCartLavkaBooks", FormMethod.Post, new { enctype = "multipart/form-data" }))
- {
+	{
 		<div class="page-title">
 			<h1>@T("ShoppingCart")</h1>
 		</div>
@@ -23,12 +23,12 @@
 			@Html.Partial("LavkaShippingAddress", Model.ShippingAddress)
 			<div class="clear">
 			</div>
-			<div class="inputs">
-				@Html.LabelFor(model => model.CommentText)
-				<div class="input-box">
-					@Html.TextAreaFor(model => model.CommentText, new { @class = "comment-text" })
+			<div class="checkout-data">
+				<div class="enter-comment">
+					<div class="comment-title">@Html.LabelFor(model => model.CommentText)</div>
+					<div class="comment-field">@Html.TextAreaFor(model => model.CommentText, new { @class = "comment-text" })</div>
+					@Html.ValidationMessageFor(model => model.CommentText)
 				</div>
-				@Html.ValidationMessageFor(model => model.CommentText)
 			</div>
 			<div class="clear">
 			</div>
@@ -36,7 +36,7 @@
 				<input type="submit" id="checkout" name="saveorder" value="@T("LavkaShoppingCart.Order.Button")" class="button-1 checkout-button"/>
 			</div>
 		</div>
- }
+	}
 </div>
 <script type="text/javascript">
 	$(document).ready(function () {

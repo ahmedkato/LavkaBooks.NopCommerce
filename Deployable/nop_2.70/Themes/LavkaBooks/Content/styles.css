@@ -1305,11 +1305,6 @@ a.eu-cookie-privacyinfo-tag {
 			font-size: 16px;
 		}
 
-		.shopping-cart-page .inputs textarea {
-			width: 400px;
-			resize: none;
-		}
-
 .wishlist .share-info {
 	background: url(images/cart-footer-bg.gif) repeat-x bottom;
 	font-size: 1.2em;
@@ -1751,7 +1746,7 @@ a.eu-cookie-privacyinfo-tag {
 
 	.checkout-data .enter-address-body {
 		text-align: left;
-		margin: 5px 5px 5px 10px;
+		margin: 5px 5px 10px 10px;
 	}
 
 	.checkout-data .shipping-options {
@@ -1791,7 +1786,8 @@ a.eu-cookie-privacyinfo-tag {
 	}
 
 	.checkout-data .shipping-options-title,
-	.checkout-data .shipping-address-title {
+	.checkout-data .shipping-address-title,
+	.checkout-data .comment-title {
 		color: #555555;
 		font-size: 16px;
 		margin-left: 8px;
@@ -1900,6 +1896,17 @@ a.eu-cookie-privacyinfo-tag {
 			margin: 10px;
 			text-align: left;
 		}
+
+	.checkout-data .comment-field {
+		margin: 5px 5px 5px 10px;
+		width: 288px;
+	}
+
+	.checkout-data .comment-field textarea{
+		padding: 5px;
+		resize: none;
+		height: 60px;
+	}
 
 .order-progress {
 	height: 40px;
@@ -6061,18 +6068,22 @@ pre {
 }
 
 .enter-address .text-box {
-	height: 30px;
+	height: 20px;
 	width: 240px;
 }
 
 .enter-address .drop-down {
-	height: 40px;
+	height: 32px;
 	width: 252px;
-	padding-top: 10px;
 }
 
-.enter-address .text-box-phone {
-	width: 200px;
+.enter-address .text-box-helper {
+	color: #7A7A7A;
+	padding-left: 6px;
+}
+
+.enter-address td {
+	padding-left: 0;
 }
 
 /*jQuery dialog*/
