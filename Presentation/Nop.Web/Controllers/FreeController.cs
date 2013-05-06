@@ -18,8 +18,9 @@ namespace Nop.Web.Controllers
 
 		#endregion
 
-		public FreeController()
+		public FreeController(PermissionService permissionService)
 		{
+			_permissionService = permissionService;
 		}
 
 		[NopHttpsRequirement(SslRequirement.Yes)]
