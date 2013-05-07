@@ -169,8 +169,8 @@
 			</div>
   }
 		@Html.Action("RelatedProducts", "Catalog", new { productId = Model.Id })
-		<div class="x-ceo">
-			@string.Format(T("LavkaBooks.Seo").Text, Model.Name, author)
+		<div class="x-seo">
+			@string.Format(T("LavkaBooks.SeoBlock.Product").Text, Model.Name, author)
 		</div>
 		@Html.Widget("productdetails_bottom")
 	</div>

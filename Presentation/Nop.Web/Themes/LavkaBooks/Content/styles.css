@@ -358,12 +358,16 @@ ul.language-list {
 	padding: 10px;
 }
 
-	.master-wrapper-center-content .x-ceo {
-		border: 1px solid #CDCDCD;
-		border-radius: 5px;
-		opacity: 0.5;
-		padding: 3px;
-		font-size: 12px;
+.x-seo {
+	border: 1px solid #CDCDCD;
+	border-radius: 5px;
+	opacity: 0.5;
+	padding: 3px;
+	font-size: 12px;
+}
+
+	.x-seo p {
+		margin: 0;
 	}
 
 .free-pack, .faq {

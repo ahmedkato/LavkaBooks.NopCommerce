@@ -53,15 +53,6 @@
 <div class="page category-page">
 	<div class="page-body">
 	@Html.Widget("categorydetails_top")
-	@*description*@
-	@if (!String.IsNullOrWhiteSpace(Model.Description))
-	{
-		<div class="category-description">
-			@Html.Raw(Model.Description)
-		</div>
-		<div class="clear">
-		</div>
-	}
 	@Html.Widget("categorydetails_before_subcategories")
 	@*subcategories*@
 	@if (Model.SubCategories.Count > 0)
@@ -165,6 +156,15 @@
 		<div class="pager">
 			@Html.Pager(Model.PagingFilteringContext).QueryParam("pagenumber")
 		</div>
+		@*description*@
+		@if (!String.IsNullOrWhiteSpace(Model.Description))
+		{
+			<div class="x-seo">
+				@Html.Raw(Model.Description)
+			</div>
+			<div class="clear">
+			</div>
+		}
 		@Html.Widget("categorydetails_bottom")
 	</div>
 </div>
