@@ -28,292 +28,300 @@ using Nop.Web.Models.News;
 
 namespace Nop.Web.Controllers
 {
-    [NopHttpsRequirement(SslRequirement.No)]
-    public partial class NewsController : BaseNopController
-    {
+	[NopHttpsRequirement(SslRequirement.No)]
+	public partial class NewsController : BaseNopController
+	{
 		#region Fields
 
-        private readonly INewsService _newsService;
-        private readonly IWorkContext _workContext;
-        private readonly IPictureService _pictureService;
-        private readonly ILocalizationService _localizationService;
-        private readonly ICustomerContentService _customerContentService;
-        private readonly IDateTimeHelper _dateTimeHelper;
-        private readonly IWorkflowMessageService _workflowMessageService;
-        private readonly IWebHelper _webHelper;
-        private readonly ICacheManager _cacheManager;
-        private readonly ICustomerActivityService _customerActivityService;
+		private readonly INewsService _newsService;
+		private readonly IWorkContext _workContext;
+		private readonly IPictureService _pictureService;
+		private readonly ILocalizationService _localizationService;
+		private readonly ICustomerContentService _customerContentService;
+		private readonly IDateTimeHelper _dateTimeHelper;
+		private readonly IWorkflowMessageService _workflowMessageService;
+		private readonly IWebHelper _webHelper;
+		private readonly ICacheManager _cacheManager;
+		private readonly ICustomerActivityService _customerActivityService;
 
-        private readonly MediaSettings _mediaSettings;
-        private readonly NewsSettings _newsSettings;
-        private readonly LocalizationSettings _localizationSettings;
-        private readonly CustomerSettings _customerSettings;
-        private readonly StoreInformationSettings _storeInformationSettings;
-        private readonly CaptchaSettings _captchaSettings;
-        
-        #endregion
+		private readonly MediaSettings _mediaSettings;
+		private readonly NewsSettings _newsSettings;
+		private readonly LocalizationSettings _localizationSettings;
+		private readonly CustomerSettings _customerSettings;
+		private readonly StoreInformationSettings _storeInformationSettings;
+		private readonly CaptchaSettings _captchaSettings;
+
+		#endregion
 
 		#region Constructors
 
-        public NewsController(INewsService newsService, 
-            IWorkContext workContext, IPictureService pictureService, ILocalizationService localizationService,
-            ICustomerContentService customerContentService, IDateTimeHelper dateTimeHelper,
-            IWorkflowMessageService workflowMessageService, IWebHelper webHelper,
-            ICacheManager cacheManager, ICustomerActivityService customerActivityService,
-            MediaSettings mediaSettings, NewsSettings newsSettings,
-            LocalizationSettings localizationSettings, CustomerSettings customerSettings,
-            StoreInformationSettings storeInformationSettings, CaptchaSettings captchaSettings)
-        {
-            this._newsService = newsService;
-            this._workContext = workContext;
-            this._pictureService = pictureService;
-            this._localizationService = localizationService;
-            this._customerContentService = customerContentService;
-            this._dateTimeHelper = dateTimeHelper;
-            this._workflowMessageService = workflowMessageService;
-            this._webHelper = webHelper;
-            this._cacheManager = cacheManager;
-            this._customerActivityService = customerActivityService;
+		public NewsController(INewsService newsService,
+			IWorkContext workContext, IPictureService pictureService, ILocalizationService localizationService,
+			ICustomerContentService customerContentService, IDateTimeHelper dateTimeHelper,
+			IWorkflowMessageService workflowMessageService, IWebHelper webHelper,
+			ICacheManager cacheManager, ICustomerActivityService customerActivityService,
+			MediaSettings mediaSettings, NewsSettings newsSettings,
+			LocalizationSettings localizationSettings, CustomerSettings customerSettings,
+			StoreInformationSettings storeInformationSettings, CaptchaSettings captchaSettings)
+		{
+			_newsService = newsService;
+			_workContext = workContext;
+			_pictureService = pictureService;
+			_localizationService = localizationService;
+			_customerContentService = customerContentService;
+			_dateTimeHelper = dateTimeHelper;
+			_workflowMessageService = workflowMessageService;
+			_webHelper = webHelper;
+			_cacheManager = cacheManager;
+			_customerActivityService = customerActivityService;
 
-            this._mediaSettings = mediaSettings;
-            this._newsSettings = newsSettings;
-            this._localizationSettings = localizationSettings;
-            this._customerSettings = customerSettings;
-            this._storeInformationSettings = storeInformationSettings;
-            this._captchaSettings = captchaSettings;
-        }
+			_mediaSettings = mediaSettings;
+			_newsSettings = newsSettings;
+			_localizationSettings = localizationSettings;
+			_customerSettings = customerSettings;
+			_storeInformationSettings = storeInformationSettings;
+			_captchaSettings = captchaSettings;
+		}
 
-        #endregion
+		#endregion
 
-        #region Utilities
+		#region Utilities
 
-        [NonAction]
-        protected void PrepareNewsItemModel(NewsItemModel model, NewsItem newsItem, bool prepareComments)
-        {
-            if (newsItem == null)
-                throw new ArgumentNullException("newsItem");
+		[NonAction]
+		protected void PrepareNewsItemModel(NewsItemModel model, NewsItem newsItem, bool prepareComments)
+		{
+			if (newsItem == null)
+				throw new ArgumentNullException("newsItem");
 
-            if (model == null)
-                throw new ArgumentNullException("model");
+			if (model == null)
+				throw new ArgumentNullException("model");
 
-            model.Id = newsItem.Id;
-            model.SeName = newsItem.GetSeName();
-            model.Title = newsItem.Title;
-            model.Short = newsItem.Short;
-            model.Full = newsItem.Full;
-            model.AllowComments = newsItem.AllowComments;
-            model.CreatedOn = _dateTimeHelper.ConvertToUserTime(newsItem.CreatedOnUtc, DateTimeKind.Utc);
-            model.NumberOfComments = newsItem.ApprovedCommentCount;
-            model.AddNewComment.DisplayCaptcha = _captchaSettings.Enabled && _captchaSettings.ShowOnNewsCommentPage;
-            if (prepareComments)
-            {
-                var newsComments = newsItem.NewsComments.Where(n => n.IsApproved).OrderBy(pr => pr.CreatedOnUtc);
-                foreach (var nc in newsComments)
-                {
-                    var commentModel = new NewsCommentModel()
-                    {
-                        Id = nc.Id,
-                        CustomerId = nc.CustomerId,
-                        CustomerName = nc.Customer.FormatUserName(),
-                        CommentTitle = nc.CommentTitle,
-                        CommentText = nc.CommentText,
-                        CreatedOn = _dateTimeHelper.ConvertToUserTime(nc.CreatedOnUtc, DateTimeKind.Utc),
-                        AllowViewingProfiles = _customerSettings.AllowViewingProfiles && nc.Customer != null && !nc.Customer.IsGuest(),
-                    };
-                    if (_customerSettings.AllowCustomersToUploadAvatars)
-                    {
-                        var customer = nc.Customer;
-                        string avatarUrl = _pictureService.GetPictureUrl(customer.GetAttribute<int>(SystemCustomerAttributeNames.AvatarPictureId), _mediaSettings.AvatarPictureSize, false);
-                        if (String.IsNullOrEmpty(avatarUrl) && _customerSettings.DefaultAvatarEnabled)
-                            avatarUrl = _pictureService.GetDefaultPictureUrl(_mediaSettings.AvatarPictureSize, PictureType.Avatar);
-                        commentModel.CustomerAvatarUrl = avatarUrl;
-                    }
-                    model.Comments.Add(commentModel);
-                }
-            }
-        }
-        
-        #endregion
+			model.Id = newsItem.Id;
+			model.SeName = newsItem.GetSeName();
+			model.Title = newsItem.Title;
+			model.Short = newsItem.Short;
+			model.Full = newsItem.Full;
+			model.AllowComments = newsItem.AllowComments;
+			model.CreatedOn = _dateTimeHelper.ConvertToUserTime(newsItem.CreatedOnUtc, DateTimeKind.Utc);
+			model.NumberOfComments = newsItem.ApprovedCommentCount;
+			model.AddNewComment.DisplayCaptcha = _captchaSettings.Enabled && _captchaSettings.ShowOnNewsCommentPage;
+			if (prepareComments)
+			{
+				var newsComments = newsItem.NewsComments.Where(n => n.IsApproved).OrderBy(pr => pr.CreatedOnUtc);
+				foreach (var nc in newsComments)
+				{
+					var commentModel = new NewsCommentModel
+						{
+							Id = nc.Id,
+							CustomerId = nc.CustomerId,
+							CustomerName = nc.Customer.FormatUserName(),
+							CommentTitle = nc.CommentTitle,
+							CommentText = nc.CommentText,
+							CreatedOn = _dateTimeHelper.ConvertToUserTime(nc.CreatedOnUtc, DateTimeKind.Utc),
+							AllowViewingProfiles = _customerSettings.AllowViewingProfiles && nc.Customer != null && !nc.Customer.IsGuest(),
+						};
+					if (_customerSettings.AllowCustomersToUploadAvatars)
+					{
+						var customer = nc.Customer;
+						string avatarUrl = _pictureService.GetPictureUrl(customer.GetAttribute<int>(SystemCustomerAttributeNames.AvatarPictureId), _mediaSettings.AvatarPictureSize, false);
+						if (String.IsNullOrEmpty(avatarUrl) && _customerSettings.DefaultAvatarEnabled)
+							avatarUrl = _pictureService.GetDefaultPictureUrl(_mediaSettings.AvatarPictureSize, PictureType.Avatar);
+						commentModel.CustomerAvatarUrl = avatarUrl;
+					}
+					model.Comments.Add(commentModel);
+				}
+			}
+		}
 
-        #region Methods
+		#endregion
 
-        public ActionResult HomePageNews()
-        {
-            if (!_newsSettings.Enabled || !_newsSettings.ShowNewsOnMainPage)
-                return Content("");
-            
-            var cacheKey = string.Format(ModelCacheEventConsumer.HOMEPAGE_NEWSMODEL_KEY, _workContext.WorkingLanguage.Id);
-            var cachedModel = _cacheManager.Get(cacheKey, () =>
-            {
-                var newsItems = _newsService.GetAllNews(_workContext.WorkingLanguage.Id, 0, _newsSettings.MainPageNewsCount);
-                return new HomePageNewsItemsModel()
-                {
-                    WorkingLanguageId = _workContext.WorkingLanguage.Id,
-                    NewsItems = newsItems
-                        .Select(x =>
-                                    {
-                                        var newsModel = new NewsItemModel();
-                                        PrepareNewsItemModel(newsModel, x, false);
-                                        return newsModel;
-                                    })
-                        .ToList()
-                };
-            });
+		#region Methods
 
-            //"Comments" property of "NewsItemModel" object depends on the current customer.
-            //Furthermore, we just don't need it for home page news. So let's update reset it.
-            //But first we need to clone the cached model (the updated one should not be cached)
-            var model = (HomePageNewsItemsModel)cachedModel.Clone();
-            foreach (var newsItemModel in model.NewsItems)
-                newsItemModel.Comments.Clear();
-            return PartialView(model);
-        }
+		public ActionResult HomePageNews()
+		{
+			if (!_newsSettings.Enabled || !_newsSettings.ShowNewsOnMainPage)
+				return Content("");
 
-        public ActionResult NewsBlock()
-        {
-            return HomePageNews();
-        }
+			var cacheKey = string.Format(ModelCacheEventConsumer.HOMEPAGE_NEWSMODEL_KEY, _workContext.WorkingLanguage.Id);
+			var cachedModel = _cacheManager.Get(cacheKey, () =>
+			{
+				var newsItems = _newsService.GetAllNews(_workContext.WorkingLanguage.Id, 0, _newsSettings.MainPageNewsCount);
+				return new HomePageNewsItemsModel
+					{
+						WorkingLanguageId = _workContext.WorkingLanguage.Id,
+						NewsItems = newsItems
+							.Select(x =>
+								{
+									var newsModel = new NewsItemModel();
+									PrepareNewsItemModel(newsModel, x, false);
+									return newsModel;
+								})
+							.ToList()
+					};
+			});
 
-        public ActionResult List(NewsPagingFilteringModel command)
-        {
-            if (!_newsSettings.Enabled)
-                return RedirectToRoute("HomePage");
+			//"Comments" property of "NewsItemModel" object depends on the current customer.
+			//Furthermore, we just don't need it for home page news. So let's update reset it.
+			//But first we need to clone the cached model (the updated one should not be cached)
+			var model = (HomePageNewsItemsModel)cachedModel.Clone();
+			foreach (var newsItemModel in model.NewsItems)
+				newsItemModel.Comments.Clear();
+			return PartialView(model);
+		}
 
-            var model = new NewsItemListModel();
-            model.WorkingLanguageId = _workContext.WorkingLanguage.Id;
+		public ActionResult NewsBlock()
+		{
+			return HomePageNews();
+		}
 
-            if (command.PageSize <= 0) command.PageSize = _newsSettings.NewsArchivePageSize;
-            if (command.PageNumber <= 0) command.PageNumber = 1;
+		public ActionResult List(NewsPagingFilteringModel command)
+		{
+			if (!_newsSettings.Enabled)
+				return RedirectToRoute("HomePage");
 
-            var newsItems = _newsService.GetAllNews(_workContext.WorkingLanguage.Id,
-                command.PageNumber - 1, command.PageSize);
-            model.PagingFilteringContext.LoadPagedList(newsItems);
+			var model = new NewsItemListModel
+				{
+					WorkingLanguageId = _workContext.WorkingLanguage.Id
+				};
 
-            model.NewsItems = newsItems
-                .Select(x =>
-                {
-                    var newsModel = new NewsItemModel();
-                    PrepareNewsItemModel(newsModel, x, false);
-                    return newsModel;
-                })
-                .ToList();
+			if (command.PageSize <= 0) command.PageSize = _newsSettings.NewsArchivePageSize;
+			if (command.PageNumber <= 0) command.PageNumber = 1;
 
-            return View(model);
-        }
+			var newsItems = _newsService.GetAllNews(_workContext.WorkingLanguage.Id,
+				command.PageNumber - 1, command.PageSize);
+			model.PagingFilteringContext.LoadPagedList(newsItems);
 
-        public ActionResult ListRss(int languageId)
-        {
-            var feed = new SyndicationFeed(
-                                    string.Format("{0}: News", _storeInformationSettings.StoreName),
-                                    "News",
-                                    new Uri(_webHelper.GetStoreLocation(false)),
-                                    "NewsRSS",
-                                    DateTime.UtcNow);
+			model.NewsItems = newsItems
+				.Select(x =>
+				{
+					var newsModel = new NewsItemModel();
+					PrepareNewsItemModel(newsModel, x, false);
+					return newsModel;
+				})
+				.ToList();
 
-            if (!_newsSettings.Enabled)
-                return new RssActionResult() { Feed = feed };
+			return View(model);
+		}
 
-            var items = new List<SyndicationItem>();
-            var newsItems = _newsService.GetAllNews(languageId, 0, int.MaxValue);
-            foreach (var n in newsItems)
-            {
-                string newsUrl = Url.RouteUrl("NewsItem", new { newsItemId = n.Id, SeName = n.GetSeName() }, "http");
-                items.Add(new SyndicationItem(n.Title, n.Short, new Uri(newsUrl), String.Format("Blog:{0}", n.Id), n.CreatedOnUtc));
-            }
-            feed.Items = items;
-            return new RssActionResult() { Feed = feed };
-        }
+		public ActionResult ListRss(int languageId)
+		{
+			var feed = new SyndicationFeed(
+									string.Format("{0}: News", _storeInformationSettings.StoreName),
+									"News",
+									new Uri(_webHelper.GetStoreLocation(false)),
+									"NewsRSS",
+									DateTime.UtcNow);
 
-        public ActionResult NewsItem(int newsItemId)
-        {
-            if (!_newsSettings.Enabled)
-                return RedirectToRoute("HomePage");
+			if (!_newsSettings.Enabled)
+				return new RssActionResult { Feed = feed };
 
-            var newsItem = _newsService.GetNewsById(newsItemId);
-            if (newsItem == null || 
-                !newsItem.Published ||
-                (newsItem.StartDateUtc.HasValue && newsItem.StartDateUtc.Value >= DateTime.UtcNow) ||
-                (newsItem.EndDateUtc.HasValue && newsItem.EndDateUtc.Value <= DateTime.UtcNow))
-                return RedirectToRoute("HomePage");
+			var newsItems = _newsService.GetAllNews(languageId, 0, int.MaxValue);
+			feed.Items = (from n in newsItems
+						  let newsUrl = Url.RouteUrl("NewsItem", new
+							  {
+								  newsItemId = n.Id,
+								  SeName = n.GetSeName()
+							  }, "http")
+						  select new SyndicationItem(
+							  n.Title,
+							  n.Short,
+							  new Uri(newsUrl),
+							  String.Format("Blog:{0}", n.Id),
+							  n.CreatedOnUtc))
+				.ToList();
+			return new RssActionResult() { Feed = feed };
+		}
 
-            var model = new NewsItemModel();
-            PrepareNewsItemModel(model, newsItem, true);
+		public ActionResult NewsItem(int newsItemId)
+		{
+			if (!_newsSettings.Enabled)
+				return RedirectToRoute("HomePage");
 
-            return View(model);
-        }
+			var newsItem = _newsService.GetNewsById(newsItemId);
+			if (newsItem == null ||
+				!newsItem.Published ||
+				(newsItem.StartDateUtc.HasValue && newsItem.StartDateUtc.Value >= DateTime.UtcNow) ||
+				(newsItem.EndDateUtc.HasValue && newsItem.EndDateUtc.Value <= DateTime.UtcNow))
+				return RedirectToRoute("HomePage");
 
-        [HttpPost, ActionName("NewsItem")]
-        [FormValueRequired("add-comment")]
-        [CaptchaValidator]
-        public ActionResult NewsCommentAdd(int newsItemId, NewsItemModel model, bool captchaValid)
-        {
-            if (!_newsSettings.Enabled)
-                return RedirectToRoute("HomePage");
+			var model = new NewsItemModel();
+			PrepareNewsItemModel(model, newsItem, true);
 
-            var newsItem = _newsService.GetNewsById(newsItemId);
-            if (newsItem == null || !newsItem.Published || !newsItem.AllowComments)
-                return RedirectToRoute("HomePage");
+			return View(model);
+		}
 
-            //validate CAPTCHA
-            if (_captchaSettings.Enabled && _captchaSettings.ShowOnNewsCommentPage && !captchaValid)
-            {
-                ModelState.AddModelError("", _localizationService.GetResource("Common.WrongCaptcha"));
-            }
+		[HttpPost, ActionName("NewsItem")]
+		[FormValueRequired("add-comment")]
+		[CaptchaValidator]
+		public ActionResult NewsCommentAdd(int newsItemId, NewsItemModel model, bool captchaValid)
+		{
+			if (!_newsSettings.Enabled)
+				return RedirectToRoute("HomePage");
 
-            if (_workContext.CurrentCustomer.IsGuest() && !_newsSettings.AllowNotRegisteredUsersToLeaveComments)
-            {
-                ModelState.AddModelError("", _localizationService.GetResource("News.Comments.OnlyRegisteredUsersLeaveComments"));
-            }
+			var newsItem = _newsService.GetNewsById(newsItemId);
+			if (newsItem == null || !newsItem.Published || !newsItem.AllowComments)
+				return RedirectToRoute("HomePage");
 
-            if (ModelState.IsValid)
-            {
-                var comment = new NewsComment()
-                {
-                    NewsItemId = newsItem.Id,
-                    CustomerId = _workContext.CurrentCustomer.Id,
-                    IpAddress = _webHelper.GetCurrentIpAddress(),
-                    CommentTitle = model.AddNewComment.CommentTitle,
-                    CommentText = model.AddNewComment.CommentText,
-                    IsApproved = true,
-                    CreatedOnUtc = DateTime.UtcNow,
-                    UpdatedOnUtc = DateTime.UtcNow,
-                };
-                _customerContentService.InsertCustomerContent(comment);
+			//validate CAPTCHA
+			if (_captchaSettings.Enabled && _captchaSettings.ShowOnNewsCommentPage && !captchaValid)
+			{
+				ModelState.AddModelError("", _localizationService.GetResource("Common.WrongCaptcha"));
+			}
 
-                //update totals
-                _newsService.UpdateCommentTotals(newsItem);
+			if (_workContext.CurrentCustomer.IsGuest() && !_newsSettings.AllowNotRegisteredUsersToLeaveComments)
+			{
+				ModelState.AddModelError("", _localizationService.GetResource("News.Comments.OnlyRegisteredUsersLeaveComments"));
+			}
 
-                //notify a store owner;
-                if (_newsSettings.NotifyAboutNewNewsComments)
-                    _workflowMessageService.SendNewsCommentNotificationMessage(comment, _localizationSettings.DefaultAdminLanguageId);
+			if (ModelState.IsValid)
+			{
+				var comment = new NewsComment()
+				{
+					NewsItemId = newsItem.Id,
+					CustomerId = _workContext.CurrentCustomer.Id,
+					IpAddress = _webHelper.GetCurrentIpAddress(),
+					CommentTitle = model.AddNewComment.CommentTitle,
+					CommentText = model.AddNewComment.CommentText,
+					IsApproved = true,
+					CreatedOnUtc = DateTime.UtcNow,
+					UpdatedOnUtc = DateTime.UtcNow,
+				};
+				_customerContentService.InsertCustomerContent(comment);
 
-                //activity log
-                _customerActivityService.InsertActivity("PublicStore.AddNewsComment", _localizationService.GetResource("ActivityLog.PublicStore.AddNewsComment"));
+				//update totals
+				_newsService.UpdateCommentTotals(newsItem);
 
-                //The text boxes should be cleared after a comment has been posted
-                //That' why we reload the page
-                TempData["nop.news.addcomment.result"] = _localizationService.GetResource("News.Comments.SuccessfullyAdded");
-                return RedirectToRoute("NewsItem", new { newsItemId = newsItem.Id, SeName = newsItem.GetSeName() });
-            }
+				//notify a store owner;
+				if (_newsSettings.NotifyAboutNewNewsComments)
+					_workflowMessageService.SendNewsCommentNotificationMessage(comment, _localizationSettings.DefaultAdminLanguageId);
+
+				//activity log
+				_customerActivityService.InsertActivity("PublicStore.AddNewsComment", _localizationService.GetResource("ActivityLog.PublicStore.AddNewsComment"));
+
+				//The text boxes should be cleared after a comment has been posted
+				//That' why we reload the page
+				TempData["nop.news.addcomment.result"] = _localizationService.GetResource("News.Comments.SuccessfullyAdded");
+				return RedirectToRoute("NewsItem", new { newsItemId = newsItem.Id, SeName = newsItem.GetSeName() });
+			}
 
 
-            //If we got this far, something failed, redisplay form
-            PrepareNewsItemModel(model, newsItem, true);
-            return View(model);
-        }
+			//If we got this far, something failed, redisplay form
+			PrepareNewsItemModel(model, newsItem, true);
+			return View(model);
+		}
 
-        [ChildActionOnly]
-        public ActionResult RssHeaderLink()
-        {
-            if (!_newsSettings.Enabled || !_newsSettings.ShowHeaderRssUrl)
-                return Content("");
+		[ChildActionOnly]
+		public ActionResult RssHeaderLink()
+		{
+			if (!_newsSettings.Enabled || !_newsSettings.ShowHeaderRssUrl)
+				return Content("");
 
-            string link = string.Format("<link href=\"{0}\" rel=\"alternate\" type=\"application/rss+xml\" title=\"{1}: News\" />",
-                Url.RouteUrl("NewsRSS", new { languageId = _workContext.WorkingLanguage.Id }, "http"), _storeInformationSettings.StoreName);
+			string link = string.Format("<link href=\"{0}\" rel=\"alternate\" type=\"application/rss+xml\" title=\"{1}: News\" />",
+				Url.RouteUrl("NewsRSS", new { languageId = _workContext.WorkingLanguage.Id }, "http"), _storeInformationSettings.StoreName);
 
-            return Content(link);
-        }
+			return Content(link);
+		}
 
-        #endregion
-    }
+		#endregion
+	}
 }
