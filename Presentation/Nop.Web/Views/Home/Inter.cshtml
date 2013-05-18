@@ -1,11 +1,11 @@
 ﻿@{
-    Layout = "~/Views/Shared/_CustomColumnsTwo.cshtml";
+	Layout = "~/Views/Shared/_CustomColumnsTwo.cshtml";
 }
 <div class="page home-page">
-    <div class="page-body">
-        @Html.Action("HomePageNews", "News")
-        <div class="clear">
-        </div>
-        @Html.Action("HomePageBlog", "Blog")
-    </div>
+	<div class="page-body">
+		@Html.Action("HomePageNews", "News")
+		<div class="clear">
+		</div>
+		@Html.Action("BlogBlock", "Blog")
+	</div>
 </div>

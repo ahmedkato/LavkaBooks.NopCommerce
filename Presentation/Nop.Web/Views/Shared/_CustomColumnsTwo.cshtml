@@ -2,7 +2,6 @@
 	Layout = "~/Views/Shared/_CustomRoot.cshtml";
 }
 @{
-    
 	//current category ID
 	int currentCategoryId = 0;
 	if (Url.RequestContext.RouteData.Values["controller"].ToString().Equals("catalog", StringComparison.InvariantCultureIgnoreCase) &&
@@ -10,16 +9,6 @@
 	{
 		currentCategoryId = Convert.ToInt32(Url.RequestContext.RouteData.Values["categoryId"].ToString());
 	}
-
-
-	//current manufacturer ID
-	int currentManufacturerId = 0;
-	if (Url.RequestContext.RouteData.Values["controller"].ToString().Equals("catalog", StringComparison.InvariantCultureIgnoreCase) &&
-		Url.RequestContext.RouteData.Values["action"].ToString().Equals("manufacturer", StringComparison.InvariantCultureIgnoreCase))
-	{
-		currentManufacturerId = Convert.ToInt32(Url.RequestContext.RouteData.Values["manufacturerId"].ToString());
-	}
-
 
 	//current product ID
 	int currentProductId = 0;
@@ -31,11 +20,11 @@
 }
 <div class="master-wrapper-leftside-3">
 	@if (IsSectionDefined("left"))
- {
+	{
 		@RenderSection("left")
- }
- else
- {
+	}
+	else
+	{
 		@Html.Widget("left_side_column_before")
 		<div class="clear">
 		</div>
@@ -55,22 +44,28 @@
 		</div>
 		<div class="clear">
 		</div>
-		@Html.Action("BlogBlock", "Blog")
+		@Html.Action("HomePageBlog", "Blog")
 		<div class="clear">
 		</div>
 		<div class="phones-block">
 			<div class="ico"></div>
 			<table>
 				<tr>
-					<td><div class="life"></div></td>
+					<td>
+						<div class="life"></div>
+					</td>
 					<td>+38 (093) 653-93-80</td>
 				</tr>
 				<tr>
-					<td><div class="kvs"></div></td>
+					<td>
+						<div class="kvs"></div>
+					</td>
 					<td>+38 (096) 661-85-11</td>
 				</tr>
 				<tr>
-					<td><div class="mts"></div></td>
+					<td>
+						<div class="mts"></div>
+					</td>
 					<td>+38 (099) 950-11-32</td>
 				</tr>
 			</table>
@@ -80,26 +75,30 @@
 		<div class="liq-pay-block">
 			<table>
 				<tr>
-					<td><div class="vbv"></div></td>
-					<td><div class="ms"></div></td>
+					<td>
+						<div class="vbv"></div>
+					</td>
+					<td>
+						<div class="ms"></div>
+					</td>
 				</tr>
 			</table>
 		</div>
 		@Html.Widget("left_side_column_after")
- }
+	}
 </div>
 <div class="master-wrapper-center-3">
 	<div class="clear">
 	</div>
 	<div class="master-wrapper-center-menu">
 		@if (IsSectionDefined("menu"))
-		  {
-				@RenderSection("menu")
-		  }
-		  else
-		  {
-				@Html.Action("Menu", "Common")
-		  }
+		{
+			@RenderSection("menu")
+		}
+		else
+		{
+			@Html.Action("Menu", "Common")
+		}
 	</div>
 	<div class="clear">
 	</div>

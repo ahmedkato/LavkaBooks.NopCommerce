@@ -1,36 +1,36 @@
 ﻿@model HomePageBlogItemsModel
-@using Nop.Web;
-@using Nop.Web.Extensions;
 @using Nop.Web.Models.Blogs;
 @if (Model.BlogPosts.Count > 0)
 {
-    <div class="block block-news-navigation">
-        <div class="title">
-            <strong>@T("Blog")</strong>
-        </div>
-        <div class="clear">
-        </div>
-        <div class="listbox">
-            <ul>
-                @foreach (var item in Model.BlogPosts.Take(2))
-                {
-                    <li>
-                        <div class="post">
-                            <a class="blog-title" href="@Url.RouteUrl("BlogPost", new { blogPostId = item.Id, SeName = item.SeName })">
-                                @item.Title</a>
-							<div class="blog-date">@item.CreatedOn.ToString("D")</div>
-                            <div class="blog-body">
-                                @Html.Raw(HttpUtility.HtmlDecode(item.Body.Length > 100 ? item.Body.Substring(0, 100) : item.Body))
-                            </div>
-                            <a href="@Url.RouteUrl("BlogPost", new { blogPostId = item.Id, SeName = item.SeName })" class="read-more">@T("Blog.MoreInfo")</a>
-                        </div>
-                    </li>
-                }
-            </ul>
-            <div class="view-all">
-                <a href="@Url.RouteUrl("Blog")">
-                    @T("Blog.ViewAll")</a>
-            </div>
-        </div>
-    </div>
+	<div class="blog-list-homepage">
+		<div class="page-title">
+			<a href="@Url.RouteUrl("BlogRSS", new { languageId = Model.WorkingLanguageId })" class="link-rss" title="@T("Blog.RSS.Hint")">@T("Blog.RSS")</a>
+			<h4>@T("Blog")</h4>
+		</div>
+		<div class="clear">
+		</div>
+		<div class="blog-items">
+			<table>
+				@foreach (var item in Model.BlogPosts)
+				{
+					<tr>
+						<td>
+							<div class="blog-ico"></div>
+						</td>
+						<td>
+							<div class="item">
+								<a class="blog-title" href="@Url.RouteUrl("BlogPost", new { blogPostId = item.Id, SeName = item.SeName })">
+									@item.Title</a> 
+								<span class="news-date">@item.CreatedOn.ToString("D")</span>
+							</div>
+						</td>
+					</tr>
+				}
+			</table>
+			<div class="view-all">
+				<a href="@Url.RouteUrl("Blog")">
+					@T("Blog.ViewAll")</a>
+			</div>
+		</div>
+	</div>
 }

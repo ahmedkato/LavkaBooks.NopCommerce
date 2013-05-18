@@ -36,24 +36,24 @@ namespace Nop.Services.Messages
 	{
 		#region Fields
 
-		private readonly CatalogSettings _catalogSettings;
 		private readonly ICurrencyService _currencyService;
 		private readonly IDateTimeHelper _dateTimeHelper;
 		private readonly IDownloadService _downloadService;
 		private readonly IEmailAccountService _emailAccountService;
-		private readonly EmailAccountSettings _emailAccountSettings;
 		private readonly IEventPublisher _eventPublisher;
 		private readonly ILanguageService _languageService;
 		private readonly ILocalizationService _localizationService;
 		private readonly IOrderService _orderService;
 		private readonly IPaymentService _paymentService;
 		private readonly IPriceFormatter _priceFormatter;
+		private readonly IWebHelper _webHelper;
+		private readonly IWorkContext _workContext;
 
+		private readonly CatalogSettings _catalogSettings;
+		private readonly EmailAccountSettings _emailAccountSettings;
 		private readonly StoreInformationSettings _storeSettings;
 		private readonly TaxSettings _taxSettings;
 		private readonly MessageTemplatesSettings _templatesSettings;
-		private readonly IWebHelper _webHelper;
-		private readonly IWorkContext _workContext;
 
 		#endregion
 
@@ -81,13 +81,13 @@ namespace Nop.Services.Messages
 			_downloadService = downloadService;
 			_orderService = orderService;
 			_paymentService = paymentService;
+			_eventPublisher = eventPublisher;
 
 			_storeSettings = storeSettings;
 			_templatesSettings = templatesSettings;
 			_emailAccountSettings = emailAccountSettings;
 			_catalogSettings = catalogSettings;
 			_taxSettings = taxSettings;
-			_eventPublisher = eventPublisher;
 		}
 
 		#endregion
